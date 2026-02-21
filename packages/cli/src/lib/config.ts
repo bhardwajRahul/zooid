@@ -2,9 +2,17 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+export interface ChannelStats {
+  num_tails: number;
+  last_tailed_at: string;
+  first_tailed_at: string;
+}
+
 export interface ChannelTokens {
   publish_token?: string;
   subscribe_token?: string;
+  name?: string;
+  stats?: ChannelStats;
 }
 
 /** Per-server credentials stored in ~/.zooid/config.json */
@@ -149,9 +157,12 @@ export function saveConfig(
   const existing = file.servers[url] ?? {};
   const merged = { ...existing, ...partial };
 
-  // Deep merge channels
+  // Deep merge channels (per-channel, not shallow)
   if (partial.channels && existing.channels) {
-    merged.channels = { ...existing.channels, ...partial.channels };
+    merged.channels = { ...existing.channels };
+    for (const [chId, chData] of Object.entries(partial.channels)) {
+      merged.channels[chId] = { ...existing.channels[chId], ...chData };
+    }
   }
 
   file.servers[url] = merged;
@@ -174,6 +185,45 @@ export function saveDirectoryToken(token: string): void {
   fs.mkdirSync(dir, { recursive: true });
   const file = loadConfigFile();
   file.directory_token = token;
+  fs.writeFileSync(getConfigPath(), JSON.stringify(file, null, 2) + '\n');
+}
+
+/**
+ * Record a tail/subscribe interaction for a channel.
+ * Increments num_tails and updates timestamps.
+ * Creates the server/channel entry if it doesn't exist (for public channels with no token).
+ */
+export function recordTailHistory(
+  channelId: string,
+  serverUrl?: string,
+  name?: string,
+): void {
+  const url = serverUrl ?? resolveServer();
+  if (!url) return;
+
+  const file = loadConfigFile();
+  if (!file.servers) file.servers = {};
+  if (!file.servers[url]) file.servers[url] = {};
+  if (!file.servers[url].channels) file.servers[url].channels = {};
+
+  const channel = file.servers[url].channels![channelId] ?? {};
+  const now = new Date().toISOString();
+  const existing = channel.stats;
+
+  channel.stats = {
+    num_tails: (existing?.num_tails ?? 0) + 1,
+    last_tailed_at: now,
+    first_tailed_at: existing?.first_tailed_at ?? now,
+  };
+
+  if (name) {
+    channel.name = name;
+  }
+
+  file.servers[url].channels![channelId] = channel;
+
+  const dir = getConfigDir();
+  fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(getConfigPath(), JSON.stringify(file, null, 2) + '\n');
 }
 

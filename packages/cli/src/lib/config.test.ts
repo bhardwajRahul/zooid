@@ -10,6 +10,7 @@ import {
   getConfigPath,
   loadDirectoryToken,
   saveDirectoryToken,
+  recordTailHistory,
   type ZooidConfigFile,
 } from './config';
 
@@ -190,6 +191,89 @@ describe('config', () => {
       saveDirectoryToken('zd_new');
 
       expect(loadDirectoryToken()).toBe('zd_new');
+    });
+  });
+
+  describe('saveConfig() deep merge', () => {
+    it('deep merges individual channel entries preserving existing fields', () => {
+      saveConfig(
+        { channels: { ch1: { publish_token: 'pt' } } },
+        'https://a.com',
+      );
+      saveConfig(
+        { channels: { ch1: { subscribe_token: 'st' } } },
+        'https://a.com',
+      );
+
+      const file = loadConfigFile();
+      const ch1 = file.servers!['https://a.com'].channels!.ch1;
+      expect(ch1.publish_token).toBe('pt');
+      expect(ch1.subscribe_token).toBe('st');
+    });
+  });
+
+  describe('recordTailHistory()', () => {
+    it('creates channel entry with stats for first tail', () => {
+      saveConfig({}, 'https://a.com');
+      recordTailHistory('my-channel', 'https://a.com');
+
+      const file = loadConfigFile();
+      const stats =
+        file.servers!['https://a.com'].channels!['my-channel'].stats!;
+      expect(stats.num_tails).toBe(1);
+      expect(stats.first_tailed_at).toBeDefined();
+      expect(stats.last_tailed_at).toBe(stats.first_tailed_at);
+    });
+
+    it('increments num_tails and updates last_tailed_at', () => {
+      saveConfig({}, 'https://a.com');
+      recordTailHistory('ch', 'https://a.com');
+
+      const file1 = loadConfigFile();
+      const first =
+        file1.servers!['https://a.com'].channels!['ch'].stats!.first_tailed_at;
+
+      recordTailHistory('ch', 'https://a.com');
+
+      const file2 = loadConfigFile();
+      const stats = file2.servers!['https://a.com'].channels!['ch'].stats!;
+      expect(stats.num_tails).toBe(2);
+      expect(stats.first_tailed_at).toBe(first);
+    });
+
+    it('preserves existing tokens when recording stats', () => {
+      saveConfig(
+        { channels: { ch: { publish_token: 'pt', subscribe_token: 'st' } } },
+        'https://a.com',
+      );
+      recordTailHistory('ch', 'https://a.com');
+
+      const file = loadConfigFile();
+      const ch = file.servers!['https://a.com'].channels!['ch'];
+      expect(ch.publish_token).toBe('pt');
+      expect(ch.subscribe_token).toBe('st');
+      expect(ch.stats!.num_tails).toBe(1);
+    });
+
+    it('stores channel name when provided', () => {
+      saveConfig({}, 'https://a.com');
+      recordTailHistory('ch', 'https://a.com', 'My Channel');
+
+      const file = loadConfigFile();
+      expect(file.servers!['https://a.com'].channels!['ch'].name).toBe(
+        'My Channel',
+      );
+    });
+
+    it('creates server entry when it does not exist', () => {
+      recordTailHistory('ch', 'https://new.com');
+
+      const file = loadConfigFile();
+      expect(file.servers!['https://new.com'].channels!['ch'].stats!.num_tails).toBe(1);
+    });
+
+    it('silently skips when no server is resolvable', () => {
+      expect(() => recordTailHistory('ch')).not.toThrow();
     });
   });
 });

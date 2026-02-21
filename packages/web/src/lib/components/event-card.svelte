@@ -3,12 +3,13 @@
   import { Card, CardContent } from '@ui/components/card/index';
   import type { ZooidEvent } from '../api';
 
-  let { event }: { event: ZooidEvent } = $props();
+  let { event, viewMode = 'pretty' }: { event: ZooidEvent; viewMode?: 'pretty' | 'raw' } = $props();
 
-  let parsedData = $derived(formatData(event.data));
+  let rawData = $derived(formatRaw(event.data));
+  let prettyEntries = $derived(parsePretty(event.data));
   let relativeTime = $derived(formatRelative(event.created_at));
 
-  function formatData(raw: string): string {
+  function formatRaw(raw: string): string {
     try {
       return JSON.stringify(JSON.parse(raw), null, 2);
     } catch {
@@ -16,9 +17,20 @@
     }
   }
 
+  function parsePretty(raw: string): { key: string; lines: string[] }[] | null {
+    try {
+      const obj = JSON.parse(raw);
+      if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return null;
+      return Object.entries(obj).map(([key, value]) => {
+        const str = typeof value === 'string' ? value : JSON.stringify(value);
+        return { key, lines: str.split(/\\n|\n/) };
+      });
+    } catch {
+      return null;
+    }
+  }
+
   function formatRelative(iso: string): string {
-    // If the timestamp has a timezone offset (Z, +HH:MM, -HH:MM), parse as-is.
-    // Bare timestamps (no offset) are assumed UTC per Zooid spec.
     const hasOffset = /Z|[+-]\d{2}:?\d{2}$/.test(iso);
     const ts = hasOffset ? iso : iso + 'Z';
     const diff = Date.now() - new Date(ts).getTime();
@@ -46,6 +58,16 @@
       </div>
       <span class="text-[10px] text-muted-foreground shrink-0">{relativeTime}</span>
     </div>
-    <pre class="text-xs text-foreground/80 bg-background rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">{parsedData}</pre>
+    {#if viewMode === 'pretty' && prettyEntries}
+      <div class="text-sm text-foreground/80 bg-background rounded p-2 flex flex-col gap-1.5">
+        {#each prettyEntries as { key, lines }}
+          <div>
+            <span class="font-semibold text-foreground/90">{key}</span><span class="text-foreground/50">: </span>{#each lines as line, i}{#if i > 0}<br />{/if}{line}{/each}
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <pre class="text-xs text-foreground/80 bg-background rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">{rawData}</pre>
+    {/if}
   </CardContent>
 </Card>

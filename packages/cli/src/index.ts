@@ -9,6 +9,7 @@ import { runPublish } from './commands/publish';
 import { runSubscribePoll, runSubscribeWebhook } from './commands/subscribe';
 import { runTail } from './commands/tail';
 import { runStatus } from './commands/status';
+import { runHistory } from './commands/history';
 import { runShare } from './commands/share';
 import { runUnshare } from './commands/unshare';
 import { runDiscover } from './commands/discover';
@@ -16,7 +17,12 @@ import { runServerGet, runServerSet } from './commands/server';
 import { runDev } from './commands/dev';
 import { runInit } from './commands/init';
 import { runDeploy } from './commands/deploy';
-import { printSuccess, printError, printInfo } from './lib/output';
+import {
+  printSuccess,
+  printError,
+  printInfo,
+  formatRelative,
+} from './lib/output';
 import {
   isEnabled as telemetryEnabled,
   showNoticeIfNeeded,
@@ -24,7 +30,7 @@ import {
   flushInBackground,
   getInstallId,
 } from './lib/telemetry';
-import { loadConfig } from './lib/config';
+import { loadConfig, recordTailHistory } from './lib/config';
 import { resolveChannel } from './lib/client';
 import type { TelemetryEvent } from './lib/telemetry';
 
@@ -318,16 +324,27 @@ program
   .option('--token <token>', 'Auth token (for remote/private channels)')
   .action(async (channel, opts) => {
     try {
-      const { client, channelId, tokenSaved } = resolveChannel(channel, {
-        token: opts.token,
-        tokenType: 'subscribe',
-      });
+      const { client, channelId, server, tokenSaved } = resolveChannel(
+        channel,
+        {
+          token: opts.token,
+          tokenType: 'subscribe',
+        },
+      );
       setTelemetryChannel(channelId);
       if (tokenSaved) {
         printInfo(
           'Token saved',
           `for ${channelId} — won't need --token next time`,
         );
+      }
+      // Record history (best-effort — don't fail the tail on error)
+      try {
+        const channels = await client.listChannels();
+        const ch = channels.find((c) => c.id === channelId);
+        recordTailHistory(channelId, server, ch?.name);
+      } catch {
+        recordTailHistory(channelId, server);
       }
       if (opts.follow) {
         const mode = opts.mode as 'auto' | 'ws' | 'poll';
@@ -385,16 +402,27 @@ program
   .option('--token <token>', 'Auth token (for remote/private channels)')
   .action(async (channel, opts) => {
     try {
-      const { client, channelId, tokenSaved } = resolveChannel(channel, {
-        token: opts.token,
-        tokenType: 'subscribe',
-      });
+      const { client, channelId, server, tokenSaved } = resolveChannel(
+        channel,
+        {
+          token: opts.token,
+          tokenType: 'subscribe',
+        },
+      );
       setTelemetryChannel(channelId);
       if (tokenSaved) {
         printInfo(
           'Token saved',
           `for ${channelId} — won't need --token next time`,
         );
+      }
+      // Record history (best-effort)
+      try {
+        const channels = await client.listChannels();
+        const ch = channels.find((c) => c.id === channelId);
+        recordTailHistory(channelId, server, ch?.name);
+      } catch {
+        recordTailHistory(channelId, server);
       }
       if (opts.webhook) {
         const wh = await runSubscribeWebhook(channelId, opts.webhook, client);
@@ -500,6 +528,44 @@ program
       console.log('');
     } catch (err) {
       handleError('status', err);
+    }
+  });
+
+// --- history ---
+program
+  .command('history')
+  .description('Show tail/subscribe history across all servers')
+  .option('-n, --limit <n>', 'Max entries to show', '20')
+  .option('--json', 'Output as JSON')
+  .action((opts) => {
+    try {
+      const entries = runHistory();
+      const limit = parseInt(opts.limit, 10);
+      const shown = entries.slice(0, limit);
+
+      if (shown.length === 0) {
+        console.log('No tail/subscribe history yet.');
+        return;
+      }
+
+      if (opts.json) {
+        console.log(JSON.stringify(shown, null, 2));
+        return;
+      }
+
+      console.log('');
+      for (const entry of shown) {
+        const ago = formatRelative(entry.last_tailed_at);
+        const label = entry.name ?? entry.channel_id;
+        const url = `${entry.server}/${entry.channel_id}`;
+        console.log(`  ${label}  ${url}`);
+        console.log(
+          `    ${entry.num_tails} tail${entry.num_tails === 1 ? '' : 's'}, last ${ago}`,
+        );
+      }
+      console.log('');
+    } catch (err) {
+      handleError('history', err);
     }
   });
 
