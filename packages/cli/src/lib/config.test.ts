@@ -269,7 +269,9 @@ describe('config', () => {
       recordTailHistory('ch', 'https://new.com');
 
       const file = loadConfigFile();
-      expect(file.servers!['https://new.com'].channels!['ch'].stats!.num_tails).toBe(1);
+      expect(
+        file.servers!['https://new.com'].channels!['ch'].stats!.num_tails,
+      ).toBe(1);
     });
 
     it('silently skips when no server is resolvable', () => {
