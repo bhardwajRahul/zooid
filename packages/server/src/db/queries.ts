@@ -422,35 +422,55 @@ export async function upsertServerMeta(
     email?: string | null;
   },
 ): Promise<ServerIdentity> {
-  const tags = meta.tags ? JSON.stringify(meta.tags) : null;
+  const tags = meta.tags !== undefined ? JSON.stringify(meta.tags) : undefined;
+
+  // Build dynamic SET clause — only update fields that were provided.
+  // This distinguishes undefined (not provided → keep existing) from null (clear it).
+  const setClauses: string[] = ["updated_at = datetime('now')"];
+  const setBinds: (string | null)[] = [];
+
+  if (meta.name !== undefined) {
+    setClauses.push('name = ?');
+    setBinds.push(meta.name);
+  }
+  if (meta.description !== undefined) {
+    setClauses.push('description = ?');
+    setBinds.push(meta.description);
+  }
+  if (tags !== undefined) {
+    setClauses.push('tags = ?');
+    setBinds.push(tags);
+  }
+  if (meta.owner !== undefined) {
+    setClauses.push('owner = ?');
+    setBinds.push(meta.owner);
+  }
+  if (meta.company !== undefined) {
+    setClauses.push('company = ?');
+    setBinds.push(meta.company);
+  }
+  if (meta.email !== undefined) {
+    setClauses.push('email = ?');
+    setBinds.push(meta.email);
+  }
 
   await db
     .prepare(
       `INSERT INTO server_meta (id, name, description, tags, owner, company, email, updated_at)
        VALUES (1, ?, ?, ?, ?, ?, ?, datetime('now'))
        ON CONFLICT(id) DO UPDATE SET
-         name = COALESCE(?, server_meta.name),
-         description = ?,
-         tags = ?,
-         owner = ?,
-         company = ?,
-         email = ?,
-         updated_at = datetime('now')`,
+         ${setClauses.join(',\n         ')}`,
     )
     .bind(
+      // INSERT values (use defaults for unspecified fields)
       meta.name ?? 'Zooid',
       meta.description ?? null,
-      tags,
+      tags ?? null,
       meta.owner ?? null,
       meta.company ?? null,
       meta.email ?? null,
-      // ON CONFLICT values
-      meta.name ?? null,
-      meta.description ?? null,
-      tags,
-      meta.owner ?? null,
-      meta.company ?? null,
-      meta.email ?? null,
+      // ON CONFLICT SET values (only the provided fields)
+      ...setBinds,
     )
     .run();
 

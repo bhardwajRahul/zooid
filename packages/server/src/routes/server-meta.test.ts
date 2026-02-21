@@ -126,6 +126,57 @@ describe('Server meta routes', () => {
       expect(body.owner).toBe('bob');
     });
 
+    it('preserves fields not included in partial update', async () => {
+      await authRequest('/api/v1/server', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: 'My Server',
+          description: 'Original desc',
+          tags: ['ai'],
+          owner: 'alice',
+          company: 'Acme',
+          email: 'alice@acme.com',
+        }),
+      });
+
+      // Update only description — all other fields should be preserved
+      const res = await authRequest('/api/v1/server', {
+        method: 'PUT',
+        body: JSON.stringify({ description: 'Updated desc' }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.description).toBe('Updated desc');
+      expect(body.name).toBe('My Server');
+      expect(body.tags).toEqual(['ai']);
+      expect(body.owner).toBe('alice');
+      expect(body.company).toBe('Acme');
+      expect(body.email).toBe('alice@acme.com');
+    });
+
+    it('allows explicitly clearing a field with null', async () => {
+      await authRequest('/api/v1/server', {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: 'My Server',
+          description: 'Some desc',
+          owner: 'alice',
+        }),
+      });
+
+      const res = await authRequest('/api/v1/server', {
+        method: 'PUT',
+        body: JSON.stringify({ description: null }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as Record<string, unknown>;
+      expect(body.description).toBeNull();
+      expect(body.name).toBe('My Server');
+      expect(body.owner).toBe('alice');
+    });
+
     it('rejects without auth', async () => {
       const res = await app.request(
         '/api/v1/server',
