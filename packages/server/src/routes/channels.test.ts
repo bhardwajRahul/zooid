@@ -332,4 +332,100 @@ describe('Channel routes', () => {
       expect(res.status).toBe(404);
     });
   });
+
+  describe('DELETE /channels/:channelId', () => {
+    it('deletes an existing channel', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'delete-me', name: 'Delete Me' }),
+      });
+
+      const res = await authRequest('/api/v1/channels/delete-me', {
+        method: 'DELETE',
+      });
+
+      expect(res.status).toBe(204);
+
+      // Verify channel is gone
+      const listRes = await app.request(
+        '/api/v1/channels',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      const body = (await listRes.json()) as {
+        channels: Array<{ id: string }>;
+      };
+      expect(body.channels.find((c) => c.id === 'delete-me')).toBeUndefined();
+    });
+
+    it('deletes associated events and publishers', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'cascade-test', name: 'Cascade Test' }),
+      });
+
+      // Add a publisher
+      await authRequest('/api/v1/channels/cascade-test/publishers', {
+        method: 'POST',
+        body: JSON.stringify({ name: 'test-bot' }),
+      });
+
+      // Publish an event
+      await authRequest(
+        '/api/v1/channels/cascade-test/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ data: { test: true } }),
+        },
+        'publish',
+        'cascade-test',
+      );
+
+      const res = await authRequest('/api/v1/channels/cascade-test', {
+        method: 'DELETE',
+      });
+      expect(res.status).toBe(204);
+    });
+
+    it('returns 404 for non-existent channel', async () => {
+      const res = await authRequest('/api/v1/channels/nonexistent', {
+        method: 'DELETE',
+      });
+
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('Channel not found');
+    });
+
+    it('rejects without auth', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'no-auth-del', name: 'No Auth' }),
+      });
+
+      const res = await app.request(
+        '/api/v1/channels/no-auth-del',
+        { method: 'DELETE' },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects with non-admin token', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'non-admin-del', name: 'Non Admin' }),
+      });
+
+      const res = await authRequest(
+        '/api/v1/channels/non-admin-del',
+        { method: 'DELETE' },
+        'subscribe',
+        'non-admin-del',
+      );
+
+      expect(res.status).toBe(403);
+    });
+  });
 });

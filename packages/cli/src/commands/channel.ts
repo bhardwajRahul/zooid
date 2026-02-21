@@ -5,7 +5,13 @@ import {
 } from '@zooid/sdk';
 import type { ChannelListItem } from '@zooid/types';
 import { createClient } from '../lib/client';
-import { loadConfig, saveConfig } from '../lib/config';
+import {
+  loadConfig,
+  loadConfigFile,
+  resolveServer,
+  getConfigPath,
+  saveConfig,
+} from '../lib/config';
 
 export interface ChannelCreateOptions {
   name?: string;
@@ -58,4 +64,23 @@ export async function runChannelAddPublisher(
 ): Promise<PublisherResult> {
   const c = client ?? createClient();
   return c.addPublisher(channelId, name);
+}
+
+export async function runChannelDelete(
+  channelId: string,
+  client?: ZooidClient,
+): Promise<void> {
+  const c = client ?? createClient();
+  await c.deleteChannel(channelId);
+
+  // Remove channel from local config
+  if (!client) {
+    const file = loadConfigFile();
+    const serverUrl = resolveServer();
+    if (serverUrl && file.servers?.[serverUrl]?.channels?.[channelId]) {
+      delete file.servers[serverUrl].channels![channelId];
+      const fs = await import('node:fs');
+      fs.writeFileSync(getConfigPath(), JSON.stringify(file, null, 2) + '\n');
+    }
+  }
 }

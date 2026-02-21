@@ -151,6 +151,11 @@ export class ZooidClient {
     );
   }
 
+  /** Delete a channel and all its data. Requires admin token. */
+  async deleteChannel(channelId: string): Promise<void> {
+    await this.request<void>('DELETE', `/api/v1/channels/${channelId}`);
+  }
+
   /** Publish a single event to a channel. Requires a publish-scoped token. */
   async publish(
     channelId: string,

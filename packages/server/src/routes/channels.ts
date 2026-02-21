@@ -10,6 +10,7 @@ import {
   getChannel,
   listChannels,
   createPublisher,
+  deleteChannel,
 } from '../db/queries';
 
 type Env = { Bindings: Bindings; Variables: Variables };
@@ -248,5 +249,59 @@ export class AddPublisher extends OpenAPIRoute {
       },
       201,
     );
+  }
+}
+
+export class DeleteChannel extends OpenAPIRoute {
+  schema = {
+    summary: 'Delete a channel',
+    tags: ['Channels'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({
+        channelId: z.string(),
+      }),
+    },
+    responses: {
+      204: {
+        description: 'Channel deleted',
+      },
+      401: {
+        description: 'Missing or invalid authentication',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      403: {
+        description: 'Insufficient permissions',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      404: {
+        description: 'Channel not found',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+    },
+  };
+
+  async handle(c: Context<Env>) {
+    const data = await this.getValidatedData<typeof this.schema>();
+    const { channelId } = data.params;
+
+    const deleted = await deleteChannel(c.env.DB, channelId);
+    if (!deleted) {
+      return c.json({ error: 'Channel not found' }, 404);
+    }
+
+    return c.body(null, 204);
   }
 }

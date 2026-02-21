@@ -217,6 +217,37 @@ describe('ZooidClient', () => {
     });
   });
 
+  describe('deleteChannel()', () => {
+    it('sends DELETE /api/v1/channels/:id', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+      await client.deleteChannel('signals');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v1/channels/signals',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('throws on 404 response', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ error: 'Channel not found' }, 404),
+      );
+
+      await expect(client.deleteChannel('nonexistent')).rejects.toThrow(
+        'Channel not found',
+      );
+    });
+  });
+
   describe('publish()', () => {
     it('sends POST /api/v1/channels/:id/events with event data', async () => {
       const client = new ZooidClient({

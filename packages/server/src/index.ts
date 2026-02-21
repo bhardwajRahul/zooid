@@ -7,7 +7,12 @@ import {
   requireScope,
   requireSubscribeIfPrivate,
 } from './middleware/auth';
-import { ListChannels, CreateChannel, AddPublisher } from './routes/channels';
+import {
+  ListChannels,
+  CreateChannel,
+  AddPublisher,
+  DeleteChannel,
+} from './routes/channels';
 import { PublishEvents, PollEvents } from './routes/events';
 import { RegisterWebhook, DeleteWebhook } from './routes/webhooks';
 import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
@@ -57,6 +62,9 @@ openapi.post('/channels', requireAuth(), requireScope('admin'), CreateChannel);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.post('/channels/:channelId/publishers', requireAuth(), requireScope('admin'), AddPublisher);
+// prettier-ignore
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.delete('/channels/:channelId', requireAuth(), requireScope('admin'), DeleteChannel);
 
 // Event routes
 // prettier-ignore

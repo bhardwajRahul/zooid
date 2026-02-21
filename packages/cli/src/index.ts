@@ -4,6 +4,7 @@ import {
   runChannelCreate,
   runChannelList,
   runChannelAddPublisher,
+  runChannelDelete,
 } from './commands/channel';
 import { runPublish } from './commands/publish';
 import { runSubscribePoll, runSubscribeWebhook } from './commands/subscribe';
@@ -275,6 +276,37 @@ channelCmd
       printInfo('Publish token', result.publish_token);
     } catch (err) {
       handleError('channel add-publisher', err);
+    }
+  });
+
+channelCmd
+  .command('delete <id>')
+  .description('Delete a channel and all its data')
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .action(async (id, opts) => {
+    try {
+      if (!opts.yes) {
+        const readline = await import('node:readline');
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(
+            `Delete channel "${id}" and all its events, webhooks, and publishers? [y/N] `,
+            resolve,
+          );
+        });
+        rl.close();
+        if (answer.toLowerCase() !== 'y') {
+          console.log('Aborted.');
+          return;
+        }
+      }
+      await runChannelDelete(id);
+      printSuccess(`Deleted channel: ${id}`);
+    } catch (err) {
+      handleError('channel delete', err);
     }
   });
 

@@ -349,6 +349,27 @@ export async function deleteWebhook(
   return (result.meta.changes ?? 0) > 0;
 }
 
+export async function deleteChannel(
+  db: D1Database,
+  channelId: string,
+): Promise<boolean> {
+  const existing = await db
+    .prepare('SELECT id FROM channels WHERE id = ?')
+    .bind(channelId)
+    .first<{ id: string }>();
+
+  if (!existing) return false;
+
+  await db.batch([
+    db.prepare('DELETE FROM events WHERE channel_id = ?').bind(channelId),
+    db.prepare('DELETE FROM webhooks WHERE channel_id = ?').bind(channelId),
+    db.prepare('DELETE FROM publishers WHERE channel_id = ?').bind(channelId),
+    db.prepare('DELETE FROM channels WHERE id = ?').bind(channelId),
+  ]);
+
+  return true;
+}
+
 export async function getWebhooksForChannel(
   db: D1Database,
   channelId: string,

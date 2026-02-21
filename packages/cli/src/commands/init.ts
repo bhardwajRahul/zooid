@@ -64,7 +64,11 @@ export async function runInit(): Promise<void> {
       'Tags (comma-separated)',
       existing?.tags?.join(', ') ?? '',
     );
-    const url = await ask(rl, 'URL', existing?.url ?? '');
+    const url = await ask(
+      rl,
+      'URL (leave empty to assign on deploy)',
+      existing?.url ?? '',
+    );
 
     const tags = tagsRaw
       .split(',')

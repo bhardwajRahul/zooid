@@ -6,6 +6,7 @@ import {
   runChannelCreate,
   runChannelList,
   runChannelAddPublisher,
+  runChannelDelete,
 } from './channel';
 
 let tmpDir: string;
@@ -13,6 +14,7 @@ const mockClient = {
   createChannel: vi.fn(),
   listChannels: vi.fn(),
   addPublisher: vi.fn(),
+  deleteChannel: vi.fn(),
 };
 
 vi.mock('@zooid/sdk', () => ({
@@ -114,6 +116,45 @@ describe('channel commands', () => {
       const result = await runChannelAddPublisher('signals', 'my-bot');
       expect(result.name).toBe('my-bot');
       expect(result.publish_token).toBe('bot-tok');
+    });
+  });
+
+  describe('runChannelDelete()', () => {
+    it('deletes a channel via the SDK client', async () => {
+      writeConfig();
+      mockClient.deleteChannel.mockResolvedValueOnce(undefined);
+
+      await runChannelDelete('signals', mockClient as any);
+
+      expect(mockClient.deleteChannel).toHaveBeenCalledWith('signals');
+    });
+
+    it('removes channel from local config', async () => {
+      writeConfig({
+        channels: {
+          signals: { publish_token: 'pt', subscribe_token: 'st' },
+          other: { publish_token: 'pt2' },
+        },
+      });
+      mockClient.deleteChannel.mockResolvedValueOnce(undefined);
+
+      await runChannelDelete('signals');
+
+      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const file = JSON.parse(raw);
+      expect(file.servers[TEST_SERVER].channels.signals).toBeUndefined();
+      expect(file.servers[TEST_SERVER].channels.other).toBeDefined();
+    });
+
+    it('throws when the channel does not exist', async () => {
+      writeConfig();
+      mockClient.deleteChannel.mockRejectedValueOnce(
+        new Error('Channel not found'),
+      );
+
+      await expect(
+        runChannelDelete('nonexistent', mockClient as any),
+      ).rejects.toThrow('Channel not found');
     });
   });
 });

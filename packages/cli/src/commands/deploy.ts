@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -24,7 +24,9 @@ function resolvePackageDir(packageName: string): string {
  */
 function prepareStagingDir(): string {
   const serverDir = resolvePackageDir('@zooid/server');
-  const webDir = resolvePackageDir('@zooid/web');
+  // @zooid/web is a dependency of @zooid/server, not the CLI — resolve from there
+  const serverRequire = createRequire(path.join(serverDir, 'package.json'));
+  const webDir = path.dirname(serverRequire.resolve('@zooid/web/package.json'));
   const webDistDir = path.join(webDir, 'dist');
 
   if (!fs.existsSync(path.join(serverDir, 'wrangler.toml'))) {
@@ -140,12 +142,7 @@ interface CfCredentials {
 }
 
 /** Run a wrangler command with CF credentials in env. Returns stdout. */
-function wrangler(
-  cmd: string,
-  cwd: string,
-  creds: CfCredentials,
-  opts?: { input?: string },
-): string {
+function wranglerEnv(creds: CfCredentials): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = {
     ...process.env,
     CLOUDFLARE_API_TOKEN: creds.apiToken,
@@ -153,13 +150,48 @@ function wrangler(
   if (creds.accountId) {
     env.CLOUDFLARE_ACCOUNT_ID = creds.accountId;
   }
+  return env;
+}
+
+function wrangler(
+  cmd: string,
+  cwd: string,
+  creds: CfCredentials,
+  opts?: { input?: string },
+): string {
   return execSync(`npx wrangler ${cmd}`, {
     cwd,
     stdio: 'pipe',
     encoding: 'utf-8',
-    env,
+    env: wranglerEnv(creds),
     input: opts?.input,
   });
+}
+
+/** Run wrangler with output streamed to the terminal and captured. */
+function wranglerVerbose(
+  cmd: string,
+  cwd: string,
+  creds: CfCredentials,
+): string {
+  const result = spawnSync('npx', ['wrangler', ...cmd.split(' ')], {
+    cwd,
+    stdio: 'pipe',
+    encoding: 'utf-8',
+    env: wranglerEnv(creds),
+    timeout: 5 * 60 * 1000, // 5 minute timeout
+    shell: true,
+  });
+  // Print captured output so the user sees what wrangler did
+  if (result.stderr) process.stderr.write(result.stderr);
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.error) {
+    throw result.error;
+  }
+  if (result.status !== 0) {
+    throw new Error(`wrangler ${cmd} exited with code ${result.status}`);
+  }
+  return result.stdout ?? '';
 }
 
 interface DeployUrls {
@@ -447,7 +479,7 @@ export async function runDeploy(): Promise<void> {
 
   // 10. Deploy worker
   console.log('Deploying worker...');
-  const deployOutput = wrangler('deploy', stagingDir, creds);
+  const deployOutput = wranglerVerbose('deploy', stagingDir, creds);
 
   const { workerUrl, customDomain } = parseDeployUrls(deployOutput);
   printSuccess('Worker deployed');
