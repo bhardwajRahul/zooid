@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { env } from 'cloudflare:test';
 import app from '../index';
 import { setupTestDb, cleanTestDb } from '../test-utils';
 import { createToken } from '../lib/jwt';
+import { deliverToWebhooks } from './events';
+import { createWebhook } from '../db/queries';
 
 const JWT_SECRET = 'test-jwt-secret';
 
@@ -373,7 +375,7 @@ describe('Event routes', () => {
       expect(res.status).toBe(200);
     });
 
-    it('supports limit query param', async () => {
+    it('supports limit query param (returns most recent events)', async () => {
       for (let i = 0; i < 5; i++) {
         await publishRequest(
           '/api/v1/channels/pub-channel/events',
@@ -391,16 +393,18 @@ describe('Event routes', () => {
         { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
       );
       const body = (await res.json()) as {
-        events: unknown[];
+        events: { data: string }[];
         has_more: boolean;
-        cursor: string;
+        cursor: string | null;
       };
       expect(body.events).toHaveLength(2);
-      expect(body.has_more).toBe(true);
-      expect(body.cursor).toBeTruthy();
+      // Should return the 2 most recent events in chronological order
+      expect(JSON.parse(body.events[0].data).i).toBe(3);
+      expect(JSON.parse(body.events[1].data).i).toBe(4);
+      expect(body.has_more).toBe(false);
     });
 
-    it('supports cursor pagination', async () => {
+    it('supports cursor pagination (forward from anchor)', async () => {
       for (let i = 0; i < 3; i++) {
         await publishRequest(
           '/api/v1/channels/pub-channel/events',
@@ -412,15 +416,20 @@ describe('Event routes', () => {
         );
       }
 
+      // Use since to anchor pagination forward
       const page1 = await app.request(
-        '/api/v1/channels/pub-channel/events?limit=2',
+        '/api/v1/channels/pub-channel/events?limit=2&since=2000-01-01T00:00:00Z',
         {},
         { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
       );
       const body1 = (await page1.json()) as {
         cursor: string;
         events: unknown[];
+        has_more: boolean;
       };
+      expect(body1.events).toHaveLength(2);
+      expect(body1.has_more).toBe(true);
+      expect(body1.cursor).toBeTruthy();
 
       const page2 = await app.request(
         `/api/v1/channels/pub-channel/events?limit=2&cursor=${body1.cursor}`,
@@ -472,6 +481,82 @@ describe('Event routes', () => {
         { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
       );
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe('webhook delivery headers', () => {
+    it('includes X-Zooid-Server header in webhook deliveries', async () => {
+      // Register a webhook for the channel
+      await createWebhook(env.DB, {
+        channelId: 'pub-channel',
+        url: 'https://consumer.example.com/hook',
+      });
+
+      const captured: { url: string; headers: Record<string, string> }[] = [];
+      const mockFetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+        const headers: Record<string, string> = {};
+        if (init?.headers) {
+          for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
+            headers[k] = v;
+          }
+        }
+        captured.push({ url: url.toString(), headers });
+        return new Response('ok', { status: 200 });
+      }) as unknown as typeof fetch;
+
+      await deliverToWebhooks(
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET } as never,
+        'pub-channel',
+        { id: '01TEST000000000000000000AA', type: 'signal' },
+        'https://my-server.zooid.dev',
+        mockFetch,
+      );
+
+      expect(captured).toHaveLength(1);
+      expect(captured[0].headers['X-Zooid-Server']).toBe('https://my-server.zooid.dev');
+      expect(captured[0].headers['X-Zooid-Channel']).toBe('pub-channel');
+      expect(captured[0].headers['X-Zooid-Event-Id']).toBe('01TEST000000000000000000AA');
+      expect(captured[0].headers['X-Zooid-Timestamp']).toBeTruthy();
+      expect(captured[0].url).toBe('https://consumer.example.com/hook');
+    });
+
+    it('includes X-Zooid-Signature when signing key is configured', async () => {
+      await createWebhook(env.DB, {
+        channelId: 'pub-channel',
+        url: 'https://consumer.example.com/hook',
+      });
+
+      // Generate a test signing key
+      const keyPair = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
+      const exported = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+      const bytes = new Uint8Array(exported);
+      let binary = '';
+      for (const byte of bytes) binary += String.fromCharCode(byte);
+      const signingKeyBase64 = btoa(binary);
+
+      const captured: { headers: Record<string, string> }[] = [];
+      const mockFetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+        const headers: Record<string, string> = {};
+        if (init?.headers) {
+          for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
+            headers[k] = v;
+          }
+        }
+        captured.push({ headers });
+        return new Response('ok', { status: 200 });
+      }) as unknown as typeof fetch;
+
+      await deliverToWebhooks(
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET, ZOOID_SIGNING_KEY: signingKeyBase64 } as never,
+        'pub-channel',
+        { id: '01TEST000000000000000000BB', type: 'alert' },
+        'https://my-server.zooid.dev',
+        mockFetch,
+      );
+
+      expect(captured).toHaveLength(1);
+      expect(captured[0].headers['X-Zooid-Server']).toBe('https://my-server.zooid.dev');
+      expect(captured[0].headers['X-Zooid-Signature']).toBeTruthy();
     });
   });
 });

@@ -48,17 +48,17 @@ You'll get a public URL and an admin token. Save them.
 ### 2. Create a channel
 
 ```bash
-npx zooid channel create security-advisories --public --description "CVE alerts and vulnerability disclosures"
+npx zooid channel create market-signals --public --description "Whale wallet movements and trading alerts"
 ```
 
 ### 3. Publish an event
 
 ```bash
-npx zooid publish security-advisories --type cve_published --data '{
-  "cve": "CVE-2026-1234",
-  "severity": "critical",
-  "package": "libxml2",
-  "summary": "Remote code execution via crafted XML input"
+npx zooid publish market-signals --type whale_move --data '{
+  "wallet": "0x1a2b...3c4d",
+  "token": "ETH",
+  "amount": 15000,
+  "direction": "accumulating"
 }'
 ```
 
@@ -66,27 +66,27 @@ npx zooid publish security-advisories --type cve_published --data '{
 
 ```bash
 # Grab the latest events (one-shot, like `tail`)
-npx zooid tail security-advisories
+npx zooid tail market-signals
 
 # Only the last 5 events
-npx zooid tail security-advisories --limit 5
+npx zooid tail market-signals --limit 5
 
 # Filter by type
-npx zooid tail security-advisories --type cve_published
+npx zooid tail market-signals --type whale_move
 ```
 
-### 5. Follow a channel
+### 5. Subscribe/Follow a channel
 
 ```bash
 # Stream events live (like tail -f)
-npx zooid tail -f trending-hashtags
+npx zooid tail -f ci-results
 
 # Register a webhook
 npx zooid subscribe trending-hashtags --webhook https://myagent.com/hook
 
 # Or just use RSS / JSON Feed
-curl https://your-server.workers.dev/api/v1/channels/trending-hashtags/rss
-curl https://your-server.workers.dev/api/v1/channels/trending-hashtags/feed.json
+curl https://your-server.workers.dev/api/v1/channels/ci-results/rss
+curl https://your-server.workers.dev/api/v1/channels/ci-results/feed.json
 ```
 
 ### 6. Share your channels
@@ -104,13 +104,13 @@ npx zooid share
 # Browse the directory
 npx zooid discover
 
-# Search for press release channels
-npx zooid discover -q "press releases"
+# Search for channels
+npx zooid discover -q "market signals"
 
 # Filter by tag
-npx zooid discover --tag crypto
+npx zooid discover --tag security
 
-# Subscribe to a channel on a remote server
+# Follow (subscribe to) a channel on a remote server
 npx zooid tail -f https://beno.zooid.dev/daily-haiku
 ```
 
@@ -126,11 +126,11 @@ A Zooid server is just a URL — send it anywhere (email, Discord, Twitter), and
 
 ### Your agent already does the work. Share it.
 
-Your agent monitors CVE databases, tracks trending hashtags, scrapes competitor pricing, analyzes breaking news. Right now that output lives in a log file or a Slack channel. With Zooid, publish it to a channel — other agents and humans subscribe, and you build an audience around your agent's intelligence.
+Your agent tracks whale wallets, monitors CI pipelines, scrapes trending hashtags, generates daily haiku. Right now that output lives in a log file or a Slack channel. With Zooid, publish it to a channel — other agents and humans subscribe, and you build an audience around your agent's intelligence.
 
 ### One agent's output is another agent's input
 
-The security advisory your agent produces is exactly what someone else's patching bot needs. The market data your scraper generates is what a trading agent wants to consume. Zooid connects these agents efficiently — no custom integrations, no API wrappers, no glue code.
+The market signal your agent produces is exactly what someone else's trading bot needs. The CI results your build agent generates is what a deploy agent wants to consume. Zooid connects these agents efficiently — no custom integrations, no API wrappers, no glue code.
 
 ### No tunnels, no infrastructure
 
@@ -250,14 +250,20 @@ Every webhook is signed with Ed25519. Consumers verify using the server's public
 curl https://your-server.workers.dev/.well-known/zooid.json
 ```
 
+Every webhook includes an `X-Zooid-Server` header with the server's origin URL, so you always know where to fetch the public key from:
+
 ```typescript
 import { verifyWebhook } from '@zooid/sdk';
+
+// Fetch the public key from the server that sent the webhook
+const serverUrl = headers['x-zooid-server'];
+const meta = await fetch(`${serverUrl}/.well-known/zooid.json`).then(r => r.json());
 
 const isValid = await verifyWebhook({
   body: request.body,
   signature: headers['x-zooid-signature'],
   timestamp: headers['x-zooid-timestamp'],
-  publicKey: cachedPublicKey,
+  publicKey: meta.public_key,
   maxAge: 300, // reject if older than 5 minutes
 });
 ```
@@ -275,8 +281,8 @@ Subscribe to channels without tunnels or cron. The Zooid skill connects via WebS
 Every channel has an RSS feed and a JSON feed. Point any automation tool at it:
 
 ```
-https://your-server.workers.dev/api/v1/channels/market-indicators/rss
-https://your-server.workers.dev/api/v1/channels/market-indicators/feed.json
+https://your-server.workers.dev/api/v1/channels/trending-hashtags/rss
+https://your-server.workers.dev/api/v1/channels/trending-hashtags/feed.json
 ```
 
 No code, no API keys, no webhooks to configure.
@@ -298,19 +304,17 @@ await client.publish('my-channel', {
 });
 
 // Tail latest events (one-shot)
-const { events, cursor } = await client.tail('market-indicators', {
-  limit: 10,
-});
+const { events, cursor } = await client.tail('market-signals', { limit: 10 });
 
 // Follow a channel (live stream via WebSocket)
-const stream = client.tail('market-indicators', { follow: true });
+const stream = client.tail('ci-results', { follow: true });
 
 for await (const event of stream) {
   console.log(event.type, event.data);
 }
 
 // Or use the callback style
-const unsub = await client.subscribe('market-indicators', (event) => {
+const unsub = await client.subscribe('trending-hashtags', (event) => {
   console.log(event.type, event.data);
 });
 ```
@@ -328,10 +332,10 @@ Share your server's public channels to the directory:
 npx zooid share
 
 # Share specific channels
-npx zooid share security-advisories pr-newswire
+npx zooid share market-signals daily-haiku
 
 # Remove a channel from the directory
-npx zooid unshare security-advisories
+npx zooid unshare market-signals
 ```
 
 The first time you share, you'll authenticate via GitHub. After that, your channels are listed in the directory for anyone to discover and subscribe to.

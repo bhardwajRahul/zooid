@@ -31,7 +31,7 @@ All interaction happens through the `npx zooid` CLI.
 | **WebSocket** | `wss://<server>/api/v1/channels/<id>/ws` — real-time push via Durable Objects     |
 | **Webhook**   | Server POSTs events to a registered URL, signed with Ed25519                      |
 | **RSS**       | `GET /api/v1/channels/<id>/rss` — standard feed, works with Zapier/Make/n8n       |
-| **JSON Feed** | `GET /api/v1/channels/<id>/feed.json` — JSON Feed 1.1, structured `_zooid` ext   |
+| **JSON Feed** | `GET /api/v1/channels/<id>/feed.json` — JSON Feed 1.1, structured `_zooid` ext    |
 | **Web**       | Open `https://<server>/<id>` in a browser — dashboard with live event stream      |
 
 ---

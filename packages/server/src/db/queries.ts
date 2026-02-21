@@ -255,7 +255,12 @@ export async function pollEvents(
     bindings.push(options.type);
   }
 
-  const sql = `SELECT * FROM events WHERE ${conditions.join(' AND ')} ORDER BY id ASC LIMIT ?`;
+  // When no cursor/since anchor, fetch the most recent events (DESC) and reverse
+  // so the result is still in chronological order. With an anchor, fetch forward (ASC).
+  const hasAnchor = !!(options.cursor || options.since);
+  const order = hasAnchor ? 'ASC' : 'DESC';
+
+  const sql = `SELECT * FROM events WHERE ${conditions.join(' AND ')} ORDER BY id ${order} LIMIT ?`;
   bindings.push(limit + 1);
 
   const stmt = db.prepare(sql);
@@ -263,13 +268,16 @@ export async function pollEvents(
   const rows = result.results;
 
   const hasMore = rows.length > limit;
-  const events = hasMore ? rows.slice(0, limit) : rows;
+  const trimmed = hasMore ? rows.slice(0, limit) : rows;
+
+  // DESC results need reversing to restore chronological order
+  const events = hasAnchor ? trimmed : trimmed.reverse();
   const cursor = events.length > 0 ? events[events.length - 1].id : null;
 
   return {
     events,
-    cursor: hasMore ? cursor : null,
-    has_more: hasMore,
+    cursor: hasAnchor && hasMore ? cursor : null,
+    has_more: hasAnchor ? hasMore : false,
   };
 }
 

@@ -2,11 +2,32 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { env } from 'cloudflare:test';
 import app from '../../packages/server/src/index';
 import { ZooidClient } from '../../packages/sdk/src/client';
+import { verifyWebhook } from '../../packages/sdk/src/verify';
 import { createToken } from '../../packages/server/src/lib/jwt';
-import { generateKeyPair } from '../../packages/server/src/lib/signing';
+import {
+  generateKeyPair,
+  exportPublicKey,
+  signPayload,
+} from '../../packages/server/src/lib/signing';
 import { setupTestDb, cleanTestDb } from '../../packages/server/src/test-utils';
 
 const JWT_SECRET = 'test-jwt-secret';
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function base64UrlToBytes(base64url: string): Uint8Array {
+  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
 
 // Helper: create a mini fetch that routes through the Hono app
 function createTestFetch(extraEnv: Record<string, string> = {}) {
@@ -139,13 +160,16 @@ describe('SDK Integration Tests', () => {
       ]);
       expect(events).toHaveLength(3);
 
-      // Poll with limit
+      // Poll with since anchor to enable forward pagination
       const reader = new ZooidClient({
         server: 'https://test.local',
         fetch: testFetch,
       });
 
-      const page1 = await reader.poll('batch-test', { limit: 2 });
+      const page1 = await reader.poll('batch-test', {
+        limit: 2,
+        since: '2000-01-01T00:00:00Z',
+      });
       expect(page1.events).toHaveLength(2);
       expect(page1.has_more).toBe(true);
       expect(page1.cursor).toBeTruthy();
@@ -195,7 +219,7 @@ describe('SDK Integration Tests', () => {
       expect(result.events[2].type).toBe('c');
     });
 
-    it('tails with limit', async () => {
+    it('tails with limit returns the most recent events', async () => {
       const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
       const admin = new ZooidClient({
         server: 'https://test.local',
@@ -226,10 +250,11 @@ describe('SDK Integration Tests', () => {
         fetch: testFetch,
       });
 
+      // tail with limit=2 returns the last 2 events in chronological order
       const result = await reader.tail('tail-limit', { limit: 2 });
       expect(result.events).toHaveLength(2);
-      expect(result.has_more).toBe(true);
-      expect(result.cursor).toBeTruthy();
+      expect(result.events[0].type).toBe('b');
+      expect(result.events[1].type).toBe('c');
     });
 
     it('requires subscribe token to tail private channel', async () => {
@@ -354,26 +379,6 @@ describe('SDK Integration Tests', () => {
     let signingKeyBase64: string;
     let publicKey: CryptoKey;
 
-    function arrayBufferToBase64(buffer: ArrayBuffer): string {
-      const bytes = new Uint8Array(buffer);
-      let binary = '';
-      for (const byte of bytes) {
-        binary += String.fromCharCode(byte);
-      }
-      return btoa(binary);
-    }
-
-    function base64UrlToBytes(base64url: string): Uint8Array {
-      const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
-      const binary = atob(padded);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return bytes;
-    }
-
     beforeAll(async () => {
       const keyPair = await generateKeyPair();
       const exported = await crypto.subtle.exportKey(
@@ -475,6 +480,134 @@ describe('SDK Integration Tests', () => {
       });
 
       await expect(subscriber.getClaim(['any'])).rejects.toThrow();
+    });
+  });
+
+  describe('webhook verification (server signs → SDK verifies)', () => {
+    it('SDK verifyWebhook accepts a signature produced by server signing', async () => {
+      // Use the same key generation and signing functions the server uses
+      const keyPair = await generateKeyPair();
+      const publicKeyBase64 = await exportPublicKey(keyPair.publicKey);
+
+      // Simulate what the server does when delivering a webhook
+      const eventBody = JSON.stringify({
+        id: '01TEST000000000000000000AA',
+        channel_id: 'wh-test',
+        type: 'signal',
+        data: '{"price":42000}',
+      });
+      const timestamp = new Date().toISOString();
+      const signature = await signPayload(
+        keyPair.privateKey,
+        timestamp,
+        eventBody,
+      );
+
+      // Verify using the SDK's verifyWebhook (what a consumer would use)
+      const isValid = await verifyWebhook({
+        body: eventBody,
+        signature,
+        timestamp,
+        publicKey: publicKeyBase64,
+      });
+      expect(isValid).toBe(true);
+    });
+
+    it('SDK verifyWebhook rejects tampered body', async () => {
+      const keyPair = await generateKeyPair();
+      const publicKeyBase64 = await exportPublicKey(keyPair.publicKey);
+
+      const eventBody = JSON.stringify({
+        id: '01TEST000000000000000000BB',
+        type: 'signal',
+        data: '{"price":42000}',
+      });
+      const timestamp = new Date().toISOString();
+      const signature = await signPayload(
+        keyPair.privateKey,
+        timestamp,
+        eventBody,
+      );
+
+      // Tamper with the body
+      const tampered = await verifyWebhook({
+        body: '{"id":"01TEST000000000000000000BB","type":"signal","data":"TAMPERED"}',
+        signature,
+        timestamp,
+        publicKey: publicKeyBase64,
+      });
+      expect(tampered).toBe(false);
+    });
+
+    it('SDK verifyWebhook rejects stale signatures with maxAge', async () => {
+      const keyPair = await generateKeyPair();
+      const publicKeyBase64 = await exportPublicKey(keyPair.publicKey);
+
+      const eventBody = JSON.stringify({ id: 'test', type: 'x', data: '{}' });
+      const staleTimestamp = new Date(Date.now() - 600_000).toISOString();
+      const signature = await signPayload(
+        keyPair.privateKey,
+        staleTimestamp,
+        eventBody,
+      );
+
+      const isValid = await verifyWebhook({
+        body: eventBody,
+        signature,
+        timestamp: staleTimestamp,
+        publicKey: publicKeyBase64,
+        maxAge: 300, // 5 min — signature is 10 min old
+      });
+      expect(isValid).toBe(false);
+    });
+
+    it('public key from /.well-known/zooid.json works with verifyWebhook', async () => {
+      // Generate key pair and configure server with it
+      const keyPair = await generateKeyPair();
+      const privExported = await crypto.subtle.exportKey(
+        'pkcs8',
+        keyPair.privateKey,
+      );
+      const signingKeyBase64 = arrayBufferToBase64(privExported);
+
+      // Export raw public key (32 bytes) — this is what ZOOID_PUBLIC_KEY holds
+      const rawPubKey = await crypto.subtle.exportKey(
+        'raw',
+        keyPair.publicKey,
+      );
+      const rawPubKeyBase64 = arrayBufferToBase64(rawPubKey);
+
+      const wellKnownFetch = createTestFetch({
+        ZOOID_SIGNING_KEY: signingKeyBase64,
+        ZOOID_PUBLIC_KEY: rawPubKeyBase64,
+      });
+
+      // Fetch public key from /.well-known/zooid.json (like a real consumer would)
+      const client = new ZooidClient({
+        server: 'https://test.local',
+        fetch: wellKnownFetch,
+      });
+      const meta = await client.getMetadata();
+      const fetchedPublicKey = meta.public_key;
+      expect(fetchedPublicKey).toBeTruthy();
+
+      // Sign a payload using the server's private key
+      const eventBody = '{"type":"test","data":{}}';
+      const timestamp = new Date().toISOString();
+      const signature = await signPayload(
+        keyPair.privateKey,
+        timestamp,
+        eventBody,
+      );
+
+      // Verify using the fetched public key
+      const isValid = await verifyWebhook({
+        body: eventBody,
+        signature,
+        timestamp,
+        publicKey: fetchedPublicKey,
+      });
+      expect(isValid).toBe(true);
     });
   });
 });

@@ -39,7 +39,7 @@ importers:
         specifier: workspace:*
         version: link:packages/cli
 
-  examples/test: {}
+  examples/first-zooid: {}
 
   packages/cli:
     dependencies:

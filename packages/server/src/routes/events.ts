@@ -133,6 +133,8 @@ export class PublishEvents extends OpenAPIRoute {
           >)
         : null;
 
+    const serverUrl = new URL(c.req.url).origin;
+
     // Batch publish
     if ('events' in body && Array.isArray(body.events)) {
       for (const evt of body.events) {
@@ -168,7 +170,7 @@ export class PublishEvents extends OpenAPIRoute {
           // CHANNEL_DO binding may not exist in tests
         }
         for (const event of created) {
-          await deliverToWebhooks(c.env, channelId, event);
+          await deliverToWebhooks(c.env, channelId, event, serverUrl);
         }
       };
       try {
@@ -207,7 +209,7 @@ export class PublishEvents extends OpenAPIRoute {
       } catch {
         // CHANNEL_DO binding may not exist in tests
       }
-      await deliverToWebhooks(c.env, channelId, event);
+      await deliverToWebhooks(c.env, channelId, event, serverUrl);
     };
     try {
       c.executionCtx.waitUntil(afterPublish());
@@ -284,10 +286,12 @@ export class PollEvents extends OpenAPIRoute {
   }
 }
 
-async function deliverToWebhooks(
+export async function deliverToWebhooks(
   env: Bindings,
   channelId: string,
   event: { id: string; type: string | null },
+  serverUrl: string,
+  fetchFn: typeof fetch = fetch,
 ) {
   const webhooks = await getWebhooksForChannel(
     env.DB,
@@ -312,6 +316,7 @@ async function deliverToWebhooks(
     webhooks.map((webhook) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'X-Zooid-Server': serverUrl,
         'X-Zooid-Timestamp': timestamp,
         'X-Zooid-Channel': channelId,
         'X-Zooid-Event-Id': event.id,
@@ -322,7 +327,7 @@ async function deliverToWebhooks(
         headers['X-Zooid-Signature'] = signature;
       }
 
-      return fetch(webhook.url, { method: 'POST', headers, body });
+      return fetchFn(webhook.url, { method: 'POST', headers, body });
     }),
   );
 }

@@ -106,7 +106,7 @@
       });
 
       if (result.events.length > 0) {
-        // API returns events ASC (oldest first) — reverse to newest-first
+        // API returns events in chronological order — reverse to newest-first for display
         const newest = result.events.slice().reverse();
         const fresh = newest.filter((e) => !seenIds.has(e.id));
         for (const e of fresh) seenIds.add(e.id);

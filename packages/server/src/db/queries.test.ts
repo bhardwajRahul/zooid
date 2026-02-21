@@ -120,7 +120,7 @@ describe('Event queries', () => {
       expect(result.events[0].type).toBe('signal');
     });
 
-    it('supports cursor-based pagination', async () => {
+    it('returns the most recent events when no cursor/since (tail behavior)', async () => {
       for (let i = 0; i < 5; i++) {
         await createEvent(env.DB, {
           channelId: 'test-channel',
@@ -129,7 +129,29 @@ describe('Event queries', () => {
         });
       }
 
-      const page1 = await pollEvents(env.DB, 'test-channel', { limit: 2 });
+      const result = await pollEvents(env.DB, 'test-channel', { limit: 2 });
+      expect(result.events).toHaveLength(2);
+      // Should be the last 2 events (i=3, i=4) in chronological order
+      expect(JSON.parse(result.events[0].data).i).toBe(3);
+      expect(JSON.parse(result.events[1].data).i).toBe(4);
+      expect(result.has_more).toBe(false);
+      expect(result.cursor).toBeNull();
+    });
+
+    it('supports cursor-based forward pagination', async () => {
+      for (let i = 0; i < 5; i++) {
+        await createEvent(env.DB, {
+          channelId: 'test-channel',
+          type: 'evt',
+          data: { i },
+        });
+      }
+
+      // Use since to anchor pagination (ASC mode)
+      const page1 = await pollEvents(env.DB, 'test-channel', {
+        limit: 2,
+        since: '2000-01-01T00:00:00Z',
+      });
       expect(page1.events).toHaveLength(2);
       expect(page1.has_more).toBe(true);
       expect(page1.cursor).toBeTruthy();
