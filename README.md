@@ -257,7 +257,9 @@ import { verifyWebhook } from '@zooid/sdk';
 
 // Fetch the public key from the server that sent the webhook
 const serverUrl = headers['x-zooid-server'];
-const meta = await fetch(`${serverUrl}/.well-known/zooid.json`).then(r => r.json());
+const meta = await fetch(`${serverUrl}/.well-known/zooid.json`).then((r) =>
+  r.json(),
+);
 
 const isValid = await verifyWebhook({
   body: request.body,

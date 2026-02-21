@@ -493,16 +493,20 @@ describe('Event routes', () => {
       });
 
       const captured: { url: string; headers: Record<string, string> }[] = [];
-      const mockFetch = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
-        const headers: Record<string, string> = {};
-        if (init?.headers) {
-          for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
-            headers[k] = v;
+      const mockFetch = vi.fn(
+        async (url: string | URL | Request, init?: RequestInit) => {
+          const headers: Record<string, string> = {};
+          if (init?.headers) {
+            for (const [k, v] of Object.entries(
+              init.headers as Record<string, string>,
+            )) {
+              headers[k] = v;
+            }
           }
-        }
-        captured.push({ url: url.toString(), headers });
-        return new Response('ok', { status: 200 });
-      }) as unknown as typeof fetch;
+          captured.push({ url: url.toString(), headers });
+          return new Response('ok', { status: 200 });
+        },
+      ) as unknown as typeof fetch;
 
       await deliverToWebhooks(
         { ...env, ZOOID_JWT_SECRET: JWT_SECRET } as never,
@@ -513,9 +517,13 @@ describe('Event routes', () => {
       );
 
       expect(captured).toHaveLength(1);
-      expect(captured[0].headers['X-Zooid-Server']).toBe('https://my-server.zooid.dev');
+      expect(captured[0].headers['X-Zooid-Server']).toBe(
+        'https://my-server.zooid.dev',
+      );
       expect(captured[0].headers['X-Zooid-Channel']).toBe('pub-channel');
-      expect(captured[0].headers['X-Zooid-Event-Id']).toBe('01TEST000000000000000000AA');
+      expect(captured[0].headers['X-Zooid-Event-Id']).toBe(
+        '01TEST000000000000000000AA',
+      );
       expect(captured[0].headers['X-Zooid-Timestamp']).toBeTruthy();
       expect(captured[0].url).toBe('https://consumer.example.com/hook');
     });
@@ -527,27 +535,41 @@ describe('Event routes', () => {
       });
 
       // Generate a test signing key
-      const keyPair = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']);
-      const exported = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+      const keyPair = await crypto.subtle.generateKey('Ed25519', true, [
+        'sign',
+        'verify',
+      ]);
+      const exported = await crypto.subtle.exportKey(
+        'pkcs8',
+        keyPair.privateKey,
+      );
       const bytes = new Uint8Array(exported);
       let binary = '';
       for (const byte of bytes) binary += String.fromCharCode(byte);
       const signingKeyBase64 = btoa(binary);
 
       const captured: { headers: Record<string, string> }[] = [];
-      const mockFetch = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
-        const headers: Record<string, string> = {};
-        if (init?.headers) {
-          for (const [k, v] of Object.entries(init.headers as Record<string, string>)) {
-            headers[k] = v;
+      const mockFetch = vi.fn(
+        async (_url: string | URL | Request, init?: RequestInit) => {
+          const headers: Record<string, string> = {};
+          if (init?.headers) {
+            for (const [k, v] of Object.entries(
+              init.headers as Record<string, string>,
+            )) {
+              headers[k] = v;
+            }
           }
-        }
-        captured.push({ headers });
-        return new Response('ok', { status: 200 });
-      }) as unknown as typeof fetch;
+          captured.push({ headers });
+          return new Response('ok', { status: 200 });
+        },
+      ) as unknown as typeof fetch;
 
       await deliverToWebhooks(
-        { ...env, ZOOID_JWT_SECRET: JWT_SECRET, ZOOID_SIGNING_KEY: signingKeyBase64 } as never,
+        {
+          ...env,
+          ZOOID_JWT_SECRET: JWT_SECRET,
+          ZOOID_SIGNING_KEY: signingKeyBase64,
+        } as never,
         'pub-channel',
         { id: '01TEST000000000000000000BB', type: 'alert' },
         'https://my-server.zooid.dev',
@@ -555,7 +577,9 @@ describe('Event routes', () => {
       );
 
       expect(captured).toHaveLength(1);
-      expect(captured[0].headers['X-Zooid-Server']).toBe('https://my-server.zooid.dev');
+      expect(captured[0].headers['X-Zooid-Server']).toBe(
+        'https://my-server.zooid.dev',
+      );
       expect(captured[0].headers['X-Zooid-Signature']).toBeTruthy();
     });
   });

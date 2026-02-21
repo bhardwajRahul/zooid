@@ -571,10 +571,7 @@ describe('SDK Integration Tests', () => {
       const signingKeyBase64 = arrayBufferToBase64(privExported);
 
       // Export raw public key (32 bytes) — this is what ZOOID_PUBLIC_KEY holds
-      const rawPubKey = await crypto.subtle.exportKey(
-        'raw',
-        keyPair.publicKey,
-      );
+      const rawPubKey = await crypto.subtle.exportKey('raw', keyPair.publicKey);
       const rawPubKeyBase64 = arrayBufferToBase64(rawPubKey);
 
       const wellKnownFetch = createTestFetch({
