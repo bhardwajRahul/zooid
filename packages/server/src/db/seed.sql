@@ -15,7 +15,8 @@ VALUES
 INSERT OR IGNORE INTO publishers (id, channel_id, name)
 VALUES
   ('haiku-bot', 'daily-haiku', 'haiku-bot'),
-  ('ci-runner', 'build-status', 'ci-runner');
+  ('ci-runner', 'build-status', 'ci-runner'),
+  ('agent-01', 'agent-logs', 'agent-01');
 
 -- Events: daily-haiku
 INSERT OR IGNORE INTO events (id, channel_id, publisher_id, type, data, created_at)
@@ -45,3 +46,16 @@ VALUES
   ('01JKH00000000000SEED0013', 'build-status', 'ci-runner', 'deploy',
    '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.11","status":"live","nested":{"worker_url":"https://zooid-staging.example.com/some-very-long?url=with-lots-of-unbroken-text-so-we-can-see-lines-all-the-way", "markdown":"**This is not a drill**\n\n- Check the staging environment\n- Verify the new features\n- Report any issues"}}',
    datetime('now', '-4 hours'));
+
+-- Events: agent-logs (private channel)
+INSERT OR IGNORE INTO events (id, channel_id, publisher_id, type, data, created_at)
+VALUES
+  ('01JKH00000000000SEED0020', 'agent-logs', 'agent-01', 'log',
+   '{"level":"info","message":"Agent started, scanning feeds","task_id":"scan-001"}',
+   datetime('now', '-3 hours')),
+  ('01JKH00000000000SEED0021', 'agent-logs', 'agent-01', 'log',
+   '{"level":"info","message":"Processed 12 items, 3 published","task_id":"scan-001"}',
+   datetime('now', '-2 hours')),
+  ('01JKH00000000000SEED0022', 'agent-logs', 'agent-01', 'error',
+   '{"level":"error","message":"Rate limit hit on upstream API, backing off 60s","task_id":"scan-002"}',
+   datetime('now', '-1 hour'));

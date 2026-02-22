@@ -1,4 +1,4 @@
-import { readFileSync, mkdirSync, writeFileSync } from 'fs';
+import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'fs';
 import { Marked } from 'marked';
 
 const readme = readFileSync('../../README.md', 'utf-8');
@@ -19,7 +19,7 @@ const marked = new Marked({
 let body = await marked.parse(readme);
 body = body.replace(
   '<a href="https://dsc.gg/zooid">Discord</a>',
-  '<a href="https://dsc.gg/zooid">Discord</a> · <a href="https://github.com/zooid-ai/zooid">Star on GitHub</a>',
+  '<a href="/SKILL.md">SKILL.md</a> · <a href="https://dsc.gg/zooid">Discord</a> · <a href="https://github.com/zooid-ai/zooid">Star on GitHub</a>',
 );
 
 const html = `<!DOCTYPE html>
@@ -95,4 +95,5 @@ const html = `<!DOCTYPE html>
 
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/index.html', html);
-console.log('Built dist/index.html');
+copyFileSync('../../.claude/skills/zooid/SKILL.md', 'dist/SKILL.md');
+console.log('Built dist/index.html + SKILL.md');

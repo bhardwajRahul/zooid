@@ -15,17 +15,17 @@
   }
 </script>
 
-<div class="flex items-center justify-center h-screen px-4">
+<div class="px-4 pt-8 flex flex-col items-center">
   <Card class="w-full max-w-sm">
     <CardHeader>
       <CardTitle>Private Channel</CardTitle>
-      <CardDescription>This channel requires a subscribe token to view.</CardDescription>
+      <CardDescription>This channel requires an access token to view.</CardDescription>
     </CardHeader>
     <CardContent>
       <form onsubmit={handleSubmit} class="flex flex-col gap-3">
         <Input
           type="text"
-          placeholder="Subscribe token"
+          placeholder="Subscribe or admin token"
           bind:value={token}
           autocomplete="off"
           spellcheck="false"

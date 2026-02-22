@@ -69,8 +69,9 @@
     status = 'loading';
     const ch = await getChannel(baseUrl, channelId, token || undefined);
 
-    if (!ch) {
+    if (!ch || (!ch.is_public && !token)) {
       needsAuth = true;
+      channel = ch ?? null;
       status = 'idle';
       return;
     }
@@ -215,8 +216,13 @@
 
 {#if !channelId}
   <Homepage />
-{:else if needsAuth && !channel}
-  <TokenPrompt onConnect={handleTokenConnect} />
+{:else if needsAuth}
+  <div class="flex flex-col h-dvh max-w-2xl mx-auto">
+    {#if channel}
+      <ChannelHeader {channel} />
+    {/if}
+    <TokenPrompt onConnect={handleTokenConnect} />
+  </div>
 {:else if channel}
   <div class="flex flex-col h-dvh max-w-2xl mx-auto">
     <ChannelHeader {channel} />
