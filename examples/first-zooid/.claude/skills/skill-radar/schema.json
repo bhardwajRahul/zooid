@@ -1,0 +1,68 @@
+{ "skill-radar": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zooid.ai/schemas/skill-radar.json",
+  "title": "skill-radar event",
+  "description": "A summary of a new or updated Claude Code skill, published when a SKILL.md commit is analyzed.",
+  "type": "object",
+  "required": [
+    "skill_name",
+    "repo",
+    "commit_url",
+    "commit_sha",
+    "author",
+    "status",
+    "one_liner",
+    "summary",
+    "skill_path"
+  ],
+  "properties": {
+    "skill_name": {
+      "type": "string",
+      "description": "Name extracted from the SKILL.md heading, e.g. \"daily-haiku\"."
+    },
+    "repo": {
+      "type": "string",
+      "description": "GitHub owner/repo, e.g. \"zooid-ai/zooid\".",
+      "pattern": "^[a-zA-Z0-9._-]+/[a-zA-Z0-9._-]+$"
+    },
+    "commit_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Full GitHub commit URL."
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Short commit SHA (7-12 chars).",
+      "minLength": 7,
+      "maxLength": 12
+    },
+    "author": {
+      "type": "string",
+      "description": "Git commit author name."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["new", "updated"],
+      "description": "Whether this is a newly added skill or an update to an existing one."
+    },
+    "one_liner": {
+      "type": "string",
+      "maxLength": 120,
+      "description": "Single-sentence summary starting with a verb."
+    },
+    "summary": {
+      "type": "string",
+      "description": "2-4 sentence description of what the skill does."
+    },
+    "what_changed": {
+      "type": ["string", "null"],
+      "description": "What changed in this commit. Null for new skills."
+    },
+    "skill_path": {
+      "type": "string",
+      "description": "Path to the SKILL.md file within the repo, e.g. \".claude/skills/daily-haiku/SKILL.md\"."
+    }
+  },
+  "additionalProperties": false
+}
+}

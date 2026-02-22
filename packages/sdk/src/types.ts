@@ -53,6 +53,22 @@ export interface CreateChannelOptions {
   strict?: boolean;
 }
 
+/** Options for updating an existing channel via `PATCH /api/v1/channels/:id`. */
+export interface UpdateChannelOptions {
+  /** Human-readable display name. */
+  name?: string;
+  /** Channel description (set to `null` to clear). */
+  description?: string | null;
+  /** Tags for categorization (set to `null` to clear). */
+  tags?: string[] | null;
+  /** Whether the channel is publicly accessible. */
+  is_public?: boolean;
+  /** JSON Schema for event payload validation (set to `null` to clear). */
+  schema?: Record<string, unknown> | null;
+  /** When `true`, events are rejected if they don't match `schema`. */
+  strict?: boolean;
+}
+
 /** Result of creating a new channel. */
 export interface CreateChannelResult {
   /** The channel's slug identifier. */

@@ -6,6 +6,7 @@ import {
   runChannelCreate,
   runChannelList,
   runChannelAddPublisher,
+  runChannelUpdate,
   runChannelDelete,
 } from './channel';
 
@@ -14,6 +15,7 @@ const mockClient = {
   createChannel: vi.fn(),
   listChannels: vi.fn(),
   addPublisher: vi.fn(),
+  updateChannel: vi.fn(),
   deleteChannel: vi.fn(),
 };
 
@@ -116,6 +118,45 @@ describe('channel commands', () => {
       const result = await runChannelAddPublisher('signals', 'my-bot');
       expect(result.name).toBe('my-bot');
       expect(result.publish_token).toBe('bot-tok');
+    });
+  });
+
+  describe('runChannelUpdate()', () => {
+    it('updates a channel via the SDK client', async () => {
+      writeConfig();
+      mockClient.updateChannel.mockResolvedValueOnce({
+        id: 'signals',
+        name: 'New Name',
+        description: null,
+        tags: ['ai'],
+        is_public: false,
+        schema: null,
+        strict: false,
+      });
+
+      const result = await runChannelUpdate(
+        'signals',
+        { name: 'New Name', is_public: false },
+        mockClient as any,
+      );
+
+      expect(mockClient.updateChannel).toHaveBeenCalledWith('signals', {
+        name: 'New Name',
+        is_public: false,
+      });
+      expect(result.name).toBe('New Name');
+      expect(result.is_public).toBe(false);
+    });
+
+    it('throws when the channel does not exist', async () => {
+      writeConfig();
+      mockClient.updateChannel.mockRejectedValueOnce(
+        new Error('Channel not found'),
+      );
+
+      await expect(
+        runChannelUpdate('nonexistent', { name: 'Nope' }, mockClient as any),
+      ).rejects.toThrow('Channel not found');
     });
   });
 

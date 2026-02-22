@@ -49,6 +49,68 @@ export async function createChannel(
   return row!;
 }
 
+export async function updateChannel(
+  db: D1Database,
+  channelId: string,
+  fields: {
+    name?: string;
+    description?: string | null;
+    tags?: string[];
+    is_public?: boolean;
+    schema?: Record<string, unknown> | null;
+    strict?: boolean;
+  },
+): Promise<Channel | null> {
+  const existing = await db
+    .prepare(`SELECT id FROM channels WHERE id = ?`)
+    .bind(channelId)
+    .first<{ id: string }>();
+
+  if (!existing) return null;
+
+  const setClauses: string[] = [];
+  const binds: (string | number | null)[] = [];
+
+  if (fields.name !== undefined) {
+    setClauses.push('name = ?');
+    binds.push(fields.name);
+  }
+  if (fields.description !== undefined) {
+    setClauses.push('description = ?');
+    binds.push(fields.description);
+  }
+  if (fields.tags !== undefined) {
+    setClauses.push('tags = ?');
+    binds.push(JSON.stringify(fields.tags));
+  }
+  if (fields.is_public !== undefined) {
+    setClauses.push('is_public = ?');
+    binds.push(fields.is_public ? 1 : 0);
+  }
+  if (fields.schema !== undefined) {
+    setClauses.push('schema = ?');
+    binds.push(fields.schema ? JSON.stringify(fields.schema) : null);
+  }
+  if (fields.strict !== undefined) {
+    setClauses.push('strict = ?');
+    binds.push(fields.strict ? 1 : 0);
+  }
+
+  if (setClauses.length > 0) {
+    await db
+      .prepare(`UPDATE channels SET ${setClauses.join(', ')} WHERE id = ?`)
+      .bind(...binds, channelId)
+      .run();
+  }
+
+  const row = await db
+    .prepare(`SELECT * FROM channels WHERE id = ?`)
+    .bind(channelId)
+    .first<Channel>();
+
+  return row!;
+}
+
 export async function getChannel(
   db: D1Database,
   id: string,

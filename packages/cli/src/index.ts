@@ -4,6 +4,7 @@ import {
   runChannelCreate,
   runChannelList,
   runChannelAddPublisher,
+  runChannelUpdate,
   runChannelDelete,
 } from './commands/channel';
 import { runPublish } from './commands/publish';
@@ -217,7 +218,7 @@ channelCmd
   .option('--public', 'Make channel public (default)', true)
   .option('--private', 'Make channel private')
   .option('--strict', 'Enable strict schema validation on publish')
-  .option('--schema <file>', 'Path to JSON schema file')
+  .option('--schema <file>', 'Path to JSON schema file (map of event types to JSON schemas)')
   .action(async (id, opts) => {
     try {
       let schema: Record<string, unknown> | undefined;
@@ -238,6 +239,47 @@ channelCmd
       printInfo('Subscribe token', result.subscribe_token);
     } catch (err) {
       handleError('channel create', err);
+    }
+  });
+
+channelCmd
+  .command('update <id>')
+  .description('Update a channel')
+  .option('--name <name>', 'Display name')
+  .option('--description <desc>', 'Channel description')
+  .option('--tags <tags>', 'Comma-separated tags')
+  .option('--public', 'Make channel public')
+  .option('--private', 'Make channel private')
+  .option('--strict', 'Enable strict schema validation on publish')
+  .option('--no-strict', 'Disable strict schema validation')
+  .option('--schema <file>', 'Path to JSON schema file (map of event types to JSON schemas)')
+  .action(async (id, opts) => {
+    try {
+      const fields: Record<string, unknown> = {};
+      if (opts.name !== undefined) fields.name = opts.name;
+      if (opts.description !== undefined) fields.description = opts.description;
+      if (opts.tags !== undefined)
+        fields.tags = opts.tags.split(',').map((t: string) => t.trim());
+      if (opts.public) fields.is_public = true;
+      if (opts.private) fields.is_public = false;
+      if (opts.schema) {
+        const fs = await import('node:fs');
+        const raw = fs.readFileSync(opts.schema, 'utf-8');
+        fields.schema = JSON.parse(raw);
+      }
+      if (opts.strict !== undefined) fields.strict = opts.strict;
+
+      if (Object.keys(fields).length === 0) {
+        throw new Error(
+          'No fields specified. Use --name, --description, --tags, --public, --private, --schema, or --strict.',
+        );
+      }
+
+      const channel = await runChannelUpdate(id, fields);
+      printSuccess(`Updated channel: ${id}`);
+      printInfo('Name', channel.name);
+    } catch (err) {
+      handleError('channel update', err);
     }
   });
 

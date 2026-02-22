@@ -141,6 +141,55 @@ describe('ZooidClient', () => {
     });
   });
 
+  describe('updateChannel()', () => {
+    it('sends PATCH /api/v1/channels/:id with body', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({
+          id: 'my-ch',
+          name: 'Updated',
+          description: null,
+          tags: ['new'],
+          is_public: false,
+          schema: null,
+          strict: false,
+        }),
+      );
+
+      const result = await client.updateChannel('my-ch', {
+        name: 'Updated',
+        is_public: false,
+        tags: ['new'],
+      });
+
+      const [url, opts] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://example.com/api/v1/channels/my-ch');
+      expect(opts.method).toBe('PATCH');
+      expect(opts.headers.Authorization).toBe('Bearer admin-token');
+      const body = JSON.parse(opts.body);
+      expect(body.name).toBe('Updated');
+      expect(body.is_public).toBe(false);
+      expect(result.name).toBe('Updated');
+    });
+
+    it('throws on 404 response', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ error: 'Channel not found' }, 404),
+      );
+
+      await expect(
+        client.updateChannel('nonexistent', { name: 'Nope' }),
+      ).rejects.toThrow('Channel not found');
+    });
+  });
+
   describe('getClaim()', () => {
     it('sends POST /api/v1/directory/claim with channels', async () => {
       const client = new ZooidClient({

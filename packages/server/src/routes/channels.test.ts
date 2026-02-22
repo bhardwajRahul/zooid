@@ -333,6 +333,162 @@ describe('Channel routes', () => {
     });
   });
 
+  describe('PATCH /channels/:channelId', () => {
+    it('partially updates a channel preserving unspecified fields', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'update-me',
+          name: 'Original Name',
+          description: 'Original desc',
+          tags: ['ai'],
+          is_public: true,
+        }),
+      });
+
+      const res = await authRequest('/api/v1/channels/update-me', {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'New Name' }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        id: string;
+        name: string;
+        description: string | null;
+        tags: string[];
+        is_public: boolean;
+      };
+      expect(body.name).toBe('New Name');
+      expect(body.description).toBe('Original desc');
+      expect(body.tags).toEqual(['ai']);
+      expect(body.is_public).toBe(true);
+    });
+
+    it('toggles is_public', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'toggle-public',
+          name: 'Toggle',
+          is_public: true,
+        }),
+      });
+
+      const res = await authRequest('/api/v1/channels/toggle-public', {
+        method: 'PATCH',
+        body: JSON.stringify({ is_public: false }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { is_public: boolean };
+      expect(body.is_public).toBe(false);
+    });
+
+    it('sets and clears schema', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'schema-update', name: 'Schema Update' }),
+      });
+
+      // Set schema
+      const schema = { type: 'object', properties: { v: { type: 'number' } } };
+      const res1 = await authRequest('/api/v1/channels/schema-update', {
+        method: 'PATCH',
+        body: JSON.stringify({ schema, strict: true }),
+      });
+      expect(res1.status).toBe(200);
+      const body1 = (await res1.json()) as {
+        schema: Record<string, unknown> | null;
+        strict: boolean;
+      };
+      expect(body1.schema).toEqual(schema);
+      expect(body1.strict).toBe(true);
+
+      // Clear schema
+      const res2 = await authRequest('/api/v1/channels/schema-update', {
+        method: 'PATCH',
+        body: JSON.stringify({ schema: null, strict: false }),
+      });
+      expect(res2.status).toBe(200);
+      const body2 = (await res2.json()) as {
+        schema: Record<string, unknown> | null;
+        strict: boolean;
+      };
+      expect(body2.schema).toBeNull();
+      expect(body2.strict).toBe(false);
+    });
+
+    it('clears description with null', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'clear-desc',
+          name: 'Clear Desc',
+          description: 'Will be cleared',
+        }),
+      });
+
+      const res = await authRequest('/api/v1/channels/clear-desc', {
+        method: 'PATCH',
+        body: JSON.stringify({ description: null }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { description: string | null };
+      expect(body.description).toBeNull();
+    });
+
+    it('returns 404 for non-existent channel', async () => {
+      const res = await authRequest('/api/v1/channels/nonexistent', {
+        method: 'PATCH',
+        body: JSON.stringify({ name: 'Nope' }),
+      });
+
+      expect(res.status).toBe(404);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe('Channel not found');
+    });
+
+    it('rejects without auth', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'no-auth-patch', name: 'No Auth' }),
+      });
+
+      const res = await app.request(
+        '/api/v1/channels/no-auth-patch',
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: 'Hacked' }),
+        },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects with non-admin token', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'non-admin-patch', name: 'Non Admin' }),
+      });
+
+      const res = await authRequest(
+        '/api/v1/channels/non-admin-patch',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ name: 'Hacked' }),
+        },
+        'subscribe',
+        'non-admin-patch',
+      );
+
+      expect(res.status).toBe(403);
+    });
+  });
+
   describe('DELETE /channels/:channelId', () => {
     it('deletes an existing channel', async () => {
       await authRequest('/api/v1/channels', {

@@ -39,6 +39,22 @@ importers:
         specifier: workspace:*
         version: link:packages/cli
 
+  examples/ai-news-worker:
+    dependencies:
+      '@zooid/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^4.20250214.0
+        version: 4.20260217.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      wrangler:
+        specifier: ^4.0.0
+        version: 4.66.0(@cloudflare/workers-types@4.20260217.0)
+
   examples/first-zooid: {}
 
   packages/cli:

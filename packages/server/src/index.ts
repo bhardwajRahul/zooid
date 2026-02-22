@@ -10,6 +10,7 @@ import {
 import {
   ListChannels,
   CreateChannel,
+  UpdateChannel,
   AddPublisher,
   DeleteChannel,
 } from './routes/channels';
@@ -59,6 +60,9 @@ openapi.put('/server', requireAuth(), requireScope('admin'), UpdateServerMeta);
 openapi.get('/channels', ListChannels);
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.post('/channels', requireAuth(), requireScope('admin'), CreateChannel);
+// prettier-ignore
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.patch('/channels/:channelId', requireAuth(), requireScope('admin'), UpdateChannel);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.post('/channels/:channelId/publishers', requireAuth(), requireScope('admin'), AddPublisher);

@@ -92,6 +92,106 @@ describe('SDK Integration Tests', () => {
     });
   });
 
+  describe('channel update', () => {
+    it('creates a channel, updates it, and verifies changes persist', async () => {
+      const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
+      const client = new ZooidClient({
+        server: 'https://test.local',
+        token: adminToken,
+        fetch: testFetch,
+      });
+
+      // Create channel
+      await client.createChannel({
+        id: 'update-test',
+        name: 'Original Name',
+        description: 'Original desc',
+        is_public: true,
+      });
+
+      // Update partial fields
+      const updated = await client.updateChannel('update-test', {
+        name: 'New Name',
+        is_public: false,
+      });
+      expect(updated.name).toBe('New Name');
+      expect(updated.is_public).toBe(false);
+      expect(updated.description).toBe('Original desc'); // preserved
+
+      // Verify via list
+      const channels = await client.listChannels();
+      const ch = channels.find((c) => c.id === 'update-test')!;
+      expect(ch.name).toBe('New Name');
+      expect(ch.is_public).toBe(false);
+      expect(ch.description).toBe('Original desc');
+    });
+
+    it('clears nullable fields with null', async () => {
+      const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
+      const client = new ZooidClient({
+        server: 'https://test.local',
+        token: adminToken,
+        fetch: testFetch,
+      });
+
+      await client.createChannel({
+        id: 'clear-test',
+        name: 'Clear Test',
+        description: 'Will be cleared',
+        schema: { type: 'object' },
+      });
+
+      const updated = await client.updateChannel('clear-test', {
+        description: null,
+        schema: null,
+      });
+      expect(updated.description).toBeNull();
+      expect(updated.schema).toBeNull();
+    });
+
+    it('rejects update for non-existent channel', async () => {
+      const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
+      const client = new ZooidClient({
+        server: 'https://test.local',
+        token: adminToken,
+        fetch: testFetch,
+      });
+
+      await expect(
+        client.updateChannel('nonexistent', { name: 'Nope' }),
+      ).rejects.toThrow();
+    });
+
+    it('rejects update without admin token', async () => {
+      const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
+      const admin = new ZooidClient({
+        server: 'https://test.local',
+        token: adminToken,
+        fetch: testFetch,
+      });
+
+      await admin.createChannel({
+        id: 'auth-update',
+        name: 'Auth Update',
+        is_public: true,
+      });
+
+      const subToken = await createToken(
+        { scope: 'subscribe', channel: 'auth-update' },
+        JWT_SECRET,
+      );
+      const subscriber = new ZooidClient({
+        server: 'https://test.local',
+        token: subToken,
+        fetch: testFetch,
+      });
+
+      await expect(
+        subscriber.updateChannel('auth-update', { name: 'Hacked' }),
+      ).rejects.toThrow();
+    });
+  });
+
   describe('publish and poll', () => {
     it('publishes events and polls them back', async () => {
       const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);

@@ -1,0 +1,76 @@
+{ "ai-news": {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zooid.ai/schemas/ai-news.json",
+  "title": "ai-news daily-digest event",
+  "description": "A daily digest of top AI Reddit posts, summarized by AI and published to the ai-news channel.",
+  "type": "object",
+  "required": [
+    "date",
+    "subreddits",
+    "post_count",
+    "digest",
+    "posts"
+  ],
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO 8601 date of the digest, e.g. \"2026-02-22\"."
+    },
+    "subreddits": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Subreddits scraped for this digest."
+    },
+    "post_count": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Number of posts included in the digest."
+    },
+    "digest": {
+      "type": "string",
+      "description": "Bulleted markdown digest with date header and per-post summaries."
+    },
+    "posts": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "required": ["title", "url", "subreddit", "score", "comment_count", "summary"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Reddit post title."
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Link to the original Reddit post."
+          },
+          "subreddit": {
+            "type": "string",
+            "description": "Subreddit name without the r/ prefix."
+          },
+          "score": {
+            "type": "integer",
+            "description": "Reddit score (upvotes minus downvotes)."
+          },
+          "comment_count": {
+            "type": "integer",
+            "description": "Number of comments on the post."
+          },
+          "summary": {
+            "type": "string",
+            "maxLength": 150,
+            "description": "AI-generated one-line summary of the post."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Individual posts included in the digest."
+    }
+  },
+  "additionalProperties": false
+}
+}

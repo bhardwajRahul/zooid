@@ -9,6 +9,7 @@ export type {
   ChannelInfo,
   CreateChannelOptions,
   CreateChannelResult,
+  UpdateChannelOptions,
   PublisherResult,
   ZooidEvent,
   PublishOptions,

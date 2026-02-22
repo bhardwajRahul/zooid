@@ -91,8 +91,21 @@ npx zooid channel create my-signals --public --description "Market signals" --na
 # Create a private channel
 npx zooid channel create internal-logs --private
 
-# Create with JSON schema validation
+# Create with JSON schema validation (strict channels reject events that don't match)
 npx zooid channel create typed-events --schema ./schema.json --strict
+
+# schema.json is a map of event types to JSON schemas:
+# {
+#   "alert": {
+#     "required": ["level", "message"],
+#     "properties": { "level": { "type": "string" }, "message": { "type": "string" } }
+#   },
+#   "metric": {
+#     "properties": { "value": { "type": "number" } }
+#   }
+# }
+# When --strict is set, every published event must have a `type` matching a key in the schema,
+# and its `data` is validated against that type's JSON Schema.
 
 # List all channels
 npx zooid channel list

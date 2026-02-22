@@ -9,6 +9,7 @@ import {
   createChannel,
   getChannel,
   listChannels,
+  updateChannel,
   createPublisher,
   deleteChannel,
 } from '../db/queries';
@@ -162,6 +163,111 @@ export class CreateChannel extends OpenAPIRoute {
       },
       201,
     );
+  }
+}
+
+export class UpdateChannel extends OpenAPIRoute {
+  schema = {
+    summary: 'Update a channel',
+    tags: ['Channels'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({
+        channelId: z.string(),
+      }),
+      body: {
+        content: {
+          'application/json': {
+            schema: z.object({
+              name: z.string().min(1).optional(),
+              description: z.string().nullable().optional(),
+              tags: z.array(z.string()).nullable().optional(),
+              is_public: z.boolean().optional(),
+              schema: z.record(z.string(), z.unknown()).nullable().optional(),
+              strict: z.boolean().optional(),
+            }),
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Updated channel',
+        content: {
+          'application/json': {
+            schema: z.object({
+              id: z.string(),
+              name: z.string(),
+              description: z.string().nullable(),
+              tags: z.array(z.string()),
+              is_public: z.boolean(),
+              schema: z.record(z.string(), z.unknown()).nullable(),
+              strict: z.boolean(),
+            }),
+          },
+        },
+      },
+      400: {
+        description: 'Validation error',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      401: {
+        description: 'Missing or invalid authentication',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      403: {
+        description: 'Insufficient permissions',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      404: {
+        description: 'Channel not found',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+    },
+  };
+
+  async handle(c: Context<Env>) {
+    const data = await this.getValidatedData<typeof this.schema>();
+    const { channelId } = data.params;
+    const body = data.body;
+
+    if (body.strict && !body.schema) {
+      const existing = await getChannel(c.env.DB, channelId);
+      if (existing && !existing.schema) {
+        return c.json({ error: 'strict channels require a schema' }, 400);
+      }
+    }
+
+    const channel = await updateChannel(c.env.DB, channelId, body);
+    if (!channel) {
+      return c.json({ error: 'Channel not found' }, 404);
+    }
+
+    return c.json({
+      id: channel.id,
+      name: channel.name,
+      description: channel.description ?? null,
+      tags: channel.tags ? JSON.parse(channel.tags as string) : [],
+      is_public: (channel.is_public as unknown as number) === 1,
+      schema: channel.schema ? JSON.parse(channel.schema as string) : null,
+      strict: (channel.strict as unknown as number) === 1,
+    });
   }
 }
 

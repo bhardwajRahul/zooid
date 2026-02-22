@@ -6,6 +6,7 @@ import type {
   ChannelInfo,
   CreateChannelOptions,
   CreateChannelResult,
+  UpdateChannelOptions,
   PublisherResult,
   ZooidEvent,
   PublishOptions,
@@ -45,7 +46,7 @@ export class ZooidClient {
   constructor(options: ZooidClientOptions) {
     this.server = options.server.replace(/\/+$/, '');
     this.token = options.token;
-    this._fetch = options.fetch ?? globalThis.fetch;
+    this._fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
   }
 
   private async request<T>(
@@ -128,6 +129,18 @@ export class ZooidClient {
     return this.request<CreateChannelResult>(
       'POST',
       '/api/v1/channels',
+      options,
+    );
+  }
+
+  /** Update an existing channel via `PATCH /api/v1/channels/:id`. Requires admin token. */
+  async updateChannel(
+    channelId: string,
+    options: UpdateChannelOptions,
+  ): Promise<ChannelInfo> {
+    return this.request<ChannelInfo>(
+      'PATCH',
+      `/api/v1/channels/${channelId}`,
       options,
     );
   }

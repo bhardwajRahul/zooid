@@ -8,7 +8,7 @@
     "build": "pnpm -r run build",
     "test": "vitest run",
     "test:server": "pnpm -C packages/server test",
-    "test:integration": "pnpm -C tests vitest run",
+    "test:integration": "pnpm -C tests test",
     "test:e2e": "pnpm -C packages/cli test:e2e",
     "test:all": "pnpm test && pnpm test:server && pnpm test:integration && pnpm test:e2e",
     "test:coverage": "./scripts/coverage.sh",

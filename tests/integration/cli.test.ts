@@ -100,6 +100,37 @@ describe('CLI Integration Tests', () => {
     });
   });
 
+  describe('channel update (full flow)', () => {
+    it('creates a channel, updates it via handler, and verifies', async () => {
+      const { runChannelCreate, runChannelList, runChannelUpdate } =
+        await import('../../packages/cli/src/commands/channel');
+      const client = await makeAdminClient();
+
+      // Create
+      await runChannelCreate(
+        'upd-int',
+        { name: 'Original', description: 'Will change', public: true },
+        client,
+      );
+
+      // Update
+      const updated = await runChannelUpdate(
+        'upd-int',
+        { name: 'Updated', is_public: false },
+        client,
+      );
+      expect(updated.name).toBe('Updated');
+      expect(updated.is_public).toBe(false);
+      expect(updated.description).toBe('Will change'); // preserved
+
+      // Verify via list
+      const channels = await runChannelList(client);
+      const ch = channels.find((c) => c.id === 'upd-int')!;
+      expect(ch.name).toBe('Updated');
+      expect(ch.is_public).toBe(false);
+    });
+  });
+
   describe('publish -> poll (full flow)', () => {
     it('publishes an event and polls it back via handlers', async () => {
       const { runChannelCreate } =
