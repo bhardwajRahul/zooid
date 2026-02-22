@@ -34,9 +34,16 @@
 </script>
 
 {#snippet prettyNode(node: PrettyNode, depth: number)}
-  {#if node.kind === 'text'}
+  {#if node.kind === 'text' && node.multiline}
+    <div style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
+      <span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">:</span>
+    </div>
+    <div class="break-words overflow-wrap-anywhere text-foreground/70" style="padding-left: {(depth + 1) * 0.75}rem">
+      {#if node.markdown}<span class="prose-inline">{@html renderMarkdown(node.value)}</span>{:else}{#each node.value.split('\n') as line, i}{#if i > 0}<br />{/if}{line}{/each}{/if}
+    </div>
+  {:else if node.kind === 'text'}
     <div class="break-words overflow-wrap-anywhere" style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
-      {#if node.key}<span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">: </span>{/if}{#if node.markdown}<span class="prose-inline">{@html renderMarkdown(node.value)}</span>{:else}{#each node.value.split('\n') as line, i}{#if i > 0}<br />{/if}{line}{/each}{/if}
+      {#if node.key}<span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">: </span>{/if}{#if node.markdown}<span class="prose-inline">{@html renderMarkdown(node.value)}</span>{:else}{node.value}{/if}
     </div>
   {:else if node.kind === 'group'}
     <div style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>

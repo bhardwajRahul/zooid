@@ -3,7 +3,13 @@ import { marked } from 'marked';
 marked.setOptions({ breaks: true, gfm: true });
 
 export type PrettyNode =
-  | { kind: 'text'; key: string; value: string; markdown: boolean }
+  | {
+      kind: 'text';
+      key: string;
+      value: string;
+      markdown: boolean;
+      multiline: boolean;
+    }
   | { kind: 'group'; key: string; children: PrettyNode[] }
   | { kind: 'list'; key: string; items: PrettyNode[][] };
 
@@ -55,17 +61,20 @@ export function objectToNodes(obj: Record<string, unknown>): PrettyNode[] {
                   key: '',
                   value: String(item),
                   markdown: false,
+                  multiline: false,
                 },
               ],
         ),
       };
     }
     const str = typeof value === 'string' ? value : JSON.stringify(value);
+    const multiline = str.includes('\n');
     return {
       kind: 'text' as const,
       key,
       value: str,
       markdown: looksLikeMarkdown(str),
+      multiline,
     };
   });
 }

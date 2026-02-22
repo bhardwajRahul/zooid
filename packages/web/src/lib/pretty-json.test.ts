@@ -6,22 +6,42 @@ describe('parsePretty', () => {
     const raw = JSON.stringify({ title: 'Hello', count: 42 });
     const nodes = parsePretty(raw);
     expect(nodes).toEqual([
-      { kind: 'text', key: 'title', value: 'Hello', markdown: false },
-      { kind: 'text', key: 'count', value: '42', markdown: false },
+      {
+        kind: 'text',
+        key: 'title',
+        value: 'Hello',
+        markdown: false,
+        multiline: false,
+      },
+      {
+        kind: 'text',
+        key: 'count',
+        value: '42',
+        markdown: false,
+        multiline: false,
+      },
     ]);
   });
 
-  it('preserves newlines in string values', () => {
+  it('preserves newlines in string values and marks as multiline', () => {
     const raw = JSON.stringify({ body: 'line one\nline two\nline three' });
     const nodes = parsePretty(raw)!;
     expect(nodes[0].kind).toBe('text');
     const text = nodes[0] as Extract<(typeof nodes)[0], { kind: 'text' }>;
     expect(text.value).toBe('line one\nline two\nline three');
+    expect(text.multiline).toBe(true);
     expect(text.value.split('\n')).toEqual([
       'line one',
       'line two',
       'line three',
     ]);
+  });
+
+  it('marks single-line strings as not multiline', () => {
+    const raw = JSON.stringify({ title: 'no newlines here' });
+    const nodes = parsePretty(raw)!;
+    const text = nodes[0] as Extract<(typeof nodes)[0], { kind: 'text' }>;
+    expect(text.multiline).toBe(false);
   });
 
   it('parses nested object as group node', () => {
@@ -32,8 +52,20 @@ describe('parsePretty', () => {
     const group = nodes[0] as Extract<(typeof nodes)[0], { kind: 'group' }>;
     expect(group.key).toBe('meta');
     expect(group.children).toEqual([
-      { kind: 'text', key: 'author', value: 'bot', markdown: false },
-      { kind: 'text', key: 'version', value: '1', markdown: false },
+      {
+        kind: 'text',
+        key: 'author',
+        value: 'bot',
+        markdown: false,
+        multiline: false,
+      },
+      {
+        kind: 'text',
+        key: 'version',
+        value: '1',
+        markdown: false,
+        multiline: false,
+      },
     ]);
   });
 
@@ -54,6 +86,7 @@ describe('parsePretty', () => {
       key: 'title',
       value: 'A',
       markdown: false,
+      multiline: false,
     });
   });
 
