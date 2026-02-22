@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Badge } from '@ui/components/badge/index';
   import { Card, CardContent } from '@ui/components/card/index';
+  import { marked } from 'marked';
   import type { ZooidEvent } from '../api';
 
   let { event, viewMode = 'pretty' }: { event: ZooidEvent; viewMode?: 'pretty' | 'raw' } = $props();
@@ -8,6 +9,8 @@
   let rawData = $derived(formatRaw(event.data));
   let prettyEntries = $derived(parsePretty(event.data));
   let relativeTime = $derived(formatRelative(event.created_at));
+
+  marked.setOptions({ breaks: true, gfm: true });
 
   function formatRaw(raw: string): string {
     try {
@@ -18,9 +21,19 @@
   }
 
   type PrettyNode =
-    | { kind: 'text'; key: string; lines: string[] }
+    | { kind: 'text'; key: string; value: string; markdown: boolean }
     | { kind: 'group'; key: string; children: PrettyNode[] }
     | { kind: 'list'; key: string; items: PrettyNode[][] };
+
+  const MD_HINT = /[*_#\[`~>]|\n[-*] |\n\d+\. /;
+
+  function looksLikeMarkdown(s: string): boolean {
+    return MD_HINT.test(s);
+  }
+
+  function renderMarkdown(s: string): string {
+    return marked.parse(s, { async: false }) as string;
+  }
 
   function parsePretty(raw: string): PrettyNode[] | null {
     try {
@@ -48,12 +61,12 @@
           items: value.map((item) =>
             typeof item === 'object' && item !== null && !Array.isArray(item)
               ? objectToNodes(item as Record<string, unknown>)
-              : [{ kind: 'text' as const, key: '', lines: [String(item)] }],
+              : [{ kind: 'text' as const, key: '', value: String(item), markdown: false }],
           ),
         };
       }
       const str = typeof value === 'string' ? value : JSON.stringify(value);
-      return { kind: 'text' as const, key, lines: str.split(/\\n|\n/) };
+      return { kind: 'text' as const, key, value: str, markdown: looksLikeMarkdown(str) };
     });
   }
 
@@ -74,8 +87,8 @@
 
 {#snippet prettyNode(node: PrettyNode, depth: number)}
   {#if node.kind === 'text'}
-    <div style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
-      {#if node.key}<span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">: </span>{/if}{#each node.lines as line, i}{#if i > 0}<br />{/if}{line}{/each}
+    <div class="break-words overflow-wrap-anywhere" style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
+      {#if node.key}<span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">: </span>{/if}{#if node.markdown}<span class="prose-inline">{@html renderMarkdown(node.value)}</span>{:else}{node.value}{/if}
     </div>
   {:else if node.kind === 'group'}
     <div style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
