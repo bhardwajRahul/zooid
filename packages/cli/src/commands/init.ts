@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
 import { printSuccess, printError, printInfo } from '../lib/output';
+import { ask } from '../lib/prompts';
 
 export interface ZooidServerConfig {
   name: string;
@@ -104,14 +105,4 @@ export async function runInit(): Promise<void> {
   } finally {
     rl.close();
   }
-}
-
-async function ask(
-  rl: readline.Interface,
-  label: string,
-  defaultValue: string,
-): Promise<string> {
-  const hint = defaultValue ? ` [${defaultValue}]` : '';
-  const answer = await rl.question(`  ${label}${hint}: `);
-  return answer.trim() || defaultValue;
 }

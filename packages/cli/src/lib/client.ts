@@ -14,7 +14,10 @@ export function createClient(token?: string): ZooidClient {
   return new ZooidClient({ server, token: token ?? config.admin_token });
 }
 
-export function createPublishClient(channelId: string): ZooidClient {
+export function createChannelClient(
+  channelId: string,
+  tokenType: 'publish' | 'subscribe',
+): ZooidClient {
   const config = loadConfig();
   const server = config.server;
 
@@ -24,23 +27,19 @@ export function createPublishClient(channelId: string): ZooidClient {
     );
   }
 
-  const channelToken = config.channels?.[channelId]?.publish_token;
+  const tokenKey =
+    tokenType === 'publish' ? 'publish_token' : 'subscribe_token';
+  const channelToken = config.channels?.[channelId]?.[tokenKey];
   return new ZooidClient({ server, token: channelToken ?? config.admin_token });
 }
 
-export function createSubscribeClient(channelId: string): ZooidClient {
-  const config = loadConfig();
-  const server = config.server;
+/** @deprecated Use createChannelClient(channelId, 'publish') */
+export const createPublishClient = (channelId: string) =>
+  createChannelClient(channelId, 'publish');
 
-  if (!server) {
-    throw new Error(
-      'No server configured. Run: npx zooid config set server <url>',
-    );
-  }
-
-  const channelToken = config.channels?.[channelId]?.subscribe_token;
-  return new ZooidClient({ server, token: channelToken ?? config.admin_token });
-}
+/** @deprecated Use createChannelClient(channelId, 'subscribe') */
+export const createSubscribeClient = (channelId: string) =>
+  createChannelClient(channelId, 'subscribe');
 
 /**
  * Parse a channel argument that may be a full URL or a plain channel ID.
@@ -48,12 +47,42 @@ export function createSubscribeClient(channelId: string): ZooidClient {
  *   https://server.dev/my-channel           → { server, channelId: "my-channel" }
  *   https://server.dev/channels/my-channel  → { server, channelId: "my-channel" }
  */
+/** Matches localhost and private/reserved IP ranges (127.x, 10.x, 192.168.x, 172.16-31.x). */
+export const PRIVATE_HOST_RE =
+  /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/;
+
+/** Normalize a server URL: upgrade http→https (except localhost/private IPs), strip trailing slashes. */
+export function normalizeServerUrl(url: string): string {
+  let normalized = url.replace(/\/+$/, '');
+  try {
+    const parsed = new URL(normalized);
+    if (parsed.protocol === 'http:' && !PRIVATE_HOST_RE.test(parsed.hostname)) {
+      normalized = normalized.replace(/^http:\/\//, 'https://');
+    }
+  } catch {
+    // Not a valid URL — return as-is
+  }
+  return normalized;
+}
+
 export function parseChannelUrl(
   channel: string,
 ): { server: string; channelId: string } | null {
-  if (!channel.startsWith('http')) return null;
+  // Add protocol if it looks like a URL (domain with dot, or host:port)
+  let raw = channel;
+  if (!raw.startsWith('http') && raw.includes('/')) {
+    if (PRIVATE_HOST_RE.test(raw.split(/[:/]/)[0])) {
+      raw = `http://${raw}`;
+    } else if (raw.includes('.')) {
+      raw = `https://${raw}`;
+    } else if (/^[^/]+:\d+\//.test(raw)) {
+      // other host:port/channel — assume http for bare ports
+      raw = `http://${raw}`;
+    }
+  }
+  if (!raw.startsWith('http')) return null;
   try {
-    const url = new URL(channel);
+    const url = new URL(raw);
     // /channels/<id> format
     const channelsMatch = url.pathname.match(/^\/channels\/([^/]+)/);
     if (channelsMatch) {

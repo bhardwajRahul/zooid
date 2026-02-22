@@ -37,5 +37,5 @@ VALUES
    '{"repo":"zooid-ai/zooid","branch":"main","status":"passed","duration_s":42}',
    datetime('now', '-6 hours')),
   ('01JKH00000000000SEED0011', 'build-status', 'ci-runner', 'deploy',
-   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.10","status":"live"}',
+   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.10","status":"live","nested":{"worker_url":"https://zooid-staging.example.com"}}',
    datetime('now', '-5 hours'));

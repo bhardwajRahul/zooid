@@ -130,3 +130,18 @@ export async function directoryFetch(
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/** Format an error response from the directory API into a readable message. */
+export async function formatDirectoryError(res: Response): Promise<string> {
+  let msg = `Directory returned ${res.status}`;
+  try {
+    const body = (await res.json()) as Record<string, unknown>;
+    const parts: string[] = [];
+    if (body.error) parts.push(String(body.error));
+    if (body.message) parts.push(String(body.message));
+    if (parts.length > 0) msg = parts.join(': ');
+  } catch {
+    // use default
+  }
+  return msg;
+}

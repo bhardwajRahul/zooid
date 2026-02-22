@@ -1,6 +1,6 @@
 import { createClient } from '../lib/client';
 import { loadConfig } from '../lib/config';
-import { directoryFetch } from '../lib/directory';
+import { directoryFetch, formatDirectoryError } from '../lib/directory';
 
 export async function runUnshare(channelId: string): Promise<void> {
   const client = createClient();
@@ -30,18 +30,4 @@ export async function runUnshare(channelId: string): Promise<void> {
   if (!res.ok) {
     throw new Error(await formatDirectoryError(res));
   }
-}
-
-async function formatDirectoryError(res: Response): Promise<string> {
-  let msg = `Directory returned ${res.status}`;
-  try {
-    const body = (await res.json()) as Record<string, unknown>;
-    const parts: string[] = [];
-    if (body.error) parts.push(String(body.error));
-    if (body.message) parts.push(String(body.message));
-    if (parts.length > 0) msg = parts.join(': ');
-  } catch {
-    // use default
-  }
-  return msg;
 }

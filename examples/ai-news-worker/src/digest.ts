@@ -45,15 +45,18 @@ ${postList}
 
 Output the digest first (markdown), then the JSON block. Keep summaries under 150 characters each. No preamble.`;
 
-  const res = (await ai.run('@cf/meta/llama-3-8b-instruct', {
+  const res = (await ai.run('@cf/meta/llama-3.3-70b-instruct-fp8-fast', {
     messages: [{ role: 'user', content: prompt }],
     max_tokens: 2048,
   })) as { response: string };
 
   const output = res.response;
 
-  // Split digest markdown from the JSON summaries block
-  const jsonMatch = output.match(/```json\s*([\s\S]*?)```/);
+  // Split digest markdown from the JSON summaries block.
+  // Try fenced code block first, then fall back to a bare JSON array.
+  const jsonMatch =
+    output.match(/```json\s*([\s\S]*?)```/) ??
+    output.match(/\n(\[[\s\S]*\])\s*$/);
   const digest = jsonMatch
     ? output.slice(0, jsonMatch.index).trim()
     : output.trim();

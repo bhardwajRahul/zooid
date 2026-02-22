@@ -33,8 +33,37 @@ import {
   getInstallId,
 } from './lib/telemetry';
 import { loadConfig, recordTailHistory } from './lib/config';
-import { resolveChannel } from './lib/client';
+import { resolveChannel, type ResolveChannelResult } from './lib/client';
 import type { TelemetryEvent } from './lib/telemetry';
+
+/**
+ * Shared setup for tail/subscribe: resolve channel, report telemetry,
+ * print token-saved message, and record history. Returns the resolved result.
+ */
+async function resolveAndRecord(
+  channel: string,
+  opts: { token?: string },
+): Promise<ResolveChannelResult> {
+  const result = resolveChannel(channel, {
+    token: opts.token,
+    tokenType: 'subscribe',
+  });
+  setTelemetryChannel(result.channelId);
+  if (result.tokenSaved) {
+    printInfo(
+      'Token saved',
+      `for ${result.channelId} — won't need --token next time`,
+    );
+  }
+  try {
+    const channels = await result.client.listChannels();
+    const ch = channels.find((c) => c.id === result.channelId);
+    recordTailHistory(result.channelId, result.server, ch?.name);
+  } catch {
+    recordTailHistory(result.channelId, result.server);
+  }
+  return result;
+}
 
 const program = new Command();
 
@@ -404,28 +433,7 @@ program
   .option('--token <token>', 'Auth token (for remote/private channels)')
   .action(async (channel, opts) => {
     try {
-      const { client, channelId, server, tokenSaved } = resolveChannel(
-        channel,
-        {
-          token: opts.token,
-          tokenType: 'subscribe',
-        },
-      );
-      setTelemetryChannel(channelId);
-      if (tokenSaved) {
-        printInfo(
-          'Token saved',
-          `for ${channelId} — won't need --token next time`,
-        );
-      }
-      // Record history (best-effort — don't fail the tail on error)
-      try {
-        const channels = await client.listChannels();
-        const ch = channels.find((c) => c.id === channelId);
-        recordTailHistory(channelId, server, ch?.name);
-      } catch {
-        recordTailHistory(channelId, server);
-      }
+      const { client, channelId } = await resolveAndRecord(channel, opts);
       if (opts.follow) {
         const mode = opts.mode as 'auto' | 'ws' | 'poll';
         const transport =
@@ -482,28 +490,7 @@ program
   .option('--token <token>', 'Auth token (for remote/private channels)')
   .action(async (channel, opts) => {
     try {
-      const { client, channelId, server, tokenSaved } = resolveChannel(
-        channel,
-        {
-          token: opts.token,
-          tokenType: 'subscribe',
-        },
-      );
-      setTelemetryChannel(channelId);
-      if (tokenSaved) {
-        printInfo(
-          'Token saved',
-          `for ${channelId} — won't need --token next time`,
-        );
-      }
-      // Record history (best-effort)
-      try {
-        const channels = await client.listChannels();
-        const ch = channels.find((c) => c.id === channelId);
-        recordTailHistory(channelId, server, ch?.name);
-      } catch {
-        recordTailHistory(channelId, server);
-      }
+      const { client, channelId } = await resolveAndRecord(channel, opts);
       if (opts.webhook) {
         const wh = await runSubscribeWebhook(channelId, opts.webhook, client);
         printSuccess(`Registered webhook: ${wh.id}`);

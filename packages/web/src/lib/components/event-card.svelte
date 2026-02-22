@@ -17,17 +17,44 @@
     }
   }
 
-  function parsePretty(raw: string): { key: string; lines: string[] }[] | null {
+  type PrettyNode =
+    | { kind: 'text'; key: string; lines: string[] }
+    | { kind: 'group'; key: string; children: PrettyNode[] }
+    | { kind: 'list'; key: string; items: PrettyNode[][] };
+
+  function parsePretty(raw: string): PrettyNode[] | null {
     try {
       const obj = JSON.parse(raw);
       if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return null;
-      return Object.entries(obj).map(([key, value]) => {
-        const str = typeof value === 'string' ? value : JSON.stringify(value);
-        return { key, lines: str.split(/\\n|\n/) };
-      });
+      return objectToNodes(obj);
     } catch {
       return null;
     }
+  }
+
+  function objectToNodes(obj: Record<string, unknown>): PrettyNode[] {
+    return Object.entries(obj).map(([key, value]) => {
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        return {
+          kind: 'group' as const,
+          key,
+          children: objectToNodes(value as Record<string, unknown>),
+        };
+      }
+      if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'object' && value[0] !== null) {
+        return {
+          kind: 'list' as const,
+          key,
+          items: value.map((item) =>
+            typeof item === 'object' && item !== null && !Array.isArray(item)
+              ? objectToNodes(item as Record<string, unknown>)
+              : [{ kind: 'text' as const, key: '', lines: [String(item)] }],
+          ),
+        };
+      }
+      const str = typeof value === 'string' ? value : JSON.stringify(value);
+      return { kind: 'text' as const, key, lines: str.split(/\\n|\n/) };
+    });
   }
 
   function formatRelative(iso: string): string {
@@ -45,6 +72,33 @@
   }
 </script>
 
+{#snippet prettyNode(node: PrettyNode, depth: number)}
+  {#if node.kind === 'text'}
+    <div style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
+      {#if node.key}<span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">: </span>{/if}{#each node.lines as line, i}{#if i > 0}<br />{/if}{line}{/each}
+    </div>
+  {:else if node.kind === 'group'}
+    <div style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
+      <span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">:</span>
+    </div>
+    {#each node.children as child}
+      {@render prettyNode(child, depth + 1)}
+    {/each}
+  {:else}
+    <div style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
+      <span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">:</span>
+    </div>
+    {#each node.items as fields, idx}
+      <div class="border-l-2 border-border/40 ml-1" style="padding-left: {(depth + 1) * 0.75}rem">
+        <span class="text-[10px] text-muted-foreground">{idx + 1}.</span>
+        {#each fields as child}
+          {@render prettyNode(child, depth + 2)}
+        {/each}
+      </div>
+    {/each}
+  {/if}
+{/snippet}
+
 <Card class="border-border/50">
   <CardContent class="p-3">
     <div class="flex items-center justify-between gap-2 mb-2">
@@ -60,10 +114,8 @@
     </div>
     {#if viewMode === 'pretty' && prettyEntries}
       <div class="text-sm text-foreground/80 bg-background rounded p-2 flex flex-col gap-1.5">
-        {#each prettyEntries as { key, lines }}
-          <div>
-            <span class="font-semibold text-foreground/90">{key}</span><span class="text-foreground/50">: </span>{#each lines as line, i}{#if i > 0}<br />{/if}{line}{/each}
-          </div>
+        {#each prettyEntries as node}
+          {@render prettyNode(node, 0)}
         {/each}
       </div>
     {:else}

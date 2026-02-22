@@ -10,7 +10,7 @@
     "directory": "packages/server"
   },
   "scripts": {
-    "dev": "wrangler d1 execute zooid-db-zooid --local --file=src/db/schema.sql && wrangler d1 execute zooid-db-zooid --local --file=src/db/seed.sql && wrangler dev",
+    "dev": "wrangler d1 execute zooid-db-zooid --local --file=src/db/schema.sql --persist-to .wrangler/state && wrangler d1 execute zooid-db-zooid --local --file=src/db/seed.sql --persist-to .wrangler/state && wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run"
   },

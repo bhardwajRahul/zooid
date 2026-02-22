@@ -66,6 +66,13 @@ pnpm format:check
 echo "✓ Formatting OK"
 echo ""
 
+# --- Duplication check ---
+
+echo "🔍 Checking for code duplication..."
+npx jscpd packages/cli/src packages/sdk/src --min-lines 8 --min-tokens 100 --threshold 5 --reporters console --ignore "**/*.test.ts" 2>&1
+echo "✓ Duplication check passed"
+echo ""
+
 # --- Run tests ---
 
 echo "🧪 Running tests..."

@@ -88,6 +88,50 @@ describe('parseChannelUrl', () => {
     expect(parseChannelUrl('https://example.com')).toBeNull();
     expect(parseChannelUrl('https://example.com/')).toBeNull();
   });
+
+  it('parses bare domain/channel without protocol', () => {
+    const result = parseChannelUrl('beno.zooid.dev/daily-haiku');
+    expect(result).toEqual({
+      server: 'https://beno.zooid.dev',
+      channelId: 'daily-haiku',
+    });
+  });
+
+  it('parses bare domain with /channels/ path without protocol', () => {
+    const result = parseChannelUrl('beno.zooid.dev/channels/my-feed');
+    expect(result).toEqual({
+      server: 'https://beno.zooid.dev',
+      channelId: 'my-feed',
+    });
+  });
+
+  it('returns null for bare domain without a path', () => {
+    expect(parseChannelUrl('beno.zooid.dev')).toBeNull();
+  });
+
+  it('does not treat plain channel IDs with hyphens as domains', () => {
+    expect(parseChannelUrl('my-channel')).toBeNull();
+    expect(parseChannelUrl('daily-haiku')).toBeNull();
+  });
+
+  it('parses localhost:port/channel without protocol', () => {
+    const result = parseChannelUrl('localhost:8787/daily-haiku');
+    expect(result).toEqual({
+      server: 'http://localhost:8787',
+      channelId: 'daily-haiku',
+    });
+  });
+
+  it('uses http for private IPs without protocol', () => {
+    expect(parseChannelUrl('192.168.1.50:8787/signals')).toEqual({
+      server: 'http://192.168.1.50:8787',
+      channelId: 'signals',
+    });
+    expect(parseChannelUrl('10.0.0.1:3000/my-feed')).toEqual({
+      server: 'http://10.0.0.1:3000',
+      channelId: 'my-feed',
+    });
+  });
 });
 
 describe('resolveChannel', () => {

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { saveConfig } from '../lib/config';
+import { createAdminToken } from '../lib/crypto';
 import { printSuccess, printInfo } from '../lib/output';
 
 function findServerDir(): string {
@@ -11,41 +12,6 @@ function findServerDir(): string {
   // Resolve from the CLI package root, not from dist/
   const cliDir = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(cliDir, '../../server');
-}
-
-function base64url(buf: Buffer): string {
-  return buf.toString('base64url');
-}
-
-async function createAdminToken(secret: string): Promise<string> {
-  const header = base64url(
-    Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })),
-  );
-  const payload = base64url(
-    Buffer.from(
-      JSON.stringify({
-        scope: 'admin',
-        iat: Math.floor(Date.now() / 1000),
-      }),
-    ),
-  );
-
-  const data = `${header}.${payload}`;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(data),
-  );
-  const signature = base64url(Buffer.from(sig));
-
-  return `${data}.${signature}`;
 }
 
 export async function runDev(port = 8787): Promise<void> {

@@ -2,7 +2,12 @@ import readline from 'node:readline/promises';
 import type { ChannelListItem } from '@zooid/types';
 import { createClient } from '../lib/client';
 import { loadConfig } from '../lib/config';
-import { directoryFetch, DIRECTORY_BASE_URL } from '../lib/directory';
+import {
+  directoryFetch,
+  formatDirectoryError,
+  DIRECTORY_BASE_URL,
+} from '../lib/directory';
+import { ask } from '../lib/prompts';
 
 export interface ShareOptions {
   yes?: boolean;
@@ -186,28 +191,4 @@ async function promptChannelDetails(
   }
 
   return result;
-}
-
-async function ask(
-  rl: readline.Interface,
-  label: string,
-  defaultValue: string,
-): Promise<string> {
-  const hint = defaultValue ? ` [${defaultValue}]` : '';
-  const answer = await rl.question(`  ${label}${hint}: `);
-  return answer.trim() || defaultValue;
-}
-
-async function formatDirectoryError(res: Response): Promise<string> {
-  let msg = `Directory returned ${res.status}`;
-  try {
-    const body = (await res.json()) as Record<string, unknown>;
-    const parts: string[] = [];
-    if (body.error) parts.push(String(body.error));
-    if (body.message) parts.push(String(body.message));
-    if (parts.length > 0) msg = parts.join(': ');
-  } catch {
-    // use default
-  }
-  return msg;
 }
