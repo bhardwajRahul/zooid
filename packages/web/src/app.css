@@ -93,8 +93,12 @@ body {
   margin: 0.25rem 0;
   opacity: 0.8;
 }
-.prose-inline h1, .prose-inline h2, .prose-inline h3,
-.prose-inline h4, .prose-inline h5, .prose-inline h6 {
+.prose-inline h1,
+.prose-inline h2,
+.prose-inline h3,
+.prose-inline h4,
+.prose-inline h5,
+.prose-inline h6 {
   font-weight: 700;
   color: var(--color-foreground);
   margin: 0.25rem 0;
