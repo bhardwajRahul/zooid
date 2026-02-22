@@ -75,6 +75,8 @@ describe('publishDigest', () => {
       json: async () => ({ error: 'Forbidden' }),
     });
 
-    await expect(publishDigest(mockEnv, mockEvent)).rejects.toThrow('Forbidden');
+    await expect(publishDigest(mockEnv, mockEvent)).rejects.toThrow(
+      'Forbidden',
+    );
   });
 });

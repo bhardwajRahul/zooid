@@ -218,7 +218,10 @@ channelCmd
   .option('--public', 'Make channel public (default)', true)
   .option('--private', 'Make channel private')
   .option('--strict', 'Enable strict schema validation on publish')
-  .option('--schema <file>', 'Path to JSON schema file (map of event types to JSON schemas)')
+  .option(
+    '--schema <file>',
+    'Path to JSON schema file (map of event types to JSON schemas)',
+  )
   .action(async (id, opts) => {
     try {
       let schema: Record<string, unknown> | undefined;
@@ -252,7 +255,10 @@ channelCmd
   .option('--private', 'Make channel private')
   .option('--strict', 'Enable strict schema validation on publish')
   .option('--no-strict', 'Disable strict schema validation')
-  .option('--schema <file>', 'Path to JSON schema file (map of event types to JSON schemas)')
+  .option(
+    '--schema <file>',
+    'Path to JSON schema file (map of event types to JSON schemas)',
+  )
   .action(async (id, opts) => {
     try {
       const fields: Record<string, unknown> = {};

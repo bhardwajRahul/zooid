@@ -38,7 +38,9 @@ export async function submitScrape(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Bright Data scrape submit failed (${res.status}): ${body}`);
+    throw new Error(
+      `Bright Data scrape submit failed (${res.status}): ${body}`,
+    );
   }
 
   const data = (await res.json()) as { snapshot_id: string };
@@ -62,7 +64,9 @@ export async function fetchResults(
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`Bright Data snapshot fetch failed (${res.status}): ${body}`);
+    throw new Error(
+      `Bright Data snapshot fetch failed (${res.status}): ${body}`,
+    );
   }
 
   return (await res.json()) as RedditPost[];

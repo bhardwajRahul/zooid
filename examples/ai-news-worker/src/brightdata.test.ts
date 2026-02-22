@@ -29,7 +29,9 @@ describe('submitScrape', () => {
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain('/datasets/v3/trigger');
     expect(url).toContain('dataset_id=gd_test_dataset');
-    expect(url).toContain('notify=https%3A%2F%2Fexample.com%2Fhooks%2Fbrightdata');
+    expect(url).toContain(
+      'notify=https%3A%2F%2Fexample.com%2Fhooks%2Fbrightdata',
+    );
     expect(url).toContain('type=discover_new');
     expect(url).toContain('discover_by=subreddit_url');
 

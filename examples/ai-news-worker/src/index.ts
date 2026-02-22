@@ -25,7 +25,11 @@ export default {
     console.log(`Scrape submitted: snapshot_id=${snapshotId}`);
   },
 
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> {
     const url = new URL(request.url);
 
     if (url.pathname === '/hooks/brightdata' && request.method === 'POST') {
