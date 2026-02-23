@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 #
 # Publishes in dependency order (when publishing all):
 #   @zooid/types → @zooid/ui → @zooid/sdk → @zooid/web → @zooid/server → zooid (CLI)
-# Handles workspace:* → real version replacement via pnpm publish
+# Handles workspace:^ → real version replacement via pnpm publish
 
 BUMP="patch"
 DRY_RUN=""
@@ -201,7 +201,7 @@ for pkg in "${PACKAGES[@]}"; do
 
   echo "  Publishing $name@$NEXT..."
 
-  # pnpm publish handles workspace:* → real version replacement automatically
+  # pnpm publish handles workspace:^ → real version replacement automatically
   (cd "$dir" && pnpm publish --access public --no-git-checks $DRY_RUN)
 
   echo "  ✓ $name@$NEXT published"

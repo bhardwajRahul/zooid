@@ -19,7 +19,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts"
   },
   "dependencies": {
-    "@zooid/types": "workspace:*"
+    "@zooid/types": "workspace:^"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.34",
