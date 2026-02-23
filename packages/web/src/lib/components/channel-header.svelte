@@ -2,8 +2,9 @@
   import { Badge } from '@ui/components/badge/index';
   import { Separator } from '@ui/components/separator/index';
   import type { ChannelInfo } from '../api';
+  import { formatRelative } from '../time';
 
-  let { channel }: { channel: ChannelInfo } = $props();
+  let { channel, viewMode = $bindable('pretty') }: { channel: ChannelInfo; viewMode?: 'pretty' | 'raw' } = $props();
 </script>
 
 <div class="flex flex-col gap-2 px-4 py-4">
@@ -31,20 +32,20 @@
     {#if channel.last_event_at}
       <span>latest {formatRelative(channel.last_event_at)}</span>
     {/if}
+    <div class="ml-auto flex items-center bg-muted/50 rounded-md p-0.5 text-[11px]">
+      <button
+        class="px-2 py-0.5 rounded transition-colors {viewMode === 'pretty' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}"
+        onclick={() => viewMode = 'pretty'}
+      >
+        Pretty
+      </button>
+      <button
+        class="px-2 py-0.5 rounded transition-colors font-mono {viewMode === 'raw' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}"
+        onclick={() => viewMode = 'raw'}
+      >
+        {'{ }'}
+      </button>
+    </div>
   </div>
   <Separator />
 </div>
-
-<script lang="ts" module>
-  function formatRelative(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const seconds = Math.floor(diff / 1000);
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  }
-</script>

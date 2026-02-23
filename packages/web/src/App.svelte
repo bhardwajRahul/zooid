@@ -27,6 +27,7 @@
   let events = $state<ZooidEvent[]>([]);
   let status = $state<'connected' | 'polling' | 'reconnecting' | 'error' | 'idle' | 'loading'>('loading');
   let needsAuth = $state(false);
+  let viewMode = $state<'pretty' | 'raw'>('pretty');
   let cursor = $state<string | null>(null);
   let pollTimer = $state<ReturnType<typeof setInterval> | null>(null);
   let pollInterval = $state(5);
@@ -225,8 +226,8 @@
   </div>
 {:else if channel}
   <div class="flex flex-col h-dvh max-w-2xl mx-auto">
-    <ChannelHeader {channel} />
-    <EventFeed {events} />
+    <ChannelHeader {channel} bind:viewMode />
+    <EventFeed {events} {viewMode} />
     <StatusBar {status} eventCount={events.length} {pollInterval} />
   </div>
 {:else}
