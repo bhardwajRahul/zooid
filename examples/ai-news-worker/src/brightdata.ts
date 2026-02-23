@@ -69,5 +69,24 @@ export async function fetchResults(
     );
   }
 
-  return (await res.json()) as RedditPost[];
+  const data = await res.json();
+
+  // Bright Data may return an object wrapper instead of a bare array
+  // (e.g. when a subreddit has no posts or returns an error entry)
+  if (Array.isArray(data)) {
+    return data as RedditPost[];
+  }
+  if (
+    data &&
+    typeof data === 'object' &&
+    Array.isArray((data as Record<string, unknown>).results)
+  ) {
+    return (data as Record<string, unknown>).results as RedditPost[];
+  }
+
+  console.warn(
+    `Unexpected snapshot response shape for ${snapshotId}:`,
+    JSON.stringify(data).slice(0, 500),
+  );
+  return [];
 }

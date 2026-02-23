@@ -75,6 +75,26 @@ describe('fetchResults', () => {
     expect(options.headers.Authorization).toBe('Bearer test-api-key');
   });
 
+  it('returns empty array when response is an object (not an array)', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ status: 'ready', message: 'no data' }),
+    });
+
+    const results = await fetchResults('sd_empty', 'test-api-key');
+    expect(results).toEqual([]);
+  });
+
+  it('unwraps { results: [...] } wrapper', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ results: fixtures }),
+    });
+
+    const results = await fetchResults('sd_wrapped', 'test-api-key');
+    expect(results).toHaveLength(fixtures.length);
+  });
+
   it('throws on non-ok response', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
