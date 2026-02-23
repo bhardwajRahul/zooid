@@ -5,24 +5,61 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Publish Zooid packages to npm
-# Usage: ./scripts/publish.sh [patch|minor|major] [--dry-run]
+# Usage: ./scripts/publish.sh [patch|minor|major] [--only <pkg,pkg,...>] [--dry-run]
 #
-# Publishes in dependency order:
+# Examples:
+#   ./scripts/publish.sh                          # patch bump all, publish all, tag v0.0.19
+#   ./scripts/publish.sh --only web               # patch bump+publish @zooid/web only
+#   ./scripts/publish.sh minor --only web,server  # minor bump, publish both, one tag per package
+#   ./scripts/publish.sh --only web --dry-run
+#
+# Publishes in dependency order (when publishing all):
 #   @zooid/types → @zooid/ui → @zooid/sdk → @zooid/web → @zooid/server → zooid (CLI)
 # Handles workspace:* → real version replacement via pnpm publish
 
-BUMP="${1:-patch}"
+BUMP="patch"
 DRY_RUN=""
+ONLY_RAW=""
 
-if [[ "${2:-}" == "--dry-run" ]]; then
-  DRY_RUN="--dry-run"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    patch|minor|major) BUMP="$1"; shift ;;
+    --dry-run) DRY_RUN="--dry-run"; shift ;;
+    --only) ONLY_RAW="$2"; shift 2 ;;
+    *) echo "✗ Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+if [[ -n "$DRY_RUN" ]]; then
   echo "🏃 Dry run — no packages will be published."
   echo ""
 fi
 
-# Packages to publish, in dependency order
-PACKAGES=("types" "ui" "sdk" "web" "server" "cli")
-PACKAGE_DIRS=("packages/types" "packages/ui" "packages/sdk" "packages/web" "packages/server" "packages/cli")
+# All publishable packages, in dependency order
+ALL_PACKAGES=("types" "ui" "sdk" "web" "server" "cli")
+
+pkg_dir() { echo "packages/$1"; }
+
+is_valid_pkg() {
+  for p in "${ALL_PACKAGES[@]}"; do [[ "$p" == "$1" ]] && return 0; done
+  return 1
+}
+
+# Resolve which packages to publish
+if [[ -n "$ONLY_RAW" ]]; then
+  IFS=',' read -ra PACKAGES <<< "$ONLY_RAW"
+  for pkg in "${PACKAGES[@]}"; do
+    if ! is_valid_pkg "$pkg"; then
+      echo "✗ Unknown package: $pkg"
+      echo "  Valid packages: ${ALL_PACKAGES[*]}"
+      exit 1
+    fi
+  done
+  echo "📦 Publishing: ${PACKAGES[*]}"
+  echo ""
+else
+  PACKAGES=("${ALL_PACKAGES[@]}")
+fi
 
 # --- Preflight checks ---
 
@@ -76,23 +113,51 @@ echo ""
 # --- Run tests ---
 
 echo "🧪 Running tests..."
-pnpm --filter=@zooid/types --filter=@zooid/sdk --filter=@zooid/server --filter=zooid test
+if [[ -n "$ONLY_RAW" ]]; then
+  for pkg in "${PACKAGES[@]}"; do
+    dir="$(pkg_dir "$pkg")"
+    name=$(node -p "require('./$dir/package.json').name")
+    if node -e "const p = require('./$dir/package.json'); if (!p.scripts?.test) process.exit(1)" 2>/dev/null; then
+      pnpm --filter="$name" test
+    else
+      echo "  (no test script for $name, skipping)"
+    fi
+  done
+else
+  pnpm --filter=@zooid/types --filter=@zooid/sdk --filter=@zooid/server --filter=zooid test
+fi
 echo "✓ Tests passed"
 echo ""
 
 # --- Build ---
 
 echo "🔨 Building packages..."
-pnpm --filter=@zooid/sdk build
-pnpm --filter=@zooid/web build
-pnpm --filter=zooid build
+if [[ -n "$ONLY_RAW" ]]; then
+  for pkg in "${PACKAGES[@]}"; do
+    dir="$(pkg_dir "$pkg")"
+    name=$(node -p "require('./$dir/package.json').name")
+    if node -e "const p = require('./$dir/package.json'); if (!p.scripts?.build) process.exit(1)" 2>/dev/null; then
+      pnpm --filter="$name" build
+    else
+      echo "  (no build script for $name, skipping)"
+    fi
+  done
+else
+  pnpm --filter=@zooid/sdk build
+  pnpm --filter=@zooid/web build
+  pnpm --filter=zooid build
+fi
 echo "✓ Build complete"
 echo ""
 
-# --- Bump versions ---
+# --- Bump version ---
 
-# Read current version from types (source of truth)
-CURRENT=$(node -p "require('./packages/types/package.json').version")
+# Read current version from the first target package (or types as source of truth for all)
+if [[ -n "$ONLY_RAW" ]]; then
+  CURRENT=$(node -p "require('./$(pkg_dir "${PACKAGES[0]}")/package.json').version")
+else
+  CURRENT=$(node -p "require('./packages/types/package.json').version")
+fi
 echo "📦 Current version: $CURRENT"
 
 # Calculate next version
@@ -110,14 +175,17 @@ NEXT="$MAJOR.$MINOR.$PATCH"
 echo "📦 Next version: $NEXT ($BUMP)"
 echo ""
 
-# Update version in all publishable packages
-for dir in "${PACKAGE_DIRS[@]}"; do
+# Update version in target package(s)
+BUMPED_FILES=()
+for pkg in "${PACKAGES[@]}"; do
+  dir="$(pkg_dir "$pkg")"
   node -e "
     const fs = require('fs');
     const pkg = JSON.parse(fs.readFileSync('$dir/package.json', 'utf-8'));
     pkg.version = '$NEXT';
     fs.writeFileSync('$dir/package.json', JSON.stringify(pkg, null, 2) + '\n');
   "
+  BUMPED_FILES+=("$dir/package.json")
   echo "  $dir → $NEXT"
 done
 echo ""
@@ -127,8 +195,8 @@ echo ""
 echo "🚀 Publishing..."
 echo ""
 
-for i in "${!PACKAGES[@]}"; do
-  dir="${PACKAGE_DIRS[$i]}"
+for pkg in "${PACKAGES[@]}"; do
+  dir="$(pkg_dir "$pkg")"
   name=$(node -p "require('./$dir/package.json').name")
 
   echo "  Publishing $name@$NEXT..."
@@ -143,16 +211,46 @@ done
 # --- Git tag + push ---
 
 if [[ -z "$DRY_RUN" ]]; then
-  echo "🏷️  Tagging v$NEXT..."
-  git add packages/types/package.json packages/ui/package.json packages/sdk/package.json packages/web/package.json packages/server/package.json packages/cli/package.json
-  git commit -m "release: v$NEXT"
-  git tag "v$NEXT"
+  git add "${BUMPED_FILES[@]}"
+
+  if [[ -n "$ONLY_RAW" ]]; then
+    # Build commit message and tags for each package
+    TAGS=()
+    TAG_NAMES=()
+    for pkg in "${PACKAGES[@]}"; do
+      dir="$(pkg_dir "$pkg")"
+      name=$(node -p "require('./$dir/package.json').name")
+      TAGS+=("$name@$NEXT")
+      TAG_NAMES+=("$name")
+    done
+
+    COMMIT_MSG="release: $(IFS=', '; echo "${TAGS[*]}")"
+    git commit -m "$COMMIT_MSG"
+
+    for tag in "${TAGS[@]}"; do
+      git tag "$tag"
+      echo "🏷️  Tagged $tag"
+    done
+  else
+    git commit -m "release: v$NEXT"
+    git tag "v$NEXT"
+    echo "🏷️  Tagged v$NEXT"
+  fi
+
   git push origin main --tags
-  echo "✓ Tagged and pushed v$NEXT"
+  echo "✓ Pushed"
 else
-  echo "🏷️  Would tag v$NEXT (skipped in dry run)"
+  if [[ -n "$ONLY_RAW" ]]; then
+    for pkg in "${PACKAGES[@]}"; do
+      dir="$(pkg_dir "$pkg")"
+      name=$(node -p "require('./$dir/package.json').name")
+      echo "🏷️  Would tag $name@$NEXT (skipped in dry run)"
+    done
+  else
+    echo "🏷️  Would tag v$NEXT (skipped in dry run)"
+  fi
   # Revert version bumps in dry run
-  git checkout -- packages/types/package.json packages/ui/package.json packages/sdk/package.json packages/web/package.json packages/server/package.json packages/cli/package.json
+  git checkout -- "${BUMPED_FILES[@]}"
   echo "  Reverted version bumps"
 fi
 
