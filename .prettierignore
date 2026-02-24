@@ -2,3 +2,4 @@ dist
 node_modules
 .wrangler
 pnpm-lock.yaml
+packages/n8n-nodes-zooid
