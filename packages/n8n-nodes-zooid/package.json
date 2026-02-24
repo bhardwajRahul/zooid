@@ -1,6 +1,6 @@
 {
 	"name": "n8n-nodes-zooid",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "n8n community node for Zooid — publish events to Zooid pub/sub channels",
 	"license": "MIT",
 	"homepage": "https://github.com/zooid-ai/zooid/tree/main/packages/n8n-nodes-zooid",
