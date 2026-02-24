@@ -6,6 +6,7 @@ export interface Env {
   ZOOID_SERVER: string;
   ZOOID_PUBLISH_TOKEN: string;
   SUBREDDITS: string;
+  WORKER_URL: string;
 }
 
 /** Raw post from Bright Data reddit scraper response. */

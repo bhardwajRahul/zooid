@@ -3,8 +3,6 @@ import { submitScrape, fetchResults } from './brightdata';
 import { filterPosts, generateDigest } from './digest';
 import { publishDigest } from './publish';
 
-const WORKER_URL = 'https://ai-news-worker.beno-87a.workers.dev';
-
 export default {
   async scheduled(
     _controller: ScheduledController,
@@ -12,7 +10,7 @@ export default {
     ctx: ExecutionContext,
   ): Promise<void> {
     const subreddits = env.SUBREDDITS.split(',');
-    const callbackUrl = `${WORKER_URL}/hooks/brightdata`;
+    const callbackUrl = `${env.WORKER_URL}/hooks/brightdata`;
 
     const snapshotId = await submitScrape(
       subreddits,
@@ -33,11 +31,17 @@ export default {
     const url = new URL(request.url);
 
     if (url.pathname === '/hooks/brightdata' && request.method === 'POST') {
-      // Bright Data sends the snapshot_id in the callback body
       const body = (await request.json()) as { snapshot_id: string };
       const snapshotId = body.snapshot_id;
 
-      // Process in the background so we respond to Bright Data quickly
+      // Verify this snapshot_id matches one we actually triggered
+      const expectedId = await env.KV.get('latest_snapshot');
+      if (!expectedId || snapshotId !== expectedId) {
+        console.log(`Rejected callback: unknown snapshot_id=${snapshotId}`);
+        return new Response('not found', { status: 404 });
+      }
+
+      await env.KV.delete('latest_snapshot');
       ctx.waitUntil(processDigest(snapshotId, env));
 
       return new Response('ok', { status: 200 });

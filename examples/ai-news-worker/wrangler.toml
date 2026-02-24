@@ -3,7 +3,7 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 
 [triggers]
-crons = ["0 7 * * *"]
+crons = ["0 8 * * *"]
 
 [ai]
 binding = "AI"
@@ -14,6 +14,7 @@ id = "f51f942d426b4e2fb547ec809dcc7303"
 
 [vars]
 ZOOID_SERVER = "https://beno.zooid.dev"
+WORKER_URL = "https://ai-news-worker.zooid.workers.dev"
 SUBREDDITS = "ai_agents,ClaudeAI,LocalLLaMA,claudecode,codex,openclaw"
 BRIGHTDATA_DATASET_ID = "gd_lvz8ah06191smkebj4"
 

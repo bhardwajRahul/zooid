@@ -1,0 +1,54 @@
+{
+	"name": "n8n-nodes-zooid",
+	"version": "0.1.0",
+	"description": "n8n community node for Zooid — publish events to Zooid pub/sub channels",
+	"license": "MIT",
+	"homepage": "https://github.com/zooid-ai/zooid/tree/main/packages/n8n-nodes-zooid",
+	"keywords": [
+		"n8n-community-node-package",
+		"zooid",
+		"pubsub",
+		"ai-agents"
+	],
+	"author": {
+		"name": "orivibes",
+		"email": "dev@zooid.dev"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/zooid-ai/zooid.git",
+		"directory": "packages/n8n-nodes-zooid"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/ZooidApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Zooid/Zooid.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "*",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^19.0.4",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}
