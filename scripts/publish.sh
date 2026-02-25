@@ -5,25 +5,23 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Publish Zooid packages to npm
-# Usage: ./scripts/publish.sh [patch|minor|major] [--only <pkg,pkg,...>] [--dry-run]
+# Usage: ./scripts/publish.sh [--only <pkg,pkg,...>] [--dry-run]
 #
 # Examples:
-#   ./scripts/publish.sh                          # patch bump all, publish all, tag v0.0.19
-#   ./scripts/publish.sh --only web               # patch bump+publish @zooid/web only
-#   ./scripts/publish.sh minor --only web,server  # minor bump, publish both, one tag per package
+#   ./scripts/publish.sh                          # interactive bump, publish all
+#   ./scripts/publish.sh --only web               # interactive bump, publish @zooid/web only
+#   ./scripts/publish.sh --only web,server        # interactive bump, publish both
 #   ./scripts/publish.sh --only web --dry-run
 #
 # Publishes in dependency order (when publishing all):
 #   @zooid/types → @zooid/ui → @zooid/sdk → @zooid/web → @zooid/server → zooid (CLI)
 # Handles workspace:^ → real version replacement via pnpm publish
 
-BUMP="patch"
 DRY_RUN=""
 ONLY_RAW=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    patch|minor|major) BUMP="$1"; shift ;;
     --dry-run) DRY_RUN="--dry-run"; shift ;;
     --only) ONLY_RAW="$2"; shift 2 ;;
     *) echo "✗ Unknown option: $1"; exit 1 ;;
@@ -40,9 +38,33 @@ ALL_PACKAGES=("types" "ui" "sdk" "web" "server" "cli")
 
 pkg_dir() { echo "packages/$1"; }
 
+pkg_name() {
+  local dir
+  dir="$(pkg_dir "$1")"
+  node -p "require('./$dir/package.json').name"
+}
+
+pkg_version() {
+  local dir
+  dir="$(pkg_dir "$1")"
+  node -p "require('./$dir/package.json').version"
+}
+
 is_valid_pkg() {
   for p in "${ALL_PACKAGES[@]}"; do [[ "$p" == "$1" ]] && return 0; done
   return 1
+}
+
+bump_version() {
+  local version="$1" bump="$2"
+  local major minor patch
+  IFS='.' read -r major minor patch <<< "$version"
+  case "$bump" in
+    patch) patch=$((patch + 1)) ;;
+    minor) minor=$((minor + 1)); patch=0 ;;
+    major) major=$((major + 1)); minor=0; patch=0 ;;
+  esac
+  echo "$major.$minor.$patch"
 }
 
 # Resolve which packages to publish
@@ -55,11 +77,75 @@ if [[ -n "$ONLY_RAW" ]]; then
       exit 1
     fi
   done
-  echo "📦 Publishing: ${PACKAGES[*]}"
-  echo ""
 else
   PACKAGES=("${ALL_PACKAGES[@]}")
 fi
+
+# --- Show current versions and prompt for bump type ---
+
+echo "📦 Current versions:"
+echo ""
+printf "  %-20s %s\n" "Package" "Version"
+printf "  %-20s %s\n" "───────" "───────"
+for pkg in "${PACKAGES[@]}"; do
+  name=$(pkg_name "$pkg")
+  version=$(pkg_version "$pkg")
+  printf "  %-20s %s\n" "$name" "$version"
+done
+echo ""
+
+# Show what each bump type would produce
+echo "  Bump options:"
+echo ""
+printf "  %-4s %-20s" "" "Package"
+printf "%-12s %-12s %-12s\n" "patch" "minor" "major"
+printf "  %-4s %-20s" "" "───────"
+printf "%-12s %-12s %-12s\n" "─────" "─────" "─────"
+for pkg in "${PACKAGES[@]}"; do
+  name=$(pkg_name "$pkg")
+  version=$(pkg_version "$pkg")
+  p=$(bump_version "$version" patch)
+  mi=$(bump_version "$version" minor)
+  ma=$(bump_version "$version" major)
+  printf "  %-4s %-20s" "" "$name"
+  printf "%-12s %-12s %-12s\n" "$p" "$mi" "$ma"
+done
+echo ""
+
+# Prompt for bump type
+while true; do
+  read -rp "  Bump type [patch/minor/major]: " BUMP
+  case "$BUMP" in
+    patch|minor|major) break ;;
+    p) BUMP="patch"; break ;;
+    mi) BUMP="minor"; break ;;
+    ma) BUMP="major"; break ;;
+    *) echo "  ✗ Please enter patch, minor, or major" ;;
+  esac
+done
+echo ""
+
+# Calculate per-package next versions and show summary
+declare -a NEXT_VERSIONS=()
+echo "  Will publish:"
+echo ""
+for i in "${!PACKAGES[@]}"; do
+  pkg="${PACKAGES[$i]}"
+  name=$(pkg_name "$pkg")
+  current=$(pkg_version "$pkg")
+  next=$(bump_version "$current" "$BUMP")
+  NEXT_VERSIONS+=("$next")
+  printf "  %-20s %s → %s\n" "$name" "$current" "$next"
+done
+echo ""
+
+# Confirm
+read -rp "  Proceed? [y/N]: " CONFIRM
+case "$CONFIRM" in
+  y|Y|yes|Yes) ;;
+  *) echo "  Aborted."; exit 0 ;;
+esac
+echo ""
 
 # --- Preflight checks ---
 
@@ -116,7 +202,7 @@ echo "🧪 Running tests..."
 if [[ -n "$ONLY_RAW" ]]; then
   for pkg in "${PACKAGES[@]}"; do
     dir="$(pkg_dir "$pkg")"
-    name=$(node -p "require('./$dir/package.json').name")
+    name=$(pkg_name "$pkg")
     if node -e "const p = require('./$dir/package.json'); if (!p.scripts?.test) process.exit(1)" 2>/dev/null; then
       pnpm --filter="$name" test
     else
@@ -135,7 +221,7 @@ echo "🔨 Building packages..."
 if [[ -n "$ONLY_RAW" ]]; then
   for pkg in "${PACKAGES[@]}"; do
     dir="$(pkg_dir "$pkg")"
-    name=$(node -p "require('./$dir/package.json').name")
+    name=$(pkg_name "$pkg")
     if node -e "const p = require('./$dir/package.json'); if (!p.scripts?.build) process.exit(1)" 2>/dev/null; then
       pnpm --filter="$name" build
     else
@@ -152,41 +238,19 @@ echo ""
 
 # --- Bump version ---
 
-# Read current version from the first target package (or types as source of truth for all)
-if [[ -n "$ONLY_RAW" ]]; then
-  CURRENT=$(node -p "require('./$(pkg_dir "${PACKAGES[0]}")/package.json').version")
-else
-  CURRENT=$(node -p "require('./packages/types/package.json').version")
-fi
-echo "📦 Current version: $CURRENT"
-
-# Calculate next version
-IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
-case "$BUMP" in
-  patch) PATCH=$((PATCH + 1)) ;;
-  minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-  major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-  *)
-    echo "✗ Invalid bump type: $BUMP (use patch, minor, or major)"
-    exit 1
-    ;;
-esac
-NEXT="$MAJOR.$MINOR.$PATCH"
-echo "📦 Next version: $NEXT ($BUMP)"
-echo ""
-
-# Update version in target package(s)
 BUMPED_FILES=()
-for pkg in "${PACKAGES[@]}"; do
+for i in "${!PACKAGES[@]}"; do
+  pkg="${PACKAGES[$i]}"
   dir="$(pkg_dir "$pkg")"
+  next="${NEXT_VERSIONS[$i]}"
   node -e "
     const fs = require('fs');
     const pkg = JSON.parse(fs.readFileSync('$dir/package.json', 'utf-8'));
-    pkg.version = '$NEXT';
+    pkg.version = '$next';
     fs.writeFileSync('$dir/package.json', JSON.stringify(pkg, null, 2) + '\n');
   "
   BUMPED_FILES+=("$dir/package.json")
-  echo "  $dir → $NEXT"
+  echo "  $dir → $next"
 done
 echo ""
 
@@ -195,16 +259,18 @@ echo ""
 echo "🚀 Publishing..."
 echo ""
 
-for pkg in "${PACKAGES[@]}"; do
+for i in "${!PACKAGES[@]}"; do
+  pkg="${PACKAGES[$i]}"
   dir="$(pkg_dir "$pkg")"
-  name=$(node -p "require('./$dir/package.json').name")
+  name=$(pkg_name "$pkg")
+  next="${NEXT_VERSIONS[$i]}"
 
-  echo "  Publishing $name@$NEXT..."
+  echo "  Publishing $name@$next..."
 
   # pnpm publish handles workspace:^ → real version replacement automatically
   (cd "$dir" && pnpm publish --access public --no-git-checks $DRY_RUN)
 
-  echo "  ✓ $name@$NEXT published"
+  echo "  ✓ $name@$next published"
   echo ""
 done
 
@@ -213,42 +279,32 @@ done
 if [[ -z "$DRY_RUN" ]]; then
   git add "${BUMPED_FILES[@]}"
 
-  if [[ -n "$ONLY_RAW" ]]; then
-    # Build commit message and tags for each package
-    TAGS=()
-    TAG_NAMES=()
-    for pkg in "${PACKAGES[@]}"; do
-      dir="$(pkg_dir "$pkg")"
-      name=$(node -p "require('./$dir/package.json').name")
-      TAGS+=("$name@$NEXT")
-      TAG_NAMES+=("$name")
-    done
+  # Build commit message and tags
+  TAGS=()
+  for i in "${!PACKAGES[@]}"; do
+    pkg="${PACKAGES[$i]}"
+    name=$(pkg_name "$pkg")
+    next="${NEXT_VERSIONS[$i]}"
+    TAGS+=("$name@$next")
+  done
 
-    COMMIT_MSG="release: $(IFS=', '; echo "${TAGS[*]}")"
-    git commit -m "$COMMIT_MSG"
+  COMMIT_MSG="release: $(IFS=', '; echo "${TAGS[*]}")"
+  git commit -m "$COMMIT_MSG"
 
-    for tag in "${TAGS[@]}"; do
-      git tag "$tag"
-      echo "🏷️  Tagged $tag"
-    done
-  else
-    git commit -m "release: v$NEXT"
-    git tag "v$NEXT"
-    echo "🏷️  Tagged v$NEXT"
-  fi
+  for tag in "${TAGS[@]}"; do
+    git tag "$tag"
+    echo "🏷️  Tagged $tag"
+  done
 
   git push origin main --tags
   echo "✓ Pushed"
 else
-  if [[ -n "$ONLY_RAW" ]]; then
-    for pkg in "${PACKAGES[@]}"; do
-      dir="$(pkg_dir "$pkg")"
-      name=$(node -p "require('./$dir/package.json').name")
-      echo "🏷️  Would tag $name@$NEXT (skipped in dry run)"
-    done
-  else
-    echo "🏷️  Would tag v$NEXT (skipped in dry run)"
-  fi
+  for i in "${!PACKAGES[@]}"; do
+    pkg="${PACKAGES[$i]}"
+    name=$(pkg_name "$pkg")
+    next="${NEXT_VERSIONS[$i]}"
+    echo "🏷️  Would tag $name@$next (skipped in dry run)"
+  done
   # Revert version bumps in dry run
   git checkout -- "${BUMPED_FILES[@]}"
   echo "  Reverted version bumps"

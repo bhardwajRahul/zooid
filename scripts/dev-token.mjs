@@ -12,18 +12,23 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const [scope, channel] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const legacy = args.includes('--legacy');
+const positional = args.filter((a) => !a.startsWith('--'));
+const [scope, ...channels] = positional;
 
 if (!scope || !['admin', 'subscribe', 'publish'].includes(scope)) {
   console.error(
-    'Usage: node scripts/dev-token.mjs <admin|subscribe|publish> [channel-id]',
+    'Usage: node scripts/dev-token.mjs <admin|subscribe|publish> [channel-id...] [--legacy]',
   );
   process.exit(1);
 }
 
-if (scope !== 'admin' && !channel) {
-  console.error(`Error: ${scope} scope requires a channel ID`);
-  console.error(`Usage: node scripts/dev-token.mjs ${scope} <channel-id>`);
+if (scope !== 'admin' && channels.length === 0) {
+  console.error(`Error: ${scope} scope requires at least one channel ID`);
+  console.error(
+    `Usage: node scripts/dev-token.mjs ${scope} <channel-id...> [--legacy]`,
+  );
   process.exit(1);
 }
 
@@ -49,7 +54,13 @@ const header = Buffer.from(
 ).toString('base64url');
 
 const claims = { scope, iat: Math.floor(Date.now() / 1000) };
-if (channel) claims.channel = channel;
+if (channels.length > 0) {
+  if (legacy) {
+    claims.channel = channels[0];
+  } else {
+    claims.channels = channels;
+  }
+}
 
 const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
 const sig = createHmac('sha256', secret)
