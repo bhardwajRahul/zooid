@@ -17,6 +17,7 @@ import {
 import { PublishEvents, PollEvents } from './routes/events';
 import { RegisterWebhook, DeleteWebhook } from './routes/webhooks';
 import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
+import { GetTokenClaims } from './routes/tokens';
 import { DirectoryClaim } from './routes/directory';
 import { ws } from './routes/ws';
 import { rss } from './routes/rss';
@@ -55,6 +56,10 @@ openapi.registry.registerComponent('securitySchemes', 'bearerAuth', {
 openapi.get('/server', GetServerMeta);
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.put('/server', requireAuth(), requireScope('admin'), UpdateServerMeta);
+
+// Token routes
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.get('/tokens/claims', requireAuth(), GetTokenClaims);
 
 // Channel routes
 openapi.get('/channels', ListChannels);

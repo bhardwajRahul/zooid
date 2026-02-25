@@ -55,7 +55,7 @@ export async function updateChannel(
   fields: {
     name?: string;
     description?: string | null;
-    tags?: string[];
+    tags?: string[] | null;
     is_public?: boolean;
     schema?: Record<string, unknown> | null;
     strict?: boolean;
