@@ -9,6 +9,9 @@
     "url": "https://github.com/zooid-ai/zooid",
     "directory": "packages/ui"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "src"
   ],

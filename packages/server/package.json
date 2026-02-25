@@ -14,6 +14,9 @@
     "deploy": "wrangler deploy",
     "test": "vitest run"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "src",
     "wrangler.toml"

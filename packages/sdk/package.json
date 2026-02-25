@@ -26,6 +26,9 @@
     "tsup": "^8.5.1",
     "vitest": "^3.2.0"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist"
   ],

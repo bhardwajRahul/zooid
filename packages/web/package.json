@@ -9,6 +9,9 @@
     "url": "https://github.com/zooid-ai/zooid",
     "directory": "packages/web"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "files": [
     "dist"
   ],
