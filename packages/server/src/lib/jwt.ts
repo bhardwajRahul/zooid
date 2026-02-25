@@ -26,3 +26,14 @@ export async function verifyToken(
   const payload = await verify(token, secret, 'HS256');
   return payload as unknown as ZooidJWT;
 }
+
+/** Check whether a token grants access to a specific channel.
+ *  Supports both new `channels: [...]` and legacy `channel: "..."` claims. */
+export function tokenCoversChannel(
+  payload: ZooidJWT,
+  channelId: string,
+): boolean {
+  if (payload.channels) return payload.channels.includes(channelId);
+  if (payload.channel) return payload.channel === channelId;
+  return false;
+}

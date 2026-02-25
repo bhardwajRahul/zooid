@@ -31,7 +31,8 @@ export interface Bindings {
 
 export interface ZooidJWT {
   scope: 'admin' | 'publish' | 'subscribe';
-  channel?: string;
+  channel?: string; // Legacy single-channel claim (backward compat)
+  channels?: string[]; // Multi-channel claim (preferred)
   sub?: string; // Publisher ID (standard JWT subject claim)
   iat: number;
   exp?: number;

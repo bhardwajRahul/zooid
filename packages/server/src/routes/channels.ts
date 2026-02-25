@@ -147,11 +147,11 @@ export class CreateChannel extends OpenAPIRoute {
     const channel = await createChannel(c.env.DB, body);
 
     const publishToken = await createToken(
-      { scope: 'publish', channel: channel.id, sub: generateUlid() },
+      { scope: 'publish', channels: [channel.id], sub: generateUlid() },
       c.env.ZOOID_JWT_SECRET,
     );
     const subscribeToken = await createToken(
-      { scope: 'subscribe', channel: channel.id, sub: generateUlid() },
+      { scope: 'subscribe', channels: [channel.id], sub: generateUlid() },
       c.env.ZOOID_JWT_SECRET,
     );
 
@@ -343,7 +343,7 @@ export class AddPublisher extends OpenAPIRoute {
     const publisher = await createPublisher(c.env.DB, channelId, body.name);
 
     const publishToken = await createToken(
-      { scope: 'publish', channel: channelId, sub: publisher.id },
+      { scope: 'publish', channels: [channelId], sub: publisher.id },
       c.env.ZOOID_JWT_SECRET,
     );
 

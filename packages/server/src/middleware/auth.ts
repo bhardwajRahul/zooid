@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables, ZooidJWT } from '../types';
-import { verifyToken } from '../lib/jwt';
+import { verifyToken, tokenCoversChannel } from '../lib/jwt';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -43,8 +43,8 @@ export function requireScope(
 
     // Check channel matches if channel-scoped
     if (options?.channelParam) {
-      const channelId = c.req.param(options.channelParam);
-      if (payload.channel !== channelId) {
+      const channelId = c.req.param(options.channelParam)!;
+      if (!tokenCoversChannel(payload, channelId)) {
         return c.json({ error: 'Token not valid for this channel' }, 403);
       }
     }
@@ -55,7 +55,7 @@ export function requireScope(
 
 export function requireSubscribeIfPrivate(channelParam: string) {
   return createMiddleware<Env>(async (c, next) => {
-    const channelId = c.req.param(channelParam);
+    const channelId = c.req.param(channelParam)!;
     const db = c.env.DB;
 
     const channel = await db
@@ -92,7 +92,10 @@ export function requireSubscribeIfPrivate(channelParam: string) {
       if (payload.scope !== 'admin' && payload.scope !== 'subscribe') {
         return c.json({ error: 'Insufficient permissions' }, 403);
       }
-      if (payload.scope === 'subscribe' && payload.channel !== channelId) {
+      if (
+        payload.scope === 'subscribe' &&
+        !tokenCoversChannel(payload, channelId)
+      ) {
         return c.json({ error: 'Token not valid for this channel' }, 403);
       }
       c.set('jwtPayload', payload);

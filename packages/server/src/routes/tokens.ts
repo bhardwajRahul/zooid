@@ -19,7 +19,7 @@ export class GetTokenClaims extends OpenAPIRoute {
           'application/json': {
             schema: z.object({
               scope: z.enum(['admin', 'publish', 'subscribe']),
-              channel: z.string().optional(),
+              channels: z.array(z.string()).optional(),
               sub: z.string().optional(),
               iat: z.number(),
               exp: z.number().optional(),
@@ -46,7 +46,9 @@ export class GetTokenClaims extends OpenAPIRoute {
       iat: payload.iat,
     };
 
-    if (payload.channel) claims.channel = payload.channel;
+    // Normalize legacy single-channel claim to channels array
+    if (payload.channels) claims.channels = payload.channels;
+    else if (payload.channel) claims.channels = [payload.channel];
     if (payload.sub) claims.sub = payload.sub;
     if (payload.exp) claims.exp = payload.exp;
 

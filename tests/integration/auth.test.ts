@@ -328,6 +328,110 @@ describe('Auth Integration Tests', () => {
     });
   });
 
+  describe('multi-channel tokens', () => {
+    it('publish token with channels array can publish to listed channel', async () => {
+      await createChannel('multi-a', { is_public: true });
+      const token = await createToken(
+        { scope: 'publish', channels: ['multi-a'] },
+        JWT_SECRET,
+      );
+      const res = await req('/api/v1/channels/multi-a/events', {
+        method: 'POST',
+        token,
+        body: { type: 'test', data: {} },
+      });
+      expect(res.status).toBe(201);
+    });
+
+    it('publish token with channels array cannot publish to unlisted channel', async () => {
+      await createChannel('multi-a', { is_public: true });
+      await createChannel('multi-b', { is_public: true });
+      const token = await createToken(
+        { scope: 'publish', channels: ['multi-a'] },
+        JWT_SECRET,
+      );
+      const res = await req('/api/v1/channels/multi-b/events', {
+        method: 'POST',
+        token,
+        body: { type: 'test', data: {} },
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('multi-channel publish token can publish to any listed channel', async () => {
+      await createChannel('multi-a', { is_public: true });
+      await createChannel('multi-b', { is_public: true });
+      const token = await createToken(
+        { scope: 'publish', channels: ['multi-a', 'multi-b'] },
+        JWT_SECRET,
+      );
+
+      const resA = await req('/api/v1/channels/multi-a/events', {
+        method: 'POST',
+        token,
+        body: { type: 'test', data: {} },
+      });
+      expect(resA.status).toBe(201);
+
+      const resB = await req('/api/v1/channels/multi-b/events', {
+        method: 'POST',
+        token,
+        body: { type: 'test', data: {} },
+      });
+      expect(resB.status).toBe(201);
+    });
+
+    it('multi-channel subscribe token can read any listed private channel', async () => {
+      await createChannel('multi-priv-a', { is_public: false });
+      await createChannel('multi-priv-b', { is_public: false });
+      const token = await createToken(
+        { scope: 'subscribe', channels: ['multi-priv-a', 'multi-priv-b'] },
+        JWT_SECRET,
+      );
+
+      const resA = await req('/api/v1/channels/multi-priv-a/events', { token });
+      expect(resA.status).toBe(200);
+
+      const resB = await req('/api/v1/channels/multi-priv-b/events', { token });
+      expect(resB.status).toBe(200);
+    });
+
+    it('multi-channel subscribe token cannot read unlisted private channel', async () => {
+      await createChannel('multi-priv-a', { is_public: false });
+      await createChannel('multi-priv-c', { is_public: false });
+      const token = await createToken(
+        { scope: 'subscribe', channels: ['multi-priv-a'] },
+        JWT_SECRET,
+      );
+      const res = await req('/api/v1/channels/multi-priv-c/events', { token });
+      expect(res.status).toBe(403);
+    });
+
+    it('legacy single-channel token still works for publish', async () => {
+      await createChannel('legacy-ch', { is_public: true });
+      const token = await createToken(
+        { scope: 'publish', channel: 'legacy-ch' },
+        JWT_SECRET,
+      );
+      const res = await req('/api/v1/channels/legacy-ch/events', {
+        method: 'POST',
+        token,
+        body: { type: 'test', data: {} },
+      });
+      expect(res.status).toBe(201);
+    });
+
+    it('legacy single-channel token still works for private subscribe', async () => {
+      await createChannel('legacy-priv', { is_public: false });
+      const token = await createToken(
+        { scope: 'subscribe', channel: 'legacy-priv' },
+        JWT_SECRET,
+      );
+      const res = await req('/api/v1/channels/legacy-priv/events', { token });
+      expect(res.status).toBe(200);
+    });
+  });
+
   describe('cross-channel isolation', () => {
     it('publish token for channel A cannot publish to channel B', async () => {
       await createChannel('iso-a', { is_public: true });
