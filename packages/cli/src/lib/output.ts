@@ -10,6 +10,10 @@ export function printInfo(label: string, value: string): void {
   console.log(`  ${label}: ${value}`);
 }
 
+export function printStep(message: string): void {
+  console.log(`  ${message}`);
+}
+
 export function formatRelative(isoString: string): string {
   const diff = Date.now() - new Date(isoString).getTime();
   const minutes = Math.floor(diff / 60_000);

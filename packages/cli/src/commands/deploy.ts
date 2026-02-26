@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { ZooidClient } from '@zooid/sdk';
 import { loadConfig, saveConfig } from '../lib/config';
 import { createEdDSAAdminToken } from '../lib/crypto';
-import { printSuccess, printError, printInfo } from '../lib/output';
+import { printSuccess, printError, printInfo, printStep } from '../lib/output';
 import { loadServerConfig, saveServerConfig, runInit } from './init';
 
 const require = createRequire(import.meta.url);
@@ -302,7 +302,7 @@ export async function runDeploy(): Promise<void> {
     console.log('');
 
     // 6. Create D1 database
-    console.log(`Creating D1 database (${dbName})...`);
+    printStep(`Creating D1 database (${dbName})...`);
     const d1Output = wrangler(`d1 create ${dbName}`, stagingDir, creds);
 
     const dbIdMatch = d1Output.match(/database_id\s*=\s*"([^"]+)"/);
@@ -341,7 +341,7 @@ export async function runDeploy(): Promise<void> {
     // 7. Run schema migration
     const schemaPath = path.join(stagingDir, 'src/db/schema.sql');
     if (fs.existsSync(schemaPath)) {
-      console.log('Running database schema migration...');
+      printStep('Running database schema migration...');
       wrangler(
         `d1 execute ${dbName} --remote --file=${schemaPath}`,
         stagingDir,
@@ -351,7 +351,7 @@ export async function runDeploy(): Promise<void> {
     }
 
     // 8. Generate secrets
-    console.log('Generating secrets...');
+    printStep('Generating secrets...');
 
     const keyPair = (await crypto.subtle.generateKey('Ed25519', true, [
       'sign',
@@ -444,7 +444,7 @@ export async function runDeploy(): Promise<void> {
     // Run schema migration (idempotent — all CREATE IF NOT EXISTS)
     const schemaPath = path.join(stagingDir, 'src/db/schema.sql');
     if (fs.existsSync(schemaPath)) {
-      console.log('Running schema migration...');
+      printStep('Running schema migration...');
       wrangler(
         `d1 execute ${dbName} --remote --file=${schemaPath}`,
         stagingDir,
@@ -478,7 +478,7 @@ export async function runDeploy(): Promise<void> {
       const hasLocalKey = keysResult?.[0]?.results?.length > 0;
 
       if (!hasLocalKey) {
-        console.log('Upgrading to EdDSA auth...');
+        printStep('Upgrading to EdDSA auth...');
         const keyPair = (await crypto.subtle.generateKey('Ed25519', true, [
           'sign',
           'verify',
@@ -549,7 +549,7 @@ export async function runDeploy(): Promise<void> {
   }
 
   // 10. Deploy worker
-  console.log('Deploying worker...');
+  printStep('Deploying worker...');
   const deployOutput = wranglerVerbose('deploy', stagingDir, creds);
 
   const { workerUrl, customDomain } = parseDeployUrls(deployOutput);
