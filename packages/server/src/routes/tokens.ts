@@ -62,7 +62,7 @@ export class MintToken extends OpenAPIRoute {
   schema = {
     summary: 'Mint a new token',
     description:
-      'Signs a new JWT with the server\'s signing key. Requires admin scope.',
+      "Signs a new JWT with the server's signing key. Requires admin scope.",
     tags: ['Tokens'],
     security: [{ bearerAuth: [] }],
     request: {
@@ -122,7 +122,10 @@ export class MintToken extends OpenAPIRoute {
     const data = await this.getValidatedData<typeof this.schema>();
     const body = data.body;
 
-    if (body.scope !== 'admin' && (!body.channels || body.channels.length === 0)) {
+    if (
+      body.scope !== 'admin' &&
+      (!body.channels || body.channels.length === 0)
+    ) {
       return c.json(
         { error: 'channels required for publish/subscribe tokens' },
         400,

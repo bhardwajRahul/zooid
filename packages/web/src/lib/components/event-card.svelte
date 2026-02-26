@@ -10,6 +10,7 @@
   let rawData = $derived(formatRaw(event.data));
   let prettyEntries = $derived(parsePretty(event.data));
   let relativeTime = $derived(formatRelative(event.created_at));
+  let publisherLabel = $derived(formatPublisher(event));
 
   function formatRaw(raw: string): string {
     try {
@@ -17,6 +18,19 @@
     } catch {
       return raw;
     }
+  }
+
+  function formatPublisher(e: ZooidEvent): string | null {
+    const id = e.publisher_id;
+    const name = e.publisher_name;
+    if (!name && !id) return null;
+    // External issuer: publisher_id is "issuer:sub"
+    const colonIdx = id?.indexOf(':') ?? -1;
+    const issuer = colonIdx > 0 ? id!.slice(0, colonIdx) : null;
+    const isExternal = issuer && issuer !== 'local';
+    if (name && isExternal) return `${name} (@${issuer})`;
+    if (name) return name;
+    return id;
   }
 
 </script>
@@ -62,8 +76,8 @@
         {#if event.type}
           <Badge variant="secondary" class="text-[10px] px-1.5 py-0">{event.type}</Badge>
         {/if}
-        {#if event.publisher_id}
-          <span class="text-xs text-muted-foreground">{event.publisher_id}</span>
+        {#if publisherLabel}
+          <span class="text-xs text-muted-foreground">{publisherLabel}</span>
         {/if}
       </div>
       <span class="text-[10px] text-muted-foreground shrink-0">{relativeTime}</span>

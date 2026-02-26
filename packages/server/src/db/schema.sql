@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS events (
   id TEXT PRIMARY KEY,
   channel_id TEXT NOT NULL,
   publisher_id TEXT,
+  publisher_name TEXT,
   type TEXT,
   data TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),

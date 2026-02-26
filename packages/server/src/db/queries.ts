@@ -183,6 +183,7 @@ export async function createEvent(
   event: {
     channelId: string;
     publisherId?: string | null;
+    publisherName?: string | null;
     type?: string | null;
     data: unknown;
   },
@@ -196,12 +197,13 @@ export async function createEvent(
 
   await db
     .prepare(
-      `INSERT INTO events (id, channel_id, publisher_id, type, data) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO events (id, channel_id, publisher_id, publisher_name, type, data) VALUES (?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
       event.channelId,
       event.publisherId ?? null,
+      event.publisherName ?? null,
       event.type ?? null,
       dataStr,
     )
@@ -219,6 +221,7 @@ export async function createEvents(
   db: D1Database,
   channelId: string,
   publisherId: string | null,
+  publisherName: string | null,
   events: Array<{ type?: string | null; data: unknown }>,
 ): Promise<ZooidEvent[]> {
   if (events.length > MAX_BATCH_SIZE) {
@@ -238,9 +241,16 @@ export async function createEvents(
 
     await db
       .prepare(
-        `INSERT INTO events (id, channel_id, publisher_id, type, data) VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO events (id, channel_id, publisher_id, publisher_name, type, data) VALUES (?, ?, ?, ?, ?, ?)`,
       )
-      .bind(id, channelId, publisherId, event.type ?? null, dataStr)
+      .bind(
+        id,
+        channelId,
+        publisherId,
+        publisherName,
+        event.type ?? null,
+        dataStr,
+      )
       .run();
   }
 

@@ -353,8 +353,6 @@ export async function runDeploy(): Promise<void> {
     // 8. Generate secrets
     console.log('Generating secrets...');
 
-    const jwtSecret = crypto.randomBytes(32).toString('base64');
-
     const keyPair = (await crypto.subtle.generateKey('Ed25519', true, [
       'sign',
       'verify',
@@ -377,12 +375,6 @@ export async function runDeploy(): Promise<void> {
     );
     const privateKeyB64 = Buffer.from(privateKeyRaw).toString('base64');
     const publicKeyB64 = Buffer.from(publicKeyRaw).toString('base64');
-
-    // Keep ZOOID_JWT_SECRET for backward compat (old tokens still verify)
-    wrangler('secret put ZOOID_JWT_SECRET', stagingDir, creds, {
-      input: jwtSecret,
-    });
-    printSuccess('Set ZOOID_JWT_SECRET');
 
     wrangler('secret put ZOOID_SIGNING_KEY', stagingDir, creds, {
       input: privateKeyB64,
@@ -461,6 +453,20 @@ export async function runDeploy(): Promise<void> {
       printSuccess('Schema up to date');
     }
 
+    // Run column migrations (idempotent — ignore "duplicate column" errors)
+    const migrations = ['ALTER TABLE events ADD COLUMN publisher_name TEXT'];
+    for (const sql of migrations) {
+      try {
+        wrangler(
+          `d1 execute ${dbName} --remote --command="${sql}"`,
+          stagingDir,
+          creds,
+        );
+      } catch {
+        // Column already exists — skip
+      }
+    }
+
     // Ensure EdDSA key is registered (upgrades old HS256-only deploys)
     try {
       const keysOutput = wrangler(
@@ -469,8 +475,7 @@ export async function runDeploy(): Promise<void> {
         creds,
       );
       const keysResult = JSON.parse(keysOutput);
-      const hasLocalKey =
-        keysResult?.[0]?.results?.length > 0;
+      const hasLocalKey = keysResult?.[0]?.results?.length > 0;
 
       if (!hasLocalKey) {
         console.log('Upgrading to EdDSA auth...');
@@ -520,7 +525,10 @@ export async function runDeploy(): Promise<void> {
       }
     } catch {
       // Non-fatal — old HS256 token still works
-      printInfo('Note', 'Could not check EdDSA key status, keeping existing token');
+      printInfo(
+        'Note',
+        'Could not check EdDSA key status, keeping existing token',
+      );
     }
 
     if (!adminToken) {

@@ -26,9 +26,6 @@
 
   <div class="flex items-center gap-4 text-xs text-muted-foreground">
     <span>{channel.event_count} events</span>
-    {#if channel.publishers.length > 0}
-      <span>{channel.publishers.length} publisher{channel.publishers.length === 1 ? '' : 's'}</span>
-    {/if}
     {#if channel.last_event_at}
       <span>latest {formatRelative(channel.last_event_at)}</span>
     {/if}

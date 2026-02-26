@@ -151,9 +151,7 @@ async function generateTestKeypair() {
     'pkcs8',
     (keypair as CryptoKeyPair).privateKey,
   );
-  const pkcs8Base64 = btoa(
-    String.fromCharCode(...new Uint8Array(pkcs8)),
-  );
+  const pkcs8Base64 = btoa(String.fromCharCode(...new Uint8Array(pkcs8)));
   return { privateJwk, publicJwk, pkcs8Base64 };
 }
 

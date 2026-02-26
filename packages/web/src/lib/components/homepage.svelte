@@ -70,10 +70,6 @@
                   <Separator orientation="vertical" class="h-3" />
                   <span>latest {formatRelative(ch.last_event_at)}</span>
                 {/if}
-                {#if ch.publishers.length > 0}
-                  <Separator orientation="vertical" class="h-3" />
-                  <span>{ch.publishers.length} publisher{ch.publishers.length === 1 ? '' : 's'}</span>
-                {/if}
               </div>
             </CardContent>
           </Card>

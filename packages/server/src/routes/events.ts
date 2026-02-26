@@ -55,6 +55,7 @@ export class PublishEvents extends OpenAPIRoute {
                 type: z.string().nullable(),
                 data: z.string(),
                 publisher_id: z.string().nullable(),
+                publisher_name: z.string().nullable(),
                 created_at: z.string(),
               }),
               z.object({
@@ -124,8 +125,8 @@ export class PublishEvents extends OpenAPIRoute {
 
     // Build publisher ID: issuer:sub for EdDSA tokens, plain sub for HS256
     const rawSub = jwt.sub ?? null;
-    const publisherId =
-      jwtIssuer && rawSub ? `${jwtIssuer}:${rawSub}` : rawSub;
+    const publisherId = jwtIssuer && rawSub ? `${jwtIssuer}:${rawSub}` : rawSub;
+    const publisherName = jwt.name ?? null;
 
     const strictSchema =
       channel.strict && channel.schema
@@ -161,6 +162,7 @@ export class PublishEvents extends OpenAPIRoute {
         db,
         channelId,
         publisherId,
+        publisherName,
         body.events,
       );
 
@@ -202,6 +204,7 @@ export class PublishEvents extends OpenAPIRoute {
     const event = await createEvent(db, {
       channelId,
       publisherId,
+      publisherName,
       type: body.type ?? null,
       data: body.data,
     });

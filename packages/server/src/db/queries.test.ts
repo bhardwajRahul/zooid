@@ -58,7 +58,7 @@ describe('Event queries', () => {
 
   describe('createEvents (batch)', () => {
     it('creates multiple events atomically', async () => {
-      const events = await createEvents(env.DB, 'test-channel', 'pub-1', [
+      const events = await createEvents(env.DB, 'test-channel', 'pub-1', null, [
         { type: 'a', data: { v: 1 } },
         { type: 'b', data: { v: 2 } },
       ]);
@@ -76,7 +76,7 @@ describe('Event queries', () => {
         data: { i },
       }));
       await expect(
-        createEvents(env.DB, 'test-channel', null, tooMany),
+        createEvents(env.DB, 'test-channel', null, null, tooMany),
       ).rejects.toThrow(/100/);
     });
   });

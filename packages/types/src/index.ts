@@ -11,6 +11,8 @@ export interface ZooidEvent {
   channel_id: string;
   /** ID of the publisher that created this event, or `null` for admin publishes. */
   publisher_id: string | null;
+  /** Display name of the publisher, or `null` if not provided. */
+  publisher_name: string | null;
   /** Optional event type string for filtering (e.g. `"trade"`, `"alert"`). */
   type: string | null;
   /** JSON-serialized event payload (max 64 KB). */

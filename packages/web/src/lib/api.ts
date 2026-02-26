@@ -5,13 +5,13 @@ export interface ChannelInfo {
   is_public: boolean;
   event_count: number;
   last_event_at: string | null;
-  publishers: string[];
 }
 
 export interface ZooidEvent {
   id: string;
   channel_id: string;
   publisher_id: string | null;
+  publisher_name: string | null;
   type: string | null;
   data: string;
   created_at: string;

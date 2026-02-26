@@ -161,7 +161,8 @@ export async function verifyEdDSAToken(
   // Enforce channel allowlist
   if (keyRow.allowed_channels) {
     const allowed: string[] = JSON.parse(keyRow.allowed_channels);
-    const claimed = payload.channels ?? (payload.channel ? [payload.channel] : []);
+    const claimed =
+      payload.channels ?? (payload.channel ? [payload.channel] : []);
     for (const ch of claimed) {
       if (!channelMatchesAllowlist(ch, allowed)) {
         throw new Error(`Channel "${ch}" not allowed for this key`);
