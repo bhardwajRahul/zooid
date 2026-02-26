@@ -1,7 +1,6 @@
 import {
   ZooidClient,
   type CreateChannelResult,
-  type PublisherResult,
   type UpdateChannelOptions,
   type ChannelInfo,
 } from '@zooid/sdk';
@@ -57,15 +56,6 @@ export async function runChannelList(
 ): Promise<ChannelListItem[]> {
   const c = client ?? createClient();
   return c.listChannels();
-}
-
-export async function runChannelAddPublisher(
-  channelId: string,
-  name: string,
-  client?: ZooidClient,
-): Promise<PublisherResult> {
-  const c = client ?? createClient();
-  return c.addPublisher(channelId, name);
 }
 
 export async function runChannelUpdate(

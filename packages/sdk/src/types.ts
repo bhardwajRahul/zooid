@@ -79,14 +79,24 @@ export interface CreateChannelResult {
   subscribe_token: string;
 }
 
-/** Result of adding a publisher to a channel. */
-export interface PublisherResult {
-  /** ULID identifier for the new publisher. */
-  id: string;
-  /** Display name of the publisher. */
-  name: string;
-  /** JWT token scoped for publishing as this publisher. */
-  publish_token: string;
+/** Options for minting a new token via `POST /api/v1/tokens`. */
+export interface MintTokenOptions {
+  /** Token scope: what the token can do. */
+  scope: 'admin' | 'publish' | 'subscribe';
+  /** Channels this token grants access to (required for publish/subscribe). */
+  channels?: string[];
+  /** Subject identifier (e.g. publisher ID). */
+  sub?: string;
+  /** Display name (used for publisher identity). */
+  name?: string;
+  /** Token expiry duration (e.g. `"5m"`, `"1h"`, `"7d"`, `"30d"`). */
+  expires_in?: string;
+}
+
+/** Result of minting a token. */
+export interface MintTokenResult {
+  /** The signed JWT string. */
+  token: string;
 }
 
 /** Options for publishing a single event. */

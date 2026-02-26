@@ -5,7 +5,6 @@ import path from 'node:path';
 import {
   runChannelCreate,
   runChannelList,
-  runChannelAddPublisher,
   runChannelUpdate,
   runChannelDelete,
 } from './channel';
@@ -14,7 +13,6 @@ let tmpDir: string;
 const mockClient = {
   createChannel: vi.fn(),
   listChannels: vi.fn(),
-  addPublisher: vi.fn(),
   updateChannel: vi.fn(),
   deleteChannel: vi.fn(),
 };
@@ -103,21 +101,6 @@ describe('channel commands', () => {
       const channels = await runChannelList();
       expect(channels).toHaveLength(2);
       expect(channels[0].id).toBe('ch1');
-    });
-  });
-
-  describe('runChannelAddPublisher()', () => {
-    it('adds a publisher and returns token', async () => {
-      writeConfig();
-      mockClient.addPublisher.mockResolvedValueOnce({
-        id: 'pub-1',
-        name: 'my-bot',
-        publish_token: 'bot-tok',
-      });
-
-      const result = await runChannelAddPublisher('signals', 'my-bot');
-      expect(result.name).toBe('my-bot');
-      expect(result.publish_token).toBe('bot-tok');
     });
   });
 

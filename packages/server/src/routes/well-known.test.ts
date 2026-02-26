@@ -5,6 +5,7 @@ import { setupTestDb } from '../test-utils';
 
 describe('GET /.well-known/zooid.json', () => {
   beforeAll(() => setupTestDb());
+
   it('returns 200 with server metadata', async () => {
     const res = await app.request('/.well-known/zooid.json', {}, env);
     expect(res.status).toBe(200);
@@ -25,6 +26,13 @@ describe('GET /.well-known/zooid.json', () => {
     expect(body.delivery).toEqual(
       expect.arrayContaining(['poll', 'webhook', 'websocket', 'rss']),
     );
+  });
+
+  it('includes public_key field', async () => {
+    const res = await app.request('/.well-known/zooid.json', {}, env);
+    const body = (await res.json()) as { public_key: string };
+    // public_key is present (may be empty string if no ZOOID_PUBLIC_KEY env)
+    expect('public_key' in body).toBe(true);
   });
 
   it('returns valid JSON content type', async () => {

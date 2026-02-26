@@ -1,11 +1,11 @@
 import type {
   Channel,
   ChannelListItem,
-  Publisher,
   ZooidEvent,
   Webhook,
   PollResult,
   ServerIdentity,
+  TrustedKeyRow,
 } from '../types';
 import { generateUlid } from '../lib/ulid';
 
@@ -157,49 +157,17 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
       last_event_at: string | null;
     }>();
 
-  const channels: ChannelListItem[] = [];
-
-  for (const row of rows.results) {
-    const publishers = await db
-      .prepare(`SELECT name FROM publishers WHERE channel_id = ?`)
-      .bind(row.id)
-      .all<{ name: string }>();
-
-    channels.push({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      tags: row.tags ? JSON.parse(row.tags) : [],
-      is_public: row.is_public === 1,
-      schema: row.schema ? JSON.parse(row.schema) : null,
-      strict: row.strict === 1,
-      event_count: row.event_count,
-      last_event_at: row.last_event_at,
-      publishers: publishers.results.map((p) => p.name),
-    });
-  }
-
-  return channels;
-}
-
-export async function createPublisher(
-  db: D1Database,
-  channelId: string,
-  name: string,
-): Promise<Publisher> {
-  const id = generateUlid();
-
-  await db
-    .prepare(`INSERT INTO publishers (id, channel_id, name) VALUES (?, ?, ?)`)
-    .bind(id, channelId, name)
-    .run();
-
-  const row = await db
-    .prepare(`SELECT * FROM publishers WHERE id = ?`)
-    .bind(id)
-    .first<Publisher>();
-
-  return row!;
+  return rows.results.map((row) => ({
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    tags: row.tags ? JSON.parse(row.tags) : [],
+    is_public: row.is_public === 1,
+    schema: row.schema ? JSON.parse(row.schema) : null,
+    strict: row.strict === 1,
+    event_count: row.event_count,
+    last_event_at: row.last_event_at,
+  }));
 }
 
 // --- Event queries ---
@@ -425,7 +393,6 @@ export async function deleteChannel(
   await db.batch([
     db.prepare('DELETE FROM events WHERE channel_id = ?').bind(channelId),
     db.prepare('DELETE FROM webhooks WHERE channel_id = ?').bind(channelId),
-    db.prepare('DELETE FROM publishers WHERE channel_id = ?').bind(channelId),
     db.prepare('DELETE FROM channels WHERE id = ?').bind(channelId),
   ]);
 
@@ -562,4 +529,85 @@ export async function upsertServerMeta(
     .first<ServerMetaRow>();
 
   return rowToServerMeta(row!);
+}
+
+// --- Trusted key queries ---
+
+const MAX_TRUSTED_KEYS = 16;
+
+export async function listTrustedKeys(
+  db: D1Database,
+): Promise<TrustedKeyRow[]> {
+  const result = await db
+    .prepare('SELECT * FROM trusted_keys ORDER BY created_at ASC')
+    .all<TrustedKeyRow>();
+  return result.results;
+}
+
+export async function getTrustedKey(
+  db: D1Database,
+  kid: string,
+): Promise<TrustedKeyRow | null> {
+  return db
+    .prepare('SELECT * FROM trusted_keys WHERE kid = ?')
+    .bind(kid)
+    .first<TrustedKeyRow>();
+}
+
+export async function addTrustedKey(
+  db: D1Database,
+  key: {
+    kid: string;
+    x: string;
+    max_scope?: string | null;
+    allowed_channels?: string[] | null;
+    issuer?: string | null;
+    kty?: string;
+    crv?: string;
+  },
+): Promise<TrustedKeyRow> {
+  // Check max keys
+  const count = await db
+    .prepare('SELECT COUNT(*) as cnt FROM trusted_keys')
+    .first<{ cnt: number }>();
+  if (count && count.cnt >= MAX_TRUSTED_KEYS) {
+    throw new Error(`Maximum of ${MAX_TRUSTED_KEYS} trusted keys reached`);
+  }
+
+  const allowedChannels = key.allowed_channels
+    ? JSON.stringify(key.allowed_channels)
+    : null;
+
+  await db
+    .prepare(
+      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scope, allowed_channels, issuer) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    )
+    .bind(
+      key.kid,
+      key.kty ?? 'OKP',
+      key.crv ?? 'Ed25519',
+      key.x,
+      key.max_scope ?? null,
+      allowedChannels,
+      key.issuer ?? null,
+    )
+    .run();
+
+  const row = await db
+    .prepare('SELECT * FROM trusted_keys WHERE kid = ?')
+    .bind(key.kid)
+    .first<TrustedKeyRow>();
+
+  return row!;
+}
+
+export async function removeTrustedKey(
+  db: D1Database,
+  kid: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare('DELETE FROM trusted_keys WHERE kid = ?')
+    .bind(kid)
+    .run();
+  return (result.meta.changes ?? 0) > 0;
 }

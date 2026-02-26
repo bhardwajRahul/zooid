@@ -286,53 +286,6 @@ describe('Channel routes', () => {
     });
   });
 
-  describe('POST /channels/:channelId/publishers', () => {
-    it('adds a publisher to a channel', async () => {
-      await authRequest('/api/v1/channels', {
-        method: 'POST',
-        body: JSON.stringify({ id: 'pub-channel', name: 'Pub Channel' }),
-      });
-
-      const res = await authRequest('/api/v1/channels/pub-channel/publishers', {
-        method: 'POST',
-        body: JSON.stringify({ name: 'whale-bot' }),
-      });
-
-      expect(res.status).toBe(201);
-      const body = (await res.json()) as {
-        id: string;
-        name: string;
-        publish_token: string;
-      };
-      expect(body.id).toBeTruthy();
-      expect(body.name).toBe('whale-bot');
-      expect(body.publish_token).toBeTruthy();
-    });
-
-    it('rejects without admin token', async () => {
-      const res = await authRequest(
-        '/api/v1/channels/pub-channel/publishers',
-        {
-          method: 'POST',
-          body: JSON.stringify({ name: 'whale-bot' }),
-        },
-        'subscribe',
-        'pub-channel',
-      );
-
-      expect(res.status).toBe(403);
-    });
-
-    it('returns 404 for non-existent channel', async () => {
-      const res = await authRequest('/api/v1/channels/nonexistent/publishers', {
-        method: 'POST',
-        body: JSON.stringify({ name: 'whale-bot' }),
-      });
-
-      expect(res.status).toBe(404);
-    });
-  });
-
   describe('PATCH /channels/:channelId', () => {
     it('partially updates a channel preserving unspecified fields', async () => {
       await authRequest('/api/v1/channels', {
@@ -514,16 +467,10 @@ describe('Channel routes', () => {
       expect(body.channels.find((c) => c.id === 'delete-me')).toBeUndefined();
     });
 
-    it('deletes associated events and publishers', async () => {
+    it('deletes associated events', async () => {
       await authRequest('/api/v1/channels', {
         method: 'POST',
         body: JSON.stringify({ id: 'cascade-test', name: 'Cascade Test' }),
-      });
-
-      // Add a publisher
-      await authRequest('/api/v1/channels/cascade-test/publishers', {
-        method: 'POST',
-        body: JSON.stringify({ name: 'test-bot' }),
       });
 
       // Publish an event

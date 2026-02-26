@@ -3,7 +3,6 @@ import { runConfigSet, runConfigGet } from './commands/config';
 import {
   runChannelCreate,
   runChannelList,
-  runChannelAddPublisher,
   runChannelUpdate,
   runChannelDelete,
 } from './commands/channel';
@@ -16,6 +15,7 @@ import { runShare } from './commands/share';
 import { runUnshare } from './commands/unshare';
 import { runDiscover } from './commands/discover';
 import { runServerGet, runServerSet } from './commands/server';
+import { runTokenMint } from './commands/token';
 import { runDev } from './commands/dev';
 import { runInit } from './commands/init';
 import { runDeploy } from './commands/deploy';
@@ -342,21 +342,6 @@ channelCmd
   });
 
 channelCmd
-  .command('add-publisher <channel>')
-  .description('Add a publisher to a channel')
-  .requiredOption('--name <name>', 'Publisher name')
-  .action(async (channel, opts) => {
-    try {
-      const result = await runChannelAddPublisher(channel, opts.name);
-      printSuccess(`Added publisher: ${result.name}`);
-      printInfo('Publisher ID', result.id);
-      printInfo('Publish token', result.publish_token);
-    } catch (err) {
-      handleError('channel add-publisher', err);
-    }
-  });
-
-channelCmd
   .command('delete <id>')
   .description('Delete a channel and all its data')
   .option('-y, --yes', 'Skip confirmation prompt')
@@ -370,7 +355,7 @@ channelCmd
         });
         const answer = await new Promise<string>((resolve) => {
           rl.question(
-            `Delete channel "${id}" and all its events, webhooks, and publishers? [y/N] `,
+            `Delete channel "${id}" and all its events and webhooks? [y/N] `,
             resolve,
           );
         });
@@ -580,6 +565,36 @@ serverCmd
     }
   });
 
+// --- token ---
+program
+  .command('token <scope>')
+  .description('Mint a new token (admin, publish, or subscribe)')
+  .argument('[channels...]', 'Channels to scope the token to')
+  .option('--sub <sub>', 'Subject identifier (e.g. publisher ID)')
+  .option('--name <name>', 'Display name (used for publisher identity)')
+  .option('--expires-in <duration>', 'Token expiry (e.g. 5m, 1h, 7d, 30d)')
+  .action(async (scope: string, channels: string[], opts) => {
+    try {
+      if (!['admin', 'publish', 'subscribe'].includes(scope)) {
+        throw new Error(
+          `Invalid scope "${scope}". Must be one of: admin, publish, subscribe`,
+        );
+      }
+      const result = await runTokenMint(
+        scope as 'admin' | 'publish' | 'subscribe',
+        {
+          channels: channels.length > 0 ? channels : undefined,
+          sub: opts.sub,
+          name: opts.name,
+          expiresIn: opts.expiresIn,
+        },
+      );
+      console.log(result.token);
+    } catch (err) {
+      handleError('token', err);
+    }
+  });
+
 // --- status ---
 program
   .command('status')
@@ -601,7 +616,7 @@ program
 // --- history ---
 program
   .command('history')
-  .description('Show tail/subscribe history across all servers')
+  .description('Show tail/subscribe history')
   .option('-n, --limit <n>', 'Max entries to show', '20')
   .option('--json', 'Output as JSON')
   .action((opts) => {

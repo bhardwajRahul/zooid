@@ -8,6 +8,7 @@ dist
 # Cloudflare
 .wrangler
 .dev.vars
+.dev-keypair.json
 
 # Environment
 .env

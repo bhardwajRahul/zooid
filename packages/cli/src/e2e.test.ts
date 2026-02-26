@@ -36,6 +36,7 @@ describe('CLI E2E', () => {
       expect(result.stdout).toContain('subscribe');
       expect(result.stdout).toContain('status');
       expect(result.stdout).toContain('config');
+      expect(result.stdout).toContain('token');
     });
   });
 
@@ -109,13 +110,28 @@ describe('CLI E2E', () => {
     });
   });
 
+  describe('token', () => {
+    it('fails gracefully without server', async () => {
+      const result = await cli(['token', 'admin']);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('No server configured');
+    });
+
+    it('rejects invalid scope', async () => {
+      await cli(['config', 'set', 'server', 'https://fake.workers.dev']);
+      const result = await cli(['token', 'banana']);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('Invalid scope');
+    });
+  });
+
   describe('channel --help', () => {
     it('prints channel subcommands', async () => {
       const result = await cli(['channel', '--help']);
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain('create');
       expect(result.stdout).toContain('list');
-      expect(result.stdout).toContain('add-publisher');
+      expect(result.stdout).toContain('delete');
     });
   });
 

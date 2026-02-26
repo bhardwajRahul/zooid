@@ -7,7 +7,8 @@ import type {
   CreateChannelOptions,
   CreateChannelResult,
   UpdateChannelOptions,
-  PublisherResult,
+  MintTokenOptions,
+  MintTokenResult,
   ZooidEvent,
   PublishOptions,
   PollOptions,
@@ -152,16 +153,9 @@ export class ZooidClient {
     return this.request<ClaimResult>('POST', '/api/v1/directory/claim', body);
   }
 
-  /** Add a named publisher to a channel. Requires admin token. */
-  async addPublisher(
-    channelId: string,
-    name: string,
-  ): Promise<PublisherResult> {
-    return this.request<PublisherResult>(
-      'POST',
-      `/api/v1/channels/${channelId}/publishers`,
-      { name },
-    );
+  /** Mint a new token. Requires admin token. */
+  async mintToken(options: MintTokenOptions): Promise<MintTokenResult> {
+    return this.request<MintTokenResult>('POST', '/api/v1/tokens', options);
   }
 
   /** Delete a channel and all its data. Requires admin token. */

@@ -7,7 +7,7 @@ import readline from 'node:readline/promises';
 import { createRequire } from 'node:module';
 import { ZooidClient } from '@zooid/sdk';
 import { loadConfig, saveConfig } from '../lib/config';
-import { createAdminToken } from '../lib/crypto';
+import { createEdDSAAdminToken } from '../lib/crypto';
 import { printSuccess, printError, printInfo } from '../lib/output';
 import { loadServerConfig, saveServerConfig, runInit } from './init';
 
@@ -367,9 +367,18 @@ export async function runDeploy(): Promise<void> {
       'raw',
       keyPair.publicKey,
     );
+    const privateKeyJwk = await crypto.subtle.exportKey(
+      'jwk',
+      keyPair.privateKey,
+    );
+    const publicKeyJwk = await crypto.subtle.exportKey(
+      'jwk',
+      keyPair.publicKey,
+    );
     const privateKeyB64 = Buffer.from(privateKeyRaw).toString('base64');
     const publicKeyB64 = Buffer.from(publicKeyRaw).toString('base64');
 
+    // Keep ZOOID_JWT_SECRET for backward compat (old tokens still verify)
     wrangler('secret put ZOOID_JWT_SECRET', stagingDir, creds, {
       input: jwtSecret,
     });
@@ -385,8 +394,20 @@ export async function runDeploy(): Promise<void> {
     });
     printSuccess('Set ZOOID_PUBLIC_KEY (Ed25519 public)');
 
-    adminToken = await createAdminToken(jwtSecret);
-    printSuccess('Admin token generated');
+    // 9. Register public key in D1 trusted_keys
+    const kid = 'local-1';
+    const xValue = publicKeyJwk.x!;
+    const insertSql = `INSERT INTO trusted_keys (kid, x, issuer) VALUES ('${kid}', '${xValue}', 'local');`;
+    wrangler(
+      `d1 execute ${dbName} --remote --command="${insertSql}"`,
+      stagingDir,
+      creds,
+    );
+    printSuccess(`Registered EdDSA public key (kid: ${kid})`);
+
+    // 10. Mint EdDSA admin token
+    adminToken = await createEdDSAAdminToken(privateKeyJwk, kid);
+    printSuccess('EdDSA admin token generated');
   } else {
     console.log('');
     printInfo('Deploy type', 'Redeploying existing server');
@@ -428,8 +449,84 @@ export async function runDeploy(): Promise<void> {
 
     fs.writeFileSync(wranglerTomlPath, tomlContent);
 
-    const existingConfig = loadConfig();
-    adminToken = existingConfig.admin_token;
+    // Run schema migration (idempotent — all CREATE IF NOT EXISTS)
+    const schemaPath = path.join(stagingDir, 'src/db/schema.sql');
+    if (fs.existsSync(schemaPath)) {
+      console.log('Running schema migration...');
+      wrangler(
+        `d1 execute ${dbName} --remote --file=${schemaPath}`,
+        stagingDir,
+        creds,
+      );
+      printSuccess('Schema up to date');
+    }
+
+    // Ensure EdDSA key is registered (upgrades old HS256-only deploys)
+    try {
+      const keysOutput = wrangler(
+        `d1 execute ${dbName} --remote --json --command="SELECT kid FROM trusted_keys WHERE issuer = 'local' LIMIT 1"`,
+        stagingDir,
+        creds,
+      );
+      const keysResult = JSON.parse(keysOutput);
+      const hasLocalKey =
+        keysResult?.[0]?.results?.length > 0;
+
+      if (!hasLocalKey) {
+        console.log('Upgrading to EdDSA auth...');
+        const keyPair = (await crypto.subtle.generateKey('Ed25519', true, [
+          'sign',
+          'verify',
+        ])) as CryptoKeyPair;
+        const privateKeyRaw = await crypto.subtle.exportKey(
+          'pkcs8',
+          keyPair.privateKey,
+        );
+        const publicKeyRaw = await crypto.subtle.exportKey(
+          'raw',
+          keyPair.publicKey,
+        );
+        const privateKeyJwk = await crypto.subtle.exportKey(
+          'jwk',
+          keyPair.privateKey,
+        );
+        const publicKeyJwk = await crypto.subtle.exportKey(
+          'jwk',
+          keyPair.publicKey,
+        );
+        const privateKeyB64 = Buffer.from(privateKeyRaw).toString('base64');
+        const publicKeyB64 = Buffer.from(publicKeyRaw).toString('base64');
+
+        wrangler('secret put ZOOID_SIGNING_KEY', stagingDir, creds, {
+          input: privateKeyB64,
+        });
+        wrangler('secret put ZOOID_PUBLIC_KEY', stagingDir, creds, {
+          input: publicKeyB64,
+        });
+
+        const kid = 'local-1';
+        const xValue = publicKeyJwk.x!;
+        const insertSql = `INSERT INTO trusted_keys (kid, x, issuer) VALUES ('${kid}', '${xValue}', 'local');`;
+        wrangler(
+          `d1 execute ${dbName} --remote --command="${insertSql}"`,
+          stagingDir,
+          creds,
+        );
+        printSuccess('EdDSA keypair generated and registered');
+
+        // Mint new EdDSA admin token (replaces old HS256 one)
+        adminToken = await createEdDSAAdminToken(privateKeyJwk, kid);
+        printSuccess('Upgraded to EdDSA admin token');
+      }
+    } catch {
+      // Non-fatal — old HS256 token still works
+      printInfo('Note', 'Could not check EdDSA key status, keeping existing token');
+    }
+
+    if (!adminToken) {
+      const existingConfig = loadConfig();
+      adminToken = existingConfig.admin_token;
+    }
 
     if (!adminToken) {
       printError(

@@ -34,6 +34,7 @@ export interface ZooidJWT {
   channel?: string; // Legacy single-channel claim (backward compat)
   channels?: string[]; // Multi-channel claim (preferred)
   sub?: string; // Publisher ID (standard JWT subject claim)
+  name?: string; // Display name (used for auto-registering publishers)
   iat: number;
   exp?: number;
 }
@@ -51,14 +52,21 @@ export interface Channel {
   created_at: string;
 }
 
-export interface Publisher {
-  id: string;
-  channel_id: string;
-  name: string;
+/** Raw DB row from the trusted_keys table. */
+export interface TrustedKeyRow {
+  kid: string;
+  kty: string;
+  crv: string;
+  x: string;
+  max_scope: string | null;
+  allowed_channels: string | null; // JSON array, null = unrestricted
+  issuer: string | null;
   created_at: string;
 }
 
 export interface Variables {
   jwtPayload: ZooidJWT;
+  jwtKid?: string;
+  jwtIssuer?: string;
   channelIsPublic?: boolean;
 }

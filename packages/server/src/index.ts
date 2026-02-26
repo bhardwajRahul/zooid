@@ -11,14 +11,14 @@ import {
   ListChannels,
   CreateChannel,
   UpdateChannel,
-  AddPublisher,
   DeleteChannel,
 } from './routes/channels';
 import { PublishEvents, PollEvents } from './routes/events';
 import { RegisterWebhook, DeleteWebhook } from './routes/webhooks';
 import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
-import { GetTokenClaims } from './routes/tokens';
+import { GetTokenClaims, MintToken } from './routes/tokens';
 import { DirectoryClaim } from './routes/directory';
+import { keys } from './routes/keys';
 import { ws } from './routes/ws';
 import { rss } from './routes/rss';
 import { feed } from './routes/feed';
@@ -60,6 +60,8 @@ openapi.put('/server', requireAuth(), requireScope('admin'), UpdateServerMeta);
 // Token routes
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.get('/tokens/claims', requireAuth(), GetTokenClaims);
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.post('/tokens', requireAuth(), requireScope('admin'), MintToken);
 
 // Channel routes
 openapi.get('/channels', ListChannels);
@@ -68,9 +70,6 @@ openapi.post('/channels', requireAuth(), requireScope('admin'), CreateChannel);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.patch('/channels/:channelId', requireAuth(), requireScope('admin'), UpdateChannel);
-// prettier-ignore
-// @ts-expect-error chanfana types don't include middleware overloads
-openapi.post('/channels/:channelId/publishers', requireAuth(), requireScope('admin'), AddPublisher);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.delete('/channels/:channelId', requireAuth(), requireScope('admin'), DeleteChannel);
@@ -95,6 +94,11 @@ openapi.post('/channels/:channelId/webhooks', requireSubscribeIfPrivate('channel
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.delete('/channels/:channelId/webhooks/:webhookId', requireAuth(), requireScope('admin'), DeleteWebhook);
+
+// Key management routes (admin-only)
+api.use('/keys', requireAuth(), requireScope('admin'));
+api.use('/keys/*', requireAuth(), requireScope('admin'));
+api.route('', keys);
 
 // Plain Hono routes (streaming/XML — not suited for OpenAPI)
 api.route('', ws);

@@ -242,30 +242,6 @@ describe('ZooidClient', () => {
     });
   });
 
-  describe('addPublisher()', () => {
-    it('sends POST /api/v1/channels/:id/publishers', async () => {
-      const client = new ZooidClient({
-        server: 'https://example.com',
-        token: 'admin-token',
-      });
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse(
-          { id: 'pub-1', name: 'whale-bot', publish_token: 'pt' },
-          201,
-        ),
-      );
-
-      const result = await client.addPublisher('signals', 'whale-bot');
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        'https://example.com/api/v1/channels/signals/publishers',
-        expect.objectContaining({ method: 'POST' }),
-      );
-      expect(result.name).toBe('whale-bot');
-      expect(result.publish_token).toBe('pt');
-    });
-  });
-
   describe('deleteChannel()', () => {
     it('sends DELETE /api/v1/channels/:id', async () => {
       const client = new ZooidClient({

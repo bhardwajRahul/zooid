@@ -120,7 +120,12 @@ export class PublishEvents extends OpenAPIRoute {
 
     const body = data.body;
     const jwt = c.get('jwtPayload');
-    const publisherId = jwt.sub ?? null;
+    const jwtIssuer = c.get('jwtIssuer');
+
+    // Build publisher ID: issuer:sub for EdDSA tokens, plain sub for HS256
+    const rawSub = jwt.sub ?? null;
+    const publisherId =
+      jwtIssuer && rawSub ? `${jwtIssuer}:${rawSub}` : rawSub;
 
     const strictSchema =
       channel.strict && channel.schema

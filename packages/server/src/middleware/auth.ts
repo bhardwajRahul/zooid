@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables, ZooidJWT } from '../types';
-import { verifyToken, tokenCoversChannel } from '../lib/jwt';
+import { verifyTokenAny, tokenCoversChannel } from '../lib/jwt';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -13,8 +13,10 @@ export function requireAuth() {
 
     const token = authHeader.slice(7);
     try {
-      const payload = await verifyToken(token, c.env.ZOOID_JWT_SECRET);
+      const { payload, kid, issuer } = await verifyTokenAny(token, c.env);
       c.set('jwtPayload', payload);
+      if (kid) c.set('jwtKid', kid);
+      if (issuer) c.set('jwtIssuer', issuer);
     } catch {
       return c.json({ error: 'Invalid or expired token' }, 401);
     }
@@ -86,9 +88,8 @@ export function requireSubscribeIfPrivate(channelParam: string) {
       );
     }
 
-    const token = rawToken;
     try {
-      const payload = await verifyToken(token, c.env.ZOOID_JWT_SECRET);
+      const { payload, kid, issuer } = await verifyTokenAny(rawToken, c.env);
       if (payload.scope !== 'admin' && payload.scope !== 'subscribe') {
         return c.json({ error: 'Insufficient permissions' }, 403);
       }
@@ -99,6 +100,8 @@ export function requireSubscribeIfPrivate(channelParam: string) {
         return c.json({ error: 'Token not valid for this channel' }, 403);
       }
       c.set('jwtPayload', payload);
+      if (kid) c.set('jwtKid', kid);
+      if (issuer) c.set('jwtIssuer', issuer);
     } catch {
       return c.json({ error: 'Invalid or expired token' }, 401);
     }

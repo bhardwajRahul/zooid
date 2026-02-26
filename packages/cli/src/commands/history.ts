@@ -10,8 +10,9 @@ export interface HistoryEntry {
   first_tailed_at: string;
 }
 
-/** Collect all channels with tail/subscribe stats across all servers. */
+/** Collect all channels with tail/subscribe stats. */
 export function runHistory(): HistoryEntry[] {
+
   const file = loadConfigFile();
   const entries: HistoryEntry[] = [];
 

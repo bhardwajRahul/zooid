@@ -3,14 +3,12 @@ import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { isValidChannelId } from '../lib/validation';
-import { generateUlid } from '../lib/ulid';
-import { createToken } from '../lib/jwt';
+import { mintServerToken } from '../lib/jwt';
 import {
   createChannel,
   getChannel,
   listChannels,
   updateChannel,
-  createPublisher,
   deleteChannel,
 } from '../db/queries';
 
@@ -146,13 +144,13 @@ export class CreateChannel extends OpenAPIRoute {
 
     const channel = await createChannel(c.env.DB, body);
 
-    const publishToken = await createToken(
-      { scope: 'publish', channels: [channel.id], sub: generateUlid() },
-      c.env.ZOOID_JWT_SECRET,
+    const publishToken = await mintServerToken(
+      { scope: 'publish', channels: [channel.id] },
+      c.env,
     );
-    const subscribeToken = await createToken(
-      { scope: 'subscribe', channels: [channel.id], sub: generateUlid() },
-      c.env.ZOOID_JWT_SECRET,
+    const subscribeToken = await mintServerToken(
+      { scope: 'subscribe', channels: [channel.id] },
+      c.env,
     );
 
     return c.json(
@@ -268,93 +266,6 @@ export class UpdateChannel extends OpenAPIRoute {
       schema: channel.schema ? JSON.parse(channel.schema as string) : null,
       strict: (channel.strict as unknown as number) === 1,
     });
-  }
-}
-
-export class AddPublisher extends OpenAPIRoute {
-  schema = {
-    summary: 'Add a publisher to a channel',
-    tags: ['Channels'],
-    security: [{ bearerAuth: [] }],
-    request: {
-      params: z.object({
-        channelId: z.string(),
-      }),
-      body: {
-        content: {
-          'application/json': {
-            schema: z.object({
-              name: z.string().min(1),
-            }),
-          },
-        },
-      },
-    },
-    responses: {
-      201: {
-        description: 'Publisher added',
-        content: {
-          'application/json': {
-            schema: z.object({
-              id: z.string(),
-              name: z.string(),
-              publish_token: z.string(),
-            }),
-          },
-        },
-      },
-      401: {
-        description: 'Missing or invalid authentication',
-        content: {
-          'application/json': {
-            schema: z.object({ error: z.string() }),
-          },
-        },
-      },
-      403: {
-        description: 'Insufficient permissions',
-        content: {
-          'application/json': {
-            schema: z.object({ error: z.string() }),
-          },
-        },
-      },
-      404: {
-        description: 'Channel not found',
-        content: {
-          'application/json': {
-            schema: z.object({ error: z.string() }),
-          },
-        },
-      },
-    },
-  };
-
-  async handle(c: Context<Env>) {
-    const data = await this.getValidatedData<typeof this.schema>();
-    const { channelId } = data.params;
-    const body = data.body;
-
-    const channel = await getChannel(c.env.DB, channelId);
-    if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
-    }
-
-    const publisher = await createPublisher(c.env.DB, channelId, body.name);
-
-    const publishToken = await createToken(
-      { scope: 'publish', channels: [channelId], sub: publisher.id },
-      c.env.ZOOID_JWT_SECRET,
-    );
-
-    return c.json(
-      {
-        id: publisher.id,
-        name: publisher.name,
-        publish_token: publishToken,
-      },
-      201,
-    );
   }
 }
 

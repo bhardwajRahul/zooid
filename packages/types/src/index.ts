@@ -59,8 +59,6 @@ export interface ChannelListItem {
   event_count: number;
   /** ISO 8601 timestamp of the most recent event, or `null` if empty. */
   last_event_at: string | null;
-  /** Names of publishers registered on this channel. */
-  publishers: string[];
 }
 
 /**
