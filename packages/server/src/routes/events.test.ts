@@ -188,19 +188,25 @@ describe('Event routes', () => {
   });
 
   describe('Strict schema validation', () => {
-    const strictSchema = {
-      alert: {
-        required: ['level', 'message'],
-        properties: {
-          level: { type: 'string', enum: ['info', 'warn', 'error'] },
-          message: { type: 'string' },
+    const strictConfig = {
+      types: {
+        alert: {
+          schema: {
+            required: ['level', 'message'],
+            properties: {
+              level: { type: 'string', enum: ['info', 'warn', 'error'] },
+              message: { type: 'string' },
+            },
+          },
         },
-      },
-      metric: {
-        required: ['name', 'value'],
-        properties: {
-          name: { type: 'string' },
-          value: { type: 'number' },
+        metric: {
+          schema: {
+            required: ['name', 'value'],
+            properties: {
+              name: { type: 'string' },
+              value: { type: 'number' },
+            },
+          },
         },
       },
     };
@@ -211,7 +217,7 @@ describe('Event routes', () => {
         body: JSON.stringify({
           id: 'strict-channel',
           name: 'Strict Channel',
-          schema: strictSchema,
+          config: strictConfig,
           strict: true,
         }),
       });
@@ -220,7 +226,7 @@ describe('Event routes', () => {
         body: JSON.stringify({
           id: 'doconly-channel',
           name: 'Doc-Only Channel',
-          schema: strictSchema,
+          config: strictConfig,
           strict: false,
         }),
       });

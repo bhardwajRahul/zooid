@@ -115,30 +115,40 @@ describe('Channel routes', () => {
       expect(res.status).toBe(409);
     });
 
-    it('accepts optional schema field', async () => {
-      const schema = {
-        type: 'object',
-        properties: { market: { type: 'string' } },
-        required: ['market'],
+    it('accepts optional config field', async () => {
+      const config = {
+        types: {
+          trade: {
+            schema: {
+              type: 'object',
+              properties: { market: { type: 'string' } },
+              required: ['market'],
+            },
+          },
+        },
       };
 
       const res = await authRequest('/api/v1/channels', {
         method: 'POST',
         body: JSON.stringify({
-          id: 'schema-channel',
-          name: 'Schema Channel',
-          schema,
+          id: 'config-channel',
+          name: 'Config Channel',
+          config,
         }),
       });
 
       expect(res.status).toBe(201);
     });
 
-    it('creates a strict channel with schema', async () => {
-      const schema = {
-        alert: {
-          required: ['level'],
-          properties: { level: { type: 'string' } },
+    it('creates a strict channel with config', async () => {
+      const config = {
+        types: {
+          alert: {
+            schema: {
+              required: ['level'],
+              properties: { level: { type: 'string' } },
+            },
+          },
         },
       };
 
@@ -147,7 +157,7 @@ describe('Channel routes', () => {
         body: JSON.stringify({
           id: 'strict-channel',
           name: 'Strict Channel',
-          schema,
+          config,
           strict: true,
         }),
       });
@@ -155,11 +165,11 @@ describe('Channel routes', () => {
       expect(res.status).toBe(201);
     });
 
-    it('rejects strict channel without schema', async () => {
+    it('rejects strict channel without config', async () => {
       const res = await authRequest('/api/v1/channels', {
         method: 'POST',
         body: JSON.stringify({
-          id: 'strict-no-schema',
+          id: 'strict-no-config',
           name: 'Bad Strict',
           strict: true,
         }),
@@ -167,7 +177,7 @@ describe('Channel routes', () => {
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: string };
-      expect(body.error).toContain('schema');
+      expect(body.error).toContain('config');
     });
 
     it('creates a channel with tags', async () => {
@@ -338,37 +348,43 @@ describe('Channel routes', () => {
       expect(body.is_public).toBe(false);
     });
 
-    it('sets and clears schema', async () => {
+    it('sets and clears config', async () => {
       await authRequest('/api/v1/channels', {
         method: 'POST',
-        body: JSON.stringify({ id: 'schema-update', name: 'Schema Update' }),
+        body: JSON.stringify({ id: 'config-update', name: 'Config Update' }),
       });
 
-      // Set schema
-      const schema = { type: 'object', properties: { v: { type: 'number' } } };
-      const res1 = await authRequest('/api/v1/channels/schema-update', {
+      // Set config
+      const config = {
+        types: {
+          metric: {
+            schema: { type: 'object', properties: { v: { type: 'number' } } },
+          },
+        },
+      };
+      const res1 = await authRequest('/api/v1/channels/config-update', {
         method: 'PATCH',
-        body: JSON.stringify({ schema, strict: true }),
+        body: JSON.stringify({ config, strict: true }),
       });
       expect(res1.status).toBe(200);
       const body1 = (await res1.json()) as {
-        schema: Record<string, unknown> | null;
+        config: Record<string, unknown> | null;
         strict: boolean;
       };
-      expect(body1.schema).toEqual(schema);
+      expect(body1.config).toEqual(config);
       expect(body1.strict).toBe(true);
 
-      // Clear schema
-      const res2 = await authRequest('/api/v1/channels/schema-update', {
+      // Clear config
+      const res2 = await authRequest('/api/v1/channels/config-update', {
         method: 'PATCH',
-        body: JSON.stringify({ schema: null, strict: false }),
+        body: JSON.stringify({ config: null, strict: false }),
       });
       expect(res2.status).toBe(200);
       const body2 = (await res2.json()) as {
-        schema: Record<string, unknown> | null;
+        config: Record<string, unknown> | null;
         strict: boolean;
       };
-      expect(body2.schema).toBeNull();
+      expect(body2.config).toBeNull();
       expect(body2.strict).toBe(false);
     });
 

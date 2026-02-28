@@ -47,8 +47,8 @@ export interface CreateChannelOptions {
   description?: string;
   /** Whether the channel is publicly accessible. Defaults to `true`. */
   is_public?: boolean;
-  /** Optional JSON Schema for event payload validation. */
-  schema?: Record<string, unknown>;
+  /** Optional channel config (types, actions, components, display). */
+  config?: Record<string, unknown>;
   /** When `true`, events are rejected if they don't match `schema`. */
   strict?: boolean;
 }
@@ -63,8 +63,8 @@ export interface UpdateChannelOptions {
   tags?: string[] | null;
   /** Whether the channel is publicly accessible. */
   is_public?: boolean;
-  /** JSON Schema for event payload validation (set to `null` to clear). */
-  schema?: Record<string, unknown> | null;
+  /** Channel config (set to `null` to clear). */
+  config?: Record<string, unknown> | null;
   /** When `true`, events are rejected if they don't match `schema`. */
   strict?: boolean;
 }

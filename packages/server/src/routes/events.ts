@@ -128,16 +128,21 @@ export class PublishEvents extends OpenAPIRoute {
     const publisherId = jwtIssuer && rawSub ? `${jwtIssuer}:${rawSub}` : rawSub;
     const publisherName = jwt.name ?? null;
 
-    const strictSchema =
-      channel.strict && channel.schema
-        ? (JSON.parse(channel.schema) as Record<
-            string,
-            {
-              required?: string[];
-              properties?: Record<string, unknown>;
-            }
-          >)
-        : null;
+    let strictSchema: Record<
+      string,
+      { required?: string[]; properties?: Record<string, unknown> }
+    > | null = null;
+
+    if (channel.strict && channel.config) {
+      const parsed = JSON.parse(channel.config) as {
+        types?: Record<string, { schema?: Record<string, unknown> }>;
+      };
+      if (parsed.types) {
+        strictSchema = Object.fromEntries(
+          Object.entries(parsed.types).map(([k, v]) => [k, v.schema ?? v]),
+        );
+      }
+    }
 
     const serverUrl = new URL(c.req.url).origin;
 

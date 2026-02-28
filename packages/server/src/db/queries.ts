@@ -17,18 +17,18 @@ export async function createChannel(
     description?: string;
     tags?: string[];
     is_public?: boolean;
-    schema?: Record<string, unknown>;
+    config?: Record<string, unknown>;
     strict?: boolean;
   },
 ): Promise<Channel> {
   const isPublic = channel.is_public === false ? 0 : 1;
   const strict = channel.strict ? 1 : 0;
-  const schema = channel.schema ? JSON.stringify(channel.schema) : null;
+  const config = channel.config ? JSON.stringify(channel.config) : null;
   const tags = channel.tags ? JSON.stringify(channel.tags) : null;
 
   await db
     .prepare(
-      `INSERT INTO channels (id, name, description, tags, is_public, schema, strict) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO channels (id, name, description, tags, is_public, config, strict) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       channel.id,
@@ -36,7 +36,7 @@ export async function createChannel(
       channel.description ?? null,
       tags,
       isPublic,
-      schema,
+      config,
       strict,
     )
     .run();
@@ -57,7 +57,7 @@ export async function updateChannel(
     description?: string | null;
     tags?: string[] | null;
     is_public?: boolean;
-    schema?: Record<string, unknown> | null;
+    config?: Record<string, unknown> | null;
     strict?: boolean;
   },
 ): Promise<Channel | null> {
@@ -87,9 +87,9 @@ export async function updateChannel(
     setClauses.push('is_public = ?');
     binds.push(fields.is_public ? 1 : 0);
   }
-  if (fields.schema !== undefined) {
-    setClauses.push('schema = ?');
-    binds.push(fields.schema ? JSON.stringify(fields.schema) : null);
+  if (fields.config !== undefined) {
+    setClauses.push('config = ?');
+    binds.push(fields.config ? JSON.stringify(fields.config) : null);
   }
   if (fields.strict !== undefined) {
     setClauses.push('strict = ?');
@@ -130,7 +130,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
         c.description,
         c.tags,
         c.is_public,
-        c.schema,
+        c.config,
         c.strict,
         COALESCE(e.event_count, 0) as event_count,
         e.last_event_at
@@ -151,7 +151,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
       description: string | null;
       tags: string | null;
       is_public: number;
-      schema: string | null;
+      config: string | null;
       strict: number;
       event_count: number;
       last_event_at: string | null;
@@ -163,7 +163,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
     description: row.description,
     tags: row.tags ? JSON.parse(row.tags) : [],
     is_public: row.is_public === 1,
-    schema: row.schema ? JSON.parse(row.schema) : null,
+    config: row.config ? JSON.parse(row.config) : null,
     strict: row.strict === 1,
     event_count: row.event_count,
     last_event_at: row.last_event_at,

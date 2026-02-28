@@ -81,6 +81,6 @@
   <div class="flex-1"></div>
   <footer class="mt-12 pt-4 pb-[env(safe-area-inset-bottom)] border-t border-border text-[10px] text-muted-foreground/40 flex items-center justify-between">
     <span>Powered by <a href="https://zooid.dev" class="underline hover:text-muted-foreground">Zooid</a></span>
-    <a href="https://github.com/zooid-ai/zooid" class="underline hover:text-muted-foreground">Star us on GitHub</a>
+    <a href="https://github.com/zooid-ai/zooid" class="underline hover:text-muted-foreground">Star on GitHub</a>
   </footer>
 </div>

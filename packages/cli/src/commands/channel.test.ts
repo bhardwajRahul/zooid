@@ -113,7 +113,7 @@ describe('channel commands', () => {
         description: null,
         tags: ['ai'],
         is_public: false,
-        schema: null,
+        config: null,
         strict: false,
       });
 

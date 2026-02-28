@@ -64,7 +64,7 @@ export class CreateChannel extends OpenAPIRoute {
               description: z.string().optional(),
               tags: z.array(z.string()).optional(),
               is_public: z.boolean().optional(),
-              schema: z.record(z.string(), z.unknown()).optional(),
+              config: z.record(z.string(), z.unknown()).optional(),
               strict: z.boolean().optional(),
             }),
           },
@@ -133,8 +133,8 @@ export class CreateChannel extends OpenAPIRoute {
       );
     }
 
-    if (body.strict && !body.schema) {
-      return c.json({ error: 'strict channels require a schema' }, 400);
+    if (body.strict && !body.config) {
+      return c.json({ error: 'strict channels require a config' }, 400);
     }
 
     const existing = await getChannel(c.env.DB, body.id);
@@ -181,7 +181,7 @@ export class UpdateChannel extends OpenAPIRoute {
               description: z.string().nullable().optional(),
               tags: z.array(z.string()).nullable().optional(),
               is_public: z.boolean().optional(),
-              schema: z.record(z.string(), z.unknown()).nullable().optional(),
+              config: z.record(z.string(), z.unknown()).nullable().optional(),
               strict: z.boolean().optional(),
             }),
           },
@@ -199,7 +199,7 @@ export class UpdateChannel extends OpenAPIRoute {
               description: z.string().nullable(),
               tags: z.array(z.string()),
               is_public: z.boolean(),
-              schema: z.record(z.string(), z.unknown()).nullable(),
+              config: z.record(z.string(), z.unknown()).nullable(),
               strict: z.boolean(),
             }),
           },
@@ -245,10 +245,10 @@ export class UpdateChannel extends OpenAPIRoute {
     const { channelId } = data.params;
     const body = data.body;
 
-    if (body.strict && !body.schema) {
+    if (body.strict && !body.config) {
       const existing = await getChannel(c.env.DB, channelId);
-      if (existing && !existing.schema) {
-        return c.json({ error: 'strict channels require a schema' }, 400);
+      if (existing && !existing.config) {
+        return c.json({ error: 'strict channels require a config' }, 400);
       }
     }
 
@@ -263,7 +263,7 @@ export class UpdateChannel extends OpenAPIRoute {
       description: channel.description ?? null,
       tags: channel.tags ? JSON.parse(channel.tags as string) : [],
       is_public: (channel.is_public as unknown as number) === 1,
-      schema: channel.schema ? JSON.parse(channel.schema as string) : null,
+      config: channel.config ? JSON.parse(channel.config as string) : null,
       strict: (channel.strict as unknown as number) === 1,
     });
   }

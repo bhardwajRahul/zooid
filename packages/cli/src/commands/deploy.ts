@@ -454,7 +454,10 @@ export async function runDeploy(): Promise<void> {
     }
 
     // Run column migrations (idempotent — ignore "duplicate column" errors)
-    const migrations = ['ALTER TABLE events ADD COLUMN publisher_name TEXT'];
+    const migrations = [
+      'ALTER TABLE events ADD COLUMN publisher_name TEXT',
+      'ALTER TABLE channels ADD COLUMN config TEXT',
+    ];
     for (const sql of migrations) {
       try {
         wrangler(
@@ -465,6 +468,18 @@ export async function runDeploy(): Promise<void> {
       } catch {
         // Column already exists — skip
       }
+    }
+
+    // Migrate schema → config (idempotent: only runs where config IS NULL)
+    try {
+      const dataMigrationSql = `UPDATE channels SET config = json_object('types', (SELECT json_group_object(key, json_object('schema', json_each.value)) FROM json_each(schema))) WHERE schema IS NOT NULL AND config IS NULL`;
+      wrangler(
+        `d1 execute ${dbName} --remote --command="${dataMigrationSql}"`,
+        stagingDir,
+        creds,
+      );
+    } catch {
+      // Non-fatal — schema column may not exist on fresh deploys
     }
 
     // Ensure EdDSA key is registered (upgrades old HS256-only deploys)

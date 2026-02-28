@@ -154,7 +154,7 @@ describe('ZooidClient', () => {
           description: null,
           tags: ['new'],
           is_public: false,
-          schema: null,
+          config: null,
           strict: false,
         }),
       );

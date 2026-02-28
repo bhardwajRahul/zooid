@@ -253,18 +253,23 @@ channelCmd
   )
   .action(async (id, opts) => {
     try {
-      let schema: Record<string, unknown> | undefined;
+      let config: Record<string, unknown> | undefined;
       if (opts.schema) {
         const fs = await import('node:fs');
         const raw = fs.readFileSync(opts.schema, 'utf-8');
-        schema = JSON.parse(raw);
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const types: Record<string, unknown> = {};
+        for (const [eventType, schemaDef] of Object.entries(parsed)) {
+          types[eventType] = { schema: schemaDef };
+        }
+        config = { types };
       }
       const result = await runChannelCreate(id, {
         name: opts.name,
         description: opts.description,
         public: opts.private ? false : true,
         strict: opts.strict,
-        schema,
+        config,
       });
       printSuccess(`Created channel: ${id}`);
       printInfo('Publish token', result.publish_token);
@@ -300,7 +305,12 @@ channelCmd
       if (opts.schema) {
         const fs = await import('node:fs');
         const raw = fs.readFileSync(opts.schema, 'utf-8');
-        fields.schema = JSON.parse(raw);
+        const parsed = JSON.parse(raw) as Record<string, unknown>;
+        const types: Record<string, unknown> = {};
+        for (const [eventType, schemaDef] of Object.entries(parsed)) {
+          types[eventType] = { schema: schemaDef };
+        }
+        fields.config = { types };
       }
       if (opts.strict !== undefined) fields.strict = opts.strict;
 

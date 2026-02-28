@@ -19,7 +19,7 @@ export interface ChannelCreateOptions {
   description?: string;
   public?: boolean;
   strict?: boolean;
-  schema?: Record<string, unknown>;
+  config?: Record<string, unknown>;
 }
 
 export async function runChannelCreate(
@@ -34,7 +34,7 @@ export async function runChannelCreate(
     description: options.description,
     is_public: options.public ?? true,
     strict: options.strict,
-    schema: options.schema,
+    config: options.config,
   });
 
   // Save tokens to config (only when using real config, not injected client)

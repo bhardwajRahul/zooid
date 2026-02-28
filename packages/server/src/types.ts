@@ -46,7 +46,7 @@ export interface Channel {
   description: string | null;
   tags: string | null;
   is_public: number;
-  schema: string | null;
+  config: string | null;
   strict: number;
   max_subscribers: number;
   created_at: string;

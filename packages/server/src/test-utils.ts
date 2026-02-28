@@ -7,7 +7,7 @@ const SCHEMA_STATEMENTS = [
     description TEXT,
     tags TEXT,
     is_public INTEGER NOT NULL DEFAULT 1,
-    schema TEXT,
+    config TEXT,
     strict INTEGER NOT NULL DEFAULT 0,
     max_subscribers INTEGER DEFAULT 100,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
