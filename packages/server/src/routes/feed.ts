@@ -46,9 +46,9 @@ feed.get('/channels/:channelId/feed.json', async (c) => {
   const result = await pollEvents(db, channelId, { limit: 50 });
   const format = c.req.query('format') || 'yaml';
 
-  const items = result.events.map((event) =>
-    formatItem(event, channelId, format),
-  );
+  const items = [...result.events]
+    .reverse()
+    .map((event) => formatItem(event, channelId, format));
 
   const jsonFeed = {
     version: 'https://jsonfeed.org/version/1.1',

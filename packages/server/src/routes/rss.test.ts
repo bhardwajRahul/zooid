@@ -212,6 +212,40 @@ describe('RSS routes', () => {
       expect(res.status).toBe(200);
     });
 
+    it('returns items in reverse-chronological order (newest first)', async () => {
+      // Publish three events in order
+      for (const label of ['first', 'second', 'third']) {
+        await publishRequest(
+          '/api/v1/channels/rss-channel/events',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              type: label,
+              data: { label },
+            }),
+          },
+          'rss-channel',
+        );
+      }
+
+      const res = await app.request(
+        '/api/v1/channels/rss-channel/rss',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      expect(res.status).toBe(200);
+      const xml = await res.text();
+
+      const firstIdx = xml.indexOf('[first]');
+      const secondIdx = xml.indexOf('[second]');
+      const thirdIdx = xml.indexOf('[third]');
+
+      // Newest ("third") should appear before "second", which appears before "first"
+      expect(thirdIdx).toBeLessThan(secondIdx);
+      expect(secondIdx).toBeLessThan(firstIdx);
+    });
+
     it('returns 404 for non-existent channel', async () => {
       const res = await app.request(
         '/api/v1/channels/nonexistent/rss',

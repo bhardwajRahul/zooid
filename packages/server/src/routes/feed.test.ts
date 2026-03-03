@@ -229,6 +229,38 @@ describe('JSON Feed routes', () => {
       expect(res.status).toBe(200);
     });
 
+    it('returns items in reverse-chronological order (newest first)', async () => {
+      // Publish three events in order
+      for (const label of ['first', 'second', 'third']) {
+        await publishRequest(
+          '/api/v1/channels/feed-channel/events',
+          {
+            method: 'POST',
+            body: JSON.stringify({
+              type: label,
+              data: { label },
+            }),
+          },
+          'feed-channel',
+        );
+      }
+
+      const res = await app.request(
+        '/api/v1/channels/feed-channel/feed.json',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as FeedBody;
+
+      expect(body.items).toHaveLength(3);
+      // Newest ("third") should be first in the array
+      expect(body.items[0].title).toContain('[third]');
+      expect(body.items[1].title).toContain('[second]');
+      expect(body.items[2].title).toContain('[first]');
+    });
+
     it('returns 404 for non-existent channel', async () => {
       const res = await app.request(
         '/api/v1/channels/nonexistent/feed.json',

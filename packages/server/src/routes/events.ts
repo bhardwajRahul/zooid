@@ -139,7 +139,11 @@ export class PublishEvents extends OpenAPIRoute {
       };
       if (parsed.types) {
         strictSchema = Object.fromEntries(
-          Object.entries(parsed.types).map(([k, v]) => [k, v.schema ?? v]),
+          Object.entries(parsed.types).map(([k, v]) => [
+            k,
+            v.schema ??
+              ({ properties: v } as { properties?: Record<string, unknown> }),
+          ]),
         );
       }
     }

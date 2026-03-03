@@ -47,7 +47,9 @@ rss.get('/channels/:channelId/rss', async (c) => {
   const result = await pollEvents(db, channelId, { limit: 50 });
   const format = c.req.query('format') || 'yaml';
 
-  const items = result.events.map((event) => formatItem(event, format));
+  const items = [...result.events]
+    .reverse()
+    .map((event) => formatItem(event, format));
 
   const xml = buildXml({
     rss: {
