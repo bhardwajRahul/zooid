@@ -58,7 +58,7 @@ export async function runDev(port = 8787): Promise<void> {
   printSuccess('Local server configured');
   printInfo('Server', serverUrl);
   printInfo('Admin token', adminToken.slice(0, 20) + '...');
-  printInfo('Config saved to', '~/.zooid/config.json');
+  printInfo('Config saved to', '~/.zooid/state.json');
   console.log('');
   console.log('Starting wrangler dev...');
   console.log('');

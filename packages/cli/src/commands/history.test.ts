@@ -46,7 +46,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries).toHaveLength(2);
@@ -72,7 +72,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries).toHaveLength(1);
@@ -107,7 +107,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries).toHaveLength(2);
@@ -145,7 +145,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries).toHaveLength(1);
@@ -183,7 +183,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries).toHaveLength(1);
@@ -207,7 +207,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries[0].server).toBe('https://a.com');
@@ -230,7 +230,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries[0].server).toBe('http://localhost:8787');
@@ -253,7 +253,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries[0].server).toBe('http://127.0.0.1:8787');
@@ -277,7 +277,7 @@ describe('runHistory()', () => {
         },
       },
     };
-    fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+    fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
     const entries = runHistory();
     expect(entries[0].name).toBe('My Channel');

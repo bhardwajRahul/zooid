@@ -31,7 +31,7 @@ function writeConfig(channelTokens: Record<string, string> = {}) {
   }
   fs.mkdirSync(tmpDir, { recursive: true });
   fs.writeFileSync(
-    path.join(tmpDir, 'config.json'),
+    path.join(tmpDir, 'state.json'),
     JSON.stringify({
       server: 'https://test.workers.dev',
       admin_token: 'admin-jwt',

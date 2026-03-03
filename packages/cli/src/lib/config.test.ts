@@ -7,12 +7,13 @@ import {
   saveConfig,
   switchServer,
   loadConfigFile,
-  getConfigPath,
+  getStatePath,
   loadDirectoryToken,
   saveDirectoryToken,
   recordTailHistory,
   type ZooidConfigFile,
 } from './config';
+import { STATE_FILENAME, LEGACY_STATE_FILENAME } from './constants';
 
 let tmpDir: string;
 
@@ -27,10 +28,42 @@ afterEach(() => {
 });
 
 describe('config', () => {
-  describe('getConfigPath()', () => {
+  describe('getStatePath()', () => {
     it('returns path inside ZOOID_CONFIG_DIR when set', () => {
-      const p = getConfigPath();
-      expect(p).toBe(path.join(tmpDir, 'config.json'));
+      const p = getStatePath();
+      expect(p).toBe(path.join(tmpDir, 'state.json'));
+    });
+
+    it('auto-migrates config.json to state.json', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, LEGACY_STATE_FILENAME),
+        JSON.stringify({ current: 'https://a.com', servers: {} }),
+      );
+
+      const p = getStatePath();
+      expect(p).toBe(path.join(tmpDir, STATE_FILENAME));
+      expect(fs.existsSync(path.join(tmpDir, STATE_FILENAME))).toBe(true);
+      expect(fs.existsSync(path.join(tmpDir, LEGACY_STATE_FILENAME))).toBe(
+        false,
+      );
+
+      const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      expect(data.current).toBe('https://a.com');
+    });
+
+    it('does not migrate when state.json already exists', () => {
+      fs.writeFileSync(
+        path.join(tmpDir, STATE_FILENAME),
+        JSON.stringify({ current: 'https://new.com' }),
+      );
+      fs.writeFileSync(
+        path.join(tmpDir, LEGACY_STATE_FILENAME),
+        JSON.stringify({ current: 'https://old.com' }),
+      );
+
+      const p = getStatePath();
+      const data = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      expect(data.current).toBe('https://new.com');
     });
   });
 
@@ -50,7 +83,7 @@ describe('config', () => {
           },
         },
       };
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
       const config = loadConfig();
       expect(config.server).toBe('https://example.com');
@@ -58,7 +91,7 @@ describe('config', () => {
     });
 
     it('returns empty config on invalid JSON', () => {
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), 'not json');
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), 'not json');
       const config = loadConfig();
       expect(config).toEqual({});
     });
@@ -70,14 +103,14 @@ describe('config', () => {
         worker_url: 'https://old.workers.dev',
         channels: { ch1: { publish_token: 'pt' } },
       };
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(old));
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(old));
 
       const config = loadConfig();
       expect(config.server).toBe('https://old.com');
       expect(config.admin_token).toBe('old-tok');
 
       // Verify file was migrated on disk
-      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const migrated = JSON.parse(raw);
       expect(migrated.current).toBe('https://old.com');
       expect(migrated.servers['https://old.com'].admin_token).toBe('old-tok');
@@ -94,7 +127,7 @@ describe('config', () => {
         'https://test.com',
       );
 
-      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const file = JSON.parse(raw) as ZooidConfigFile;
       expect(file.current).toBe('https://test.com');
       expect(file.servers!['https://test.com'].admin_token).toBe('abc');
@@ -144,7 +177,7 @@ describe('config', () => {
 
     it('returns undefined when directory_token is not set', () => {
       const file: ZooidConfigFile = { current: 'https://a.com', servers: {} };
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
       expect(loadDirectoryToken()).toBeUndefined();
     });
 
@@ -154,7 +187,7 @@ describe('config', () => {
         servers: {},
         directory_token: 'zd_test123',
       };
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
       expect(loadDirectoryToken()).toBe('zd_test123');
     });
   });
@@ -164,7 +197,7 @@ describe('config', () => {
       saveConfig({ admin_token: 'tok' }, 'https://a.com');
       saveDirectoryToken('zd_newtoken');
 
-      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const file = JSON.parse(raw) as ZooidConfigFile;
       expect(file.directory_token).toBe('zd_newtoken');
       // Preserves existing config
@@ -175,7 +208,7 @@ describe('config', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
       saveDirectoryToken('zd_fresh');
 
-      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const file = JSON.parse(raw) as ZooidConfigFile;
       expect(file.directory_token).toBe('zd_fresh');
     });
@@ -186,7 +219,7 @@ describe('config', () => {
         servers: {},
         directory_token: 'zd_old',
       };
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 
       saveDirectoryToken('zd_new');
 
@@ -276,6 +309,46 @@ describe('config', () => {
 
     it('silently skips when no server is resolvable', () => {
       expect(() => recordTailHistory('ch')).not.toThrow();
+    });
+
+    it('stores last_event_id when provided', () => {
+      saveConfig({}, 'https://a.com');
+      recordTailHistory('ch', 'https://a.com', undefined, 'evt-abc123');
+
+      const file = loadConfigFile();
+      const stats = file.servers!['https://a.com'].channels!['ch'].stats!;
+      expect(stats.last_event_id).toBe('evt-abc123');
+    });
+
+    it('updates last_event_id on subsequent tails', () => {
+      saveConfig({}, 'https://a.com');
+      recordTailHistory('ch', 'https://a.com', undefined, 'evt-1');
+      recordTailHistory('ch', 'https://a.com', undefined, 'evt-2');
+
+      const file = loadConfigFile();
+      const stats = file.servers!['https://a.com'].channels!['ch'].stats!;
+      expect(stats.last_event_id).toBe('evt-2');
+      expect(stats.num_tails).toBe(2);
+    });
+
+    it('omits last_event_id when not provided and none exists', () => {
+      saveConfig({}, 'https://a.com');
+      recordTailHistory('ch', 'https://a.com');
+
+      const file = loadConfigFile();
+      const stats = file.servers!['https://a.com'].channels!['ch'].stats!;
+      expect(stats.last_event_id).toBeUndefined();
+    });
+
+    it('preserves existing last_event_id when not provided', () => {
+      saveConfig({}, 'https://a.com');
+      recordTailHistory('ch', 'https://a.com', undefined, 'evt-1');
+      recordTailHistory('ch', 'https://a.com');
+
+      const file = loadConfigFile();
+      const stats = file.servers!['https://a.com'].channels!['ch'].stats!;
+      expect(stats.last_event_id).toBe('evt-1');
+      expect(stats.num_tails).toBe(2);
     });
   });
 });

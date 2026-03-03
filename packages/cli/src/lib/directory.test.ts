@@ -19,7 +19,7 @@ afterEach(() => {
 function writeConfig(extra = {}) {
   const config = { current: 'https://test.workers.dev', servers: {}, ...extra };
   fs.mkdirSync(tmpDir, { recursive: true });
-  fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(config));
+  fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(config));
 }
 
 describe('getDirectoryToken()', () => {

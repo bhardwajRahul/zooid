@@ -1,11 +1,13 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { STATE_FILENAME, LEGACY_STATE_FILENAME } from './constants';
 
 export interface ChannelStats {
   num_tails: number;
   last_tailed_at: string;
   first_tailed_at: string;
+  last_event_id?: string;
 }
 
 export interface ChannelTokens {
@@ -15,7 +17,7 @@ export interface ChannelTokens {
   stats?: ChannelStats;
 }
 
-/** Per-server credentials stored in ~/.zooid/config.json */
+/** Per-server credentials stored in ~/.zooid/state.json */
 export interface ServerConfig {
   worker_url?: string;
   admin_token?: string;
@@ -42,14 +44,28 @@ export function getConfigDir(): string {
   return process.env.ZOOID_CONFIG_DIR ?? path.join(os.homedir(), '.zooid');
 }
 
-export function getConfigPath(): string {
-  return path.join(getConfigDir(), 'config.json');
+export function getStatePath(): string {
+  const dir = getConfigDir();
+  const statePath = path.join(dir, STATE_FILENAME);
+
+  // Auto-migrate: rename config.json → state.json
+  if (!fs.existsSync(statePath)) {
+    const legacyPath = path.join(dir, LEGACY_STATE_FILENAME);
+    if (fs.existsSync(legacyPath)) {
+      fs.renameSync(legacyPath, statePath);
+    }
+  }
+
+  return statePath;
 }
+
+/** @deprecated Use getStatePath() instead. */
+export const getConfigPath = getStatePath;
 
 /** Read the raw config file, auto-migrating old flat format. */
 export function loadConfigFile(): ZooidConfigFile {
   try {
-    const raw = fs.readFileSync(getConfigPath(), 'utf-8');
+    const raw = fs.readFileSync(getStatePath(), 'utf-8');
     const parsed = JSON.parse(raw);
 
     // Migrate old flat format: { server, admin_token, worker_url, channels }
@@ -81,11 +97,13 @@ export function loadConfigFile(): ZooidConfigFile {
   }
 }
 
+let serverNoteShown = false;
+
 /**
  * Resolve which server to use.
  * 1. zooid.json in cwd → use its url
  * 2. Fall back to `current` in config file
- * 3. Warn if both exist and differ
+ * 3. Warn once if both exist and differ
  */
 export function resolveServer(): string | undefined {
   const file = loadConfigFile();
@@ -104,7 +122,8 @@ export function resolveServer(): string | undefined {
   }
 
   if (cwdUrl) {
-    if (file.current && file.current !== cwdUrl) {
+    if (file.current && file.current !== cwdUrl && !serverNoteShown) {
+      serverNoteShown = true;
       console.log(
         `  Note: using server from zooid.json (${cwdUrl}), current is ${file.current}`,
       );
@@ -197,6 +216,7 @@ export function recordTailHistory(
   channelId: string,
   serverUrl?: string,
   name?: string,
+  lastEventId?: string,
 ): void {
   const url = serverUrl ?? resolveServer();
   if (!url) return;
@@ -214,6 +234,7 @@ export function recordTailHistory(
     num_tails: (existing?.num_tails ?? 0) + 1,
     last_tailed_at: now,
     first_tailed_at: existing?.first_tailed_at ?? now,
+    last_event_id: lastEventId ?? existing?.last_event_id,
   };
 
   if (name) {

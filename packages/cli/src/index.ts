@@ -32,7 +32,7 @@ import {
   flushInBackground,
   getInstallId,
 } from './lib/telemetry';
-import { loadConfig, recordTailHistory } from './lib/config';
+import { loadConfig, loadConfigFile, recordTailHistory } from './lib/config';
 import { resolveChannel, type ResolveChannelResult } from './lib/client';
 import type { TelemetryEvent } from './lib/telemetry';
 
@@ -67,7 +67,12 @@ async function resolveAndRecord(
 
 const program = new Command();
 
-program.name('zooid').description('🪸 Pub/sub for AI agents').version('0.0.0');
+declare const __CLI_VERSION__: string;
+
+program
+  .name('zooid')
+  .description('🪸 Pub/sub for AI agents')
+  .version(__CLI_VERSION__);
 
 // --- telemetry hooks ---
 
@@ -425,10 +430,49 @@ program
     'auto',
   )
   .option('--interval <ms>', 'Poll interval in ms for follow mode', '5000')
+  .option('--unseen', 'Only show events since your last tail')
   .option('--token <token>', 'Auth token (for remote/private channels)')
   .action(async (channel, opts) => {
     try {
-      const { client, channelId } = await resolveAndRecord(channel, opts);
+      // Read --unseen stats before resolveAndRecord overwrites last_tailed_at
+      let unseenCursor: string | undefined;
+      let unseenSince: string | undefined;
+      if (opts.unseen) {
+        const file = loadConfigFile();
+        const { parseChannelUrl } = await import('./lib/client');
+        const { resolveServer } = await import('./lib/config');
+        const parsed = parseChannelUrl(channel);
+        const channelId = parsed?.channelId ?? channel;
+        const serverUrl = parsed?.server ?? resolveServer();
+        const stats = serverUrl
+          ? file.servers?.[serverUrl]?.channels?.[channelId]?.stats
+          : undefined;
+        if (!stats) {
+          throw new Error(
+            `No tail history for ${channelId} — tail it at least once first`,
+          );
+        }
+        if (stats.last_event_id) {
+          unseenCursor = stats.last_event_id;
+        } else if (stats.last_tailed_at) {
+          unseenSince = stats.last_tailed_at;
+        }
+      }
+
+      const { client, channelId, server } = await resolveAndRecord(
+        channel,
+        opts,
+      );
+
+      // Apply --unseen params
+      if (opts.unseen) {
+        if (unseenCursor) {
+          opts.cursor = unseenCursor;
+        } else if (unseenSince) {
+          opts.since = unseenSince;
+        }
+      }
+
       if (opts.follow) {
         const mode = opts.mode as 'auto' | 'ws' | 'poll';
         const transport =
@@ -458,6 +502,13 @@ program
           },
           client,
         );
+
+        // Record last event ID for --unseen on next run
+        if (result.events.length > 0) {
+          const lastEvent = result.events[result.events.length - 1];
+          recordTailHistory(channelId, server, undefined, lastEvent.id);
+        }
+
         if (result.events.length === 0) {
           console.log('No events.');
         } else {

@@ -37,7 +37,7 @@ function writeConfig(overrides = {}) {
     },
   };
   fs.mkdirSync(tmpDir, { recursive: true });
-  fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(config));
+  fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(config));
 }
 
 describe('token commands', () => {
@@ -89,7 +89,7 @@ describe('token commands', () => {
 
     it('throws when no server configured', async () => {
       fs.mkdirSync(tmpDir, { recursive: true });
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), '{}');
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), '{}');
 
       await expect(runTokenMint('admin', {})).rejects.toThrow(
         'No server configured',

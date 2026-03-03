@@ -10,7 +10,7 @@ import {
   loadConfig,
   loadConfigFile,
   resolveServer,
-  getConfigPath,
+  getStatePath,
   saveConfig,
 } from '../lib/config';
 
@@ -81,7 +81,7 @@ export async function runChannelDelete(
     if (serverUrl && file.servers?.[serverUrl]?.channels?.[channelId]) {
       delete file.servers[serverUrl].channels![channelId];
       const fs = await import('node:fs');
-      fs.writeFileSync(getConfigPath(), JSON.stringify(file, null, 2) + '\n');
+      fs.writeFileSync(getStatePath(), JSON.stringify(file, null, 2) + '\n');
     }
   }
 }

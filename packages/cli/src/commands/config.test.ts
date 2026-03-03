@@ -47,7 +47,7 @@ describe('config commands', () => {
     it('sets telemetry on', () => {
       runConfigSet('telemetry', 'on');
       const raw = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8'),
+        fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'),
       );
       expect(raw.telemetry).toBe(true);
     });
@@ -55,7 +55,7 @@ describe('config commands', () => {
     it('sets telemetry off', () => {
       runConfigSet('telemetry', 'off');
       const raw = JSON.parse(
-        fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8'),
+        fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'),
       );
       expect(raw.telemetry).toBe(false);
     });

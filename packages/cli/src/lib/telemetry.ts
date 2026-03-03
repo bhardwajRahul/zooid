@@ -1,11 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { getConfigDir } from './config';
+import { spawn } from 'node:child_process';
+import { getConfigDir, getStatePath } from './config';
 
 const TELEMETRY_ENDPOINT = 'https://telemetry.zooid.dev/v1/events';
 const QUEUE_FILENAME = 'telemetry.json';
-const CONFIG_FILENAME = 'config.json';
 const MAX_QUEUE_SIZE = 1000;
 
 export interface TelemetryEvent {
@@ -115,8 +115,6 @@ export function flushInBackground(): void {
   }
 
   try {
-    const { spawn } =
-      require('node:child_process') as typeof import('node:child_process');
     const child = spawn(process.execPath, ['-e', flushScript(queuePath)], {
       detached: true,
       stdio: 'ignore',
@@ -130,7 +128,7 @@ export function flushInBackground(): void {
 
 /** Get or create a stable anonymous install ID. */
 export function getInstallId(): string {
-  const configPath = path.join(getConfigDir(), CONFIG_FILENAME);
+  const configPath = getStatePath();
 
   try {
     const raw = fs.readFileSync(configPath, 'utf-8');
@@ -153,7 +151,7 @@ export function getQueuePath(): string {
 // --- internal helpers ---
 
 function readTelemetryFlag(): boolean | undefined {
-  const configPath = path.join(getConfigDir(), CONFIG_FILENAME);
+  const configPath = getStatePath();
   try {
     const raw = fs.readFileSync(configPath, 'utf-8');
     const parsed = JSON.parse(raw);
@@ -172,7 +170,7 @@ export function writeTelemetryFlag(enabled: boolean): void {
 /** Merge a key into the top-level config file without clobbering other fields. */
 function persistToConfig(key: string, value: unknown): void {
   const dir = getConfigDir();
-  const configPath = path.join(dir, CONFIG_FILENAME);
+  const configPath = getStatePath();
 
   try {
     fs.mkdirSync(dir, { recursive: true });

@@ -45,7 +45,7 @@ function writeConfig(overrides = {}) {
     },
   };
   fs.mkdirSync(tmpDir, { recursive: true });
-  fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(config));
+  fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(config));
 }
 
 describe('channel commands', () => {
@@ -73,7 +73,7 @@ describe('channel commands', () => {
       expect(result.id).toBe('signals');
       expect(result.publish_token).toBe('pub-tok');
 
-      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const file = JSON.parse(raw);
       const serverEntry = file.servers[TEST_SERVER];
       expect(serverEntry.channels.signals.publish_token).toBe('pub-tok');
@@ -82,7 +82,7 @@ describe('channel commands', () => {
 
     it('throws when no server configured', async () => {
       fs.mkdirSync(tmpDir, { recursive: true });
-      fs.writeFileSync(path.join(tmpDir, 'config.json'), '{}');
+      fs.writeFileSync(path.join(tmpDir, 'state.json'), '{}');
 
       await expect(runChannelCreate('test', { name: 'Test' })).rejects.toThrow(
         'No server configured',
@@ -164,7 +164,7 @@ describe('channel commands', () => {
 
       await runChannelDelete('signals');
 
-      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const file = JSON.parse(raw);
       expect(file.servers[TEST_SERVER].channels.signals).toBeUndefined();
       expect(file.servers[TEST_SERVER].channels.other).toBeDefined();

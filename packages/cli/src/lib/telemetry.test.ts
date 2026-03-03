@@ -25,12 +25,12 @@ afterEach(() => {
 });
 
 function readConfig(): Record<string, unknown> {
-  return JSON.parse(fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8'));
+  return JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
 }
 
 function writeConfig(data: Record<string, unknown>): void {
   fs.mkdirSync(tmpDir, { recursive: true });
-  fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(data));
+  fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(data));
 }
 
 function readQueue(): TelemetryEvent[] {

@@ -552,9 +552,7 @@ export async function runDeploy(): Promise<void> {
     }
 
     if (!adminToken) {
-      printError(
-        'No admin token found in ~/.zooid/config.json for this server',
-      );
+      printError('No admin token found in ~/.zooid/state.json for this server');
       console.log(
         'If this is a first deploy, remove the D1 database and try again.',
       );
@@ -617,7 +615,7 @@ export async function runDeploy(): Promise<void> {
     configToSave.channels = {};
   }
   saveConfig(configToSave, canonicalUrl || undefined);
-  printSuccess('Saved connection config to ~/.zooid/config.json');
+  printSuccess('Saved connection config to ~/.zooid/state.json');
 
   // Cleanup staging dir
   cleanup(stagingDir);
@@ -635,7 +633,7 @@ export async function runDeploy(): Promise<void> {
   if (isFirstDeploy) {
     printInfo('Admin token', adminToken!.slice(0, 20) + '...');
   }
-  printInfo('Config', '~/.zooid/config.json');
+  printInfo('Config', '~/.zooid/state.json');
   console.log('');
   if (isFirstDeploy) {
     console.log('  Next steps:');

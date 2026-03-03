@@ -77,7 +77,7 @@ describe('CLI E2E', () => {
       await cli(['config', 'set', 'server', 'https://a.com']);
       await cli(['config', 'set', 'admin-token', 'tok123']);
 
-      const raw = fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8');
+      const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const config = JSON.parse(raw);
       expect(config.current).toBe('https://a.com');
       expect(config.servers['https://a.com'].admin_token).toBe('tok123');
@@ -153,6 +153,58 @@ describe('CLI E2E', () => {
       // This proves the CLI wired --token through to createClient
       expect(result.exitCode).toBe(1);
       expect(result.stderr).not.toContain('No server configured');
+    });
+  });
+
+  describe('tail --unseen', () => {
+    it('errors when channel has never been tailed', async () => {
+      await cli(['config', 'set', 'server', 'https://fake.workers.dev']);
+
+      const result = await cli(['tail', 'never-tailed', '--unseen']);
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain('No tail history');
+    });
+
+    it('uses last_tailed_at from before the current tail, not the freshly written one', async () => {
+      await cli(['config', 'set', 'server', 'https://fake.workers.dev']);
+
+      // Seed tail history with a known past timestamp
+      const pastTime = '2025-01-01T00:00:00.000Z';
+      const stateFile = JSON.parse(
+        fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'),
+      );
+      stateFile.servers['https://fake.workers.dev'].channels = {
+        'my-channel': {
+          stats: {
+            num_tails: 1,
+            first_tailed_at: pastTime,
+            last_tailed_at: pastTime,
+          },
+        },
+      };
+      fs.writeFileSync(
+        path.join(tmpDir, 'state.json'),
+        JSON.stringify(stateFile, null, 2),
+      );
+
+      const result = await cli(['tail', 'my-channel', '--unseen', '-n', '1']);
+
+      // It will fail with a network error (no real server), but the error
+      // should NOT be "No tail history" — that means --unseen resolved OK.
+      // And the state file should show last_tailed_at was updated to now,
+      // proving resolveAndRecord ran, but --unseen read the old timestamp.
+      expect(result.stderr).not.toContain('No tail history');
+
+      const updated = JSON.parse(
+        fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'),
+      );
+      const stats =
+        updated.servers['https://fake.workers.dev'].channels['my-channel']
+          .stats;
+      // recordTailHistory ran and bumped the count
+      expect(stats.num_tails).toBe(2);
+      // last_tailed_at was updated to something after our seeded past time
+      expect(stats.last_tailed_at).not.toBe(pastTime);
     });
   });
 

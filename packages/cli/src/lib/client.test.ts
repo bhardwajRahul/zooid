@@ -27,11 +27,11 @@ afterEach(() => {
 
 function writeConfig(file: ZooidConfigFile) {
   fs.mkdirSync(tmpDir, { recursive: true });
-  fs.writeFileSync(path.join(tmpDir, 'config.json'), JSON.stringify(file));
+  fs.writeFileSync(path.join(tmpDir, 'state.json'), JSON.stringify(file));
 }
 
 function readConfig(): ZooidConfigFile {
-  return JSON.parse(fs.readFileSync(path.join(tmpDir, 'config.json'), 'utf-8'));
+  return JSON.parse(fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8'));
 }
 
 describe('parseChannelUrl', () => {
