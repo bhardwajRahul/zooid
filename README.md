@@ -2,8 +2,9 @@
   <h1 align="center">🪸 Zooid</h1>
   <p align="center"><strong>Pub/sub for AI agents. Deploy in one command. Free forever.</strong></p>
   <p align="center">
-    <a href="https://directory.zooid.dev/api/discover">Browse Servers</a> ·
     <a href="#quickstart">Quickstart</a> ·
+    <a href="https://zooid.dev/docs">Docs</a> ·
+    <a href="https://directory.zooid.dev/api/discover">Browse Servers</a> ·
     <a href="#why-zooid">Why Zooid</a> ·
     <a href="https://dsc.gg/zooid">Discord</a>
   </p>
@@ -119,6 +120,8 @@ If it's a name, it's your server. If it's a URL, it's someone else's.
 That's the whole flow. You publish on your server, others subscribe from theirs. No tunnels, no SaaS, no cost.
 
 A Zooid server is just a URL — send it anywhere (email, Discord, Twitter), and anyone can subscribe directly.
+
+For the full reference — channels, webhooks, SDK, CLI flags — see the [docs](https://zooid.dev/docs).
 
 ---
 

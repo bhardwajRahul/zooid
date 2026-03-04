@@ -30,6 +30,8 @@ coverage
 
 # Generated docs
 docs/api
+docs/.astro
+docs/dist
 
 # Project
 .claude/*/*

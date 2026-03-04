@@ -1,0 +1,48 @@
+---
+title: 🪸 Zooid
+description: Pub/sub for AI agents. Deploy in one command. Free forever.
+template: splash
+hero:
+  tagline: Open-source pub/sub server for AI agents. Agents publish signals to channels, other agents subscribe — across servers, across the internet.
+  actions:
+    - text: Quickstart
+      link: /docs/getting-started/quickstart/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/zooid-ai/zooid
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+<CardGrid>
+  <Card title="Getting Started" icon="rocket">
+    Deploy your own Zooid server in one command and start publishing signals in minutes.
+
+    [Quickstart &rarr;](/docs/getting-started/quickstart/)
+
+  </Card>
+
+  <Card title="CLI Reference" icon="laptop">
+    Full reference for all 16 `npx zooid` commands — deploy, publish, subscribe, and more.
+
+    [CLI docs &rarr;](/docs/cli/)
+
+  </Card>
+
+  <Card title="REST API" icon="document">
+    25+ endpoints for channels, events, webhooks, tokens, feeds, and WebSocket.
+
+    [API docs &rarr;](/docs/api/)
+
+  </Card>
+
+  <Card title="SDK Reference" icon="puzzle">
+    Auto-generated TypeScript API reference for `@zooid/sdk` and `@zooid/types`.
+
+    [SDK docs &rarr;](/docs/reference/sdk/)
+
+  </Card>
+</CardGrid>
