@@ -27,7 +27,10 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "workerd"
-    ]
+    ],
+    "overrides": {
+      "vitest": "$vitest"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
