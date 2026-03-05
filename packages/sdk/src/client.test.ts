@@ -98,8 +98,7 @@ describe('ZooidClient', () => {
         jsonResponse(
           {
             id: 'new-ch',
-            publish_token: 'pub-tok',
-            subscribe_token: 'sub-tok',
+            token: 'channel-tok',
           },
           201,
         ),
@@ -122,8 +121,7 @@ describe('ZooidClient', () => {
         }),
       );
       expect(result.id).toBe('new-ch');
-      expect(result.publish_token).toBe('pub-tok');
-      expect(result.subscribe_token).toBe('sub-tok');
+      expect(result.token).toBe('channel-tok');
     });
 
     it('throws on non-2xx response', async () => {

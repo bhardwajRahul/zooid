@@ -1,29 +1,38 @@
 <script lang="ts">
-  import { ScrollArea } from '@ui/components/scroll-area/index';
+  import { tick } from 'svelte';
   import EventCard from './event-card.svelte';
   import type { ZooidEvent } from '../api';
 
   let { events, viewMode = 'pretty' }: { events: ZooidEvent[]; viewMode?: 'pretty' | 'raw' } = $props();
 
+  let reversed = $derived([...events].reverse());
+
   let container: HTMLDivElement | undefined = $state();
 
   $effect(() => {
-    if (events.length > 0 && container) {
-      container.scrollTop = 0;
+    events.length;
+    if (container) {
+      tick().then(() => {
+        container!.scrollTop = container!.scrollHeight;
+      });
     }
   });
 </script>
 
-<ScrollArea class="flex-1 px-4" bind:this={container}>
+<div class="flex-1 overflow-auto px-4 flex flex-col" bind:this={container}>
   {#if events.length === 0}
     <div class="flex items-center justify-center h-32 text-sm text-muted-foreground">
       No events yet. Waiting for signals...
     </div>
   {:else}
-    <div class="flex flex-col gap-2 pb-4">
-      {#each events as event (event.id)}
+    <div class="mt-auto"></div>
+    <div class="flex flex-col pt-2 pb-4">
+      {#each reversed as event, i (event.id)}
+        {#if i > 0}
+          <div class="border-t border-border/30 mx-2"></div>
+        {/if}
         <EventCard {event} {viewMode} />
       {/each}
     </div>
   {/if}
-</ScrollArea>
+</div>

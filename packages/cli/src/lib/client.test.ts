@@ -186,8 +186,7 @@ describe('resolveChannel', () => {
 
       const config = readConfig();
       expect(
-        config.servers!['https://my.workers.dev'].channels!.signals
-          .publish_token,
+        config.servers!['https://my.workers.dev'].channels!.signals.token,
       ).toBe('my-pub-tok');
     });
 
@@ -229,8 +228,7 @@ describe('resolveChannel', () => {
       const config = readConfig();
       // Token saved under remote server
       expect(
-        config.servers!['https://other.workers.dev'].channels!.feed
-          .publish_token,
+        config.servers!['https://other.workers.dev'].channels!.feed.token,
       ).toBe('remote-pub-tok');
       // Current server NOT switched
       expect(config.current).toBe('https://my.workers.dev');

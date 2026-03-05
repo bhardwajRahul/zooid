@@ -6,7 +6,6 @@ import {
   cpSync,
   existsSync,
 } from 'fs';
-import { execSync } from 'child_process';
 import { Marked } from 'marked';
 
 const readme = readFileSync('../../README.md', 'utf-8');
@@ -124,9 +123,8 @@ writeFileSync('dist/index.html', html);
 copyFileSync('../../docs/public/favicon.svg', 'dist/favicon.svg');
 copyFileSync('../../.claude/skills/zooid/SKILL.md', 'dist/SKILL.md');
 
-// Build docs and copy into dist/docs/
-console.log('Building docs...');
-execSync('pnpm -C ../../docs build', { stdio: 'inherit' });
+// Copy pre-built docs into dist/docs/
+// (docs are built before homepage via workspace dependency)
 const docsDistPath = '../../docs/dist';
 if (existsSync(docsDistPath)) {
   cpSync(docsDistPath, 'dist/docs', { recursive: true });

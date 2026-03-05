@@ -2,7 +2,7 @@
 editUrl: false
 next: false
 prev: false
-title: "@zooid/types"
+title: '@zooid/types'
 ---
 
 ## Interfaces

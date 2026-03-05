@@ -2,10 +2,10 @@
 editUrl: false
 next: false
 prev: false
-title: "ZooidClientOptions"
+title: 'ZooidClientOptions'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:31](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/types.ts#L31)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:31](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L31)
 
 Options for constructing a [ZooidClient](/docs/reference/sdk/classes/zooidclient/).
 
@@ -15,7 +15,7 @@ Options for constructing a [ZooidClient](/docs/reference/sdk/classes/zooidclient
 
 > `optional` **fetch**: (`input`, `init?`) => `Promise`\<`Response`\>
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:37](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/types.ts#L37)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:37](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L37)
 
 Custom fetch implementation (for testing or custom environments).
 
@@ -35,22 +35,22 @@ Custom fetch implementation (for testing or custom environments).
 
 `Promise`\<`Response`\>
 
-***
+---
 
 ### server
 
 > **server**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:33](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/types.ts#L33)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:33](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L33)
 
 Base URL of the Zooid server (e.g. `"https://zooid.example.workers.dev"`).
 
-***
+---
 
 ### token?
 
 > `optional` **token**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:35](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/types.ts#L35)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:35](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L35)
 
 JWT token (admin, publish, or subscribe scoped).

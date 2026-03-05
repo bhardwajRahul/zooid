@@ -112,14 +112,17 @@ describe('Key management API', () => {
         body: JSON.stringify({
           kid: 'partner-1',
           x: publicJwk.x!,
-          max_scope: 'publish',
+          max_scopes: ['pub:*', 'sub:*'],
           issuer: 'partner.dev',
         }),
       });
       expect(res.status).toBe(201);
-      const body = (await res.json()) as { kid: string; max_scope: string };
+      const body = (await res.json()) as {
+        kid: string;
+        max_scopes: string[];
+      };
       expect(body.kid).toBe('partner-1');
-      expect(body.max_scope).toBe('publish');
+      expect(body.max_scopes).toEqual(['pub:*', 'sub:*']);
     });
 
     it('rejects duplicate kid', async () => {
@@ -159,22 +162,7 @@ describe('Key management API', () => {
       expect(res.status).toBe(400);
     });
 
-    it('rejects invalid max_scope', async () => {
-      const { publicJwk } = await generateTestKeypair();
-      const res = await adminRequest('/api/v1/keys', {
-        method: 'POST',
-        token: adminToken,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kid: 'test-1',
-          x: publicJwk.x!,
-          max_scope: 'superadmin',
-        }),
-      });
-      expect(res.status).toBe(400);
-    });
-
-    it('adds a key with allowed_channels', async () => {
+    it('adds a key with max_scopes', async () => {
       const { publicJwk } = await generateTestKeypair();
       const res = await adminRequest('/api/v1/keys', {
         method: 'POST',
@@ -183,24 +171,23 @@ describe('Key management API', () => {
         body: JSON.stringify({
           kid: 'partner-1',
           x: publicJwk.x!,
-          max_scope: 'publish',
-          allowed_channels: ['crypto-signals', 'build-artifacts.*'],
+          max_scopes: ['pub:crypto-signals', 'pub:build-artifacts.*'],
           issuer: 'partner.dev',
         }),
       });
       expect(res.status).toBe(201);
       const body = (await res.json()) as {
         kid: string;
-        allowed_channels: string[];
+        max_scopes: string[];
       };
       expect(body.kid).toBe('partner-1');
-      expect(body.allowed_channels).toEqual([
-        'crypto-signals',
-        'build-artifacts.*',
+      expect(body.max_scopes).toEqual([
+        'pub:crypto-signals',
+        'pub:build-artifacts.*',
       ]);
     });
 
-    it('returns allowed_channels as null when not set', async () => {
+    it('returns max_scopes as null when not set', async () => {
       const { publicJwk } = await generateTestKeypair();
       const res = await adminRequest('/api/v1/keys', {
         method: 'POST',
@@ -214,12 +201,12 @@ describe('Key management API', () => {
       });
       expect(res.status).toBe(201);
       const body = (await res.json()) as {
-        allowed_channels: string[] | null;
+        max_scopes: string[] | null;
       };
-      expect(body.allowed_channels).toBeNull();
+      expect(body.max_scopes).toBeNull();
     });
 
-    it('returns allowed_channels in GET /keys', async () => {
+    it('returns max_scopes in GET /keys', async () => {
       const { publicJwk } = await generateTestKeypair();
       await adminRequest('/api/v1/keys', {
         method: 'POST',
@@ -228,7 +215,7 @@ describe('Key management API', () => {
         body: JSON.stringify({
           kid: 'partner-1',
           x: publicJwk.x!,
-          allowed_channels: ['logs.*'],
+          max_scopes: ['sub:logs.*'],
           issuer: 'partner.dev',
         }),
       });
@@ -238,25 +225,10 @@ describe('Key management API', () => {
         token: adminToken,
       });
       const body = (await res.json()) as {
-        keys: Array<{ kid: string; allowed_channels: string[] | null }>;
+        keys: Array<{ kid: string; max_scopes: string[] | null }>;
       };
       const key = body.keys.find((k) => k.kid === 'partner-1');
-      expect(key!.allowed_channels).toEqual(['logs.*']);
-    });
-
-    it('rejects non-array allowed_channels', async () => {
-      const { publicJwk } = await generateTestKeypair();
-      const res = await adminRequest('/api/v1/keys', {
-        method: 'POST',
-        token: adminToken,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kid: 'partner-1',
-          x: publicJwk.x!,
-          allowed_channels: 'not-an-array',
-        }),
-      });
-      expect(res.status).toBe(400);
+      expect(key!.max_scopes).toEqual(['sub:logs.*']);
     });
 
     it('enforces max 16 keys', async () => {

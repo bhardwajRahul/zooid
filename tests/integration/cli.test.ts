@@ -68,9 +68,9 @@ describe('CLI Integration Tests', () => {
     });
   }
 
-  describe('channel create -> list -> add-publisher (full flow)', () => {
-    it('creates a channel via handler, lists it, adds a publisher', async () => {
-      const { runChannelCreate, runChannelList, runChannelAddPublisher } =
+  describe('channel create -> list (full flow)', () => {
+    it('creates a channel via handler and lists it', async () => {
+      const { runChannelCreate, runChannelList } =
         await import('../../packages/cli/src/commands/channel');
       const client = await makeAdminClient();
 
@@ -85,18 +85,13 @@ describe('CLI Integration Tests', () => {
         client,
       );
       expect(created.id).toBe('int-test');
-      expect(created.publish_token).toBeTruthy();
+      expect(created.token).toBeTruthy();
 
       // List
       const channels = await runChannelList(client);
       expect(channels).toHaveLength(1);
       expect(channels[0].id).toBe('int-test');
       expect(channels[0].event_count).toBe(0);
-
-      // Add publisher
-      const pub = await runChannelAddPublisher('int-test', 'test-bot', client);
-      expect(pub.name).toBe('test-bot');
-      expect(pub.publish_token).toBeTruthy();
     });
   });
 
@@ -148,7 +143,7 @@ describe('CLI Integration Tests', () => {
       );
 
       // Publish with the publish token
-      const pubClient = makeClient(ch.publish_token);
+      const pubClient = makeClient(ch.token);
       const event = await runPublish(
         'pub-int',
         {
@@ -182,7 +177,7 @@ describe('CLI Integration Tests', () => {
         adminClient,
       );
 
-      const pubClient = makeClient(ch.publish_token);
+      const pubClient = makeClient(ch.token);
       const event = await runPublish(
         'file-int',
         {

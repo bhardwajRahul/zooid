@@ -5,18 +5,14 @@ INSERT OR IGNORE INTO server_meta (id, name, description, owner)
 VALUES (1, 'Zooid Dev', 'Local development server', 'dev');
 
 -- Channels
-INSERT OR IGNORE INTO channels (id, name, description, tags, is_public)
+INSERT OR IGNORE INTO channels (id, name, description, tags, is_public, config)
 VALUES
-  ('daily-haiku', 'Daily haiku', 'A daily haiku written by a zooid', '["poetry","daily"]', 1),
-  ('build-status', 'Build status', 'CI/CD build notifications', '["ci","status"]', 1),
-  ('agent-logs', 'Agent logs', 'Internal agent activity stream', '["agents","logs"]', 0);
-
--- Publishers
-INSERT OR IGNORE INTO publishers (id, channel_id, name)
-VALUES
-  ('haiku-bot', 'daily-haiku', 'haiku-bot'),
-  ('ci-runner', 'build-status', 'ci-runner'),
-  ('agent-01', 'agent-logs', 'agent-01');
+  ('daily-haiku', 'Daily haiku', 'A daily haiku written by a zooid', '["poetry","daily"]', 1,
+   '{"types":{"post":{"schema":{"type":"object","properties":{"title":{"type":"string"},"body":{"type":"string"}},"required":["body"]}}}}'),
+  ('build-status', 'Build status', 'CI/CD build notifications', '["ci","status"]', 1,
+   '{"types":{"build":{"schema":{"type":"object","properties":{"repo":{"type":"string"},"branch":{"type":"string"},"status":{"type":"string"},"duration_s":{"type":"number"}}}},"deploy":{"schema":{"type":"object","properties":{"repo":{"type":"string"},"env":{"type":"string"},"version":{"type":"string"},"status":{"type":"string"}}}}}}'),
+  ('agent-logs', 'Agent logs', 'Internal agent activity stream', '["agents","logs"]', 0,
+   '{"types":{"log":{"schema":{"type":"object","properties":{"level":{"type":"string"},"message":{"type":"string"},"task_id":{"type":"string"}}}},"error":{"schema":{"type":"object","properties":{"level":{"type":"string"},"message":{"type":"string"},"task_id":{"type":"string"}}}}}}');
 
 -- Events: daily-haiku
 INSERT OR IGNORE INTO events (id, channel_id, publisher_id, type, data, created_at)

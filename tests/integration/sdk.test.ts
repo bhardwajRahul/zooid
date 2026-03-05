@@ -76,19 +76,13 @@ describe('SDK Integration Tests', () => {
         is_public: true,
       });
       expect(created.id).toBe('test-channel');
-      expect(created.publish_token).toBeTruthy();
-      expect(created.subscribe_token).toBeTruthy();
+      expect(created.token).toBeTruthy();
 
       // List channels
       const channels = await client.listChannels();
       expect(channels).toHaveLength(1);
       expect(channels[0].id).toBe('test-channel');
       expect(channels[0].event_count).toBe(0);
-
-      // Add publisher
-      const publisher = await client.addPublisher('test-channel', 'my-bot');
-      expect(publisher.name).toBe('my-bot');
-      expect(publisher.publish_token).toBeTruthy();
     });
   });
 
@@ -210,7 +204,7 @@ describe('SDK Integration Tests', () => {
       // Publish with the publish token
       const publisher = new ZooidClient({
         server: 'https://test.local',
-        token: created.publish_token,
+        token: created.token,
         fetch: testFetch,
       });
 
@@ -249,7 +243,7 @@ describe('SDK Integration Tests', () => {
 
       const publisher = new ZooidClient({
         server: 'https://test.local',
-        token: created.publish_token,
+        token: created.token,
         fetch: testFetch,
       });
 
@@ -297,7 +291,7 @@ describe('SDK Integration Tests', () => {
 
       const publisher = new ZooidClient({
         server: 'https://test.local',
-        token: created.publish_token,
+        token: created.token,
         fetch: testFetch,
       });
 
@@ -335,7 +329,7 @@ describe('SDK Integration Tests', () => {
 
       const publisher = new ZooidClient({
         server: 'https://test.local',
-        token: created.publish_token,
+        token: created.token,
         fetch: testFetch,
       });
 

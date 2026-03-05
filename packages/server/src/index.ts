@@ -6,6 +6,7 @@ import {
   requireAuth,
   requireScope,
   requireSubscribeIfPrivate,
+  optionalAuth,
 } from './middleware/auth';
 import {
   ListChannels,
@@ -18,7 +19,7 @@ import { RegisterWebhook, DeleteWebhook } from './routes/webhooks';
 import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
 import { GetTokenClaims, MintToken } from './routes/tokens';
 import { DirectoryClaim } from './routes/directory';
-import { keys } from './routes/keys';
+import { ListKeys, AddKey, RevokeKey } from './routes/keys';
 import { ws } from './routes/ws';
 import { rss } from './routes/rss';
 import { feed } from './routes/feed';
@@ -64,7 +65,8 @@ openapi.get('/tokens/claims', requireAuth(), GetTokenClaims);
 openapi.post('/tokens', requireAuth(), requireScope('admin'), MintToken);
 
 // Channel routes
-openapi.get('/channels', ListChannels);
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.get('/channels', optionalAuth(), ListChannels);
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.post('/channels', requireAuth(), requireScope('admin'), CreateChannel);
 // prettier-ignore
@@ -96,9 +98,12 @@ openapi.post('/channels/:channelId/webhooks', requireSubscribeIfPrivate('channel
 openapi.delete('/channels/:channelId/webhooks/:webhookId', requireAuth(), requireScope('admin'), DeleteWebhook);
 
 // Key management routes (admin-only)
-api.use('/keys', requireAuth(), requireScope('admin'));
-api.use('/keys/*', requireAuth(), requireScope('admin'));
-api.route('', keys);
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.get('/keys', requireAuth(), requireScope('admin'), ListKeys);
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.post('/keys', requireAuth(), requireScope('admin'), AddKey);
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.delete('/keys/:kid', requireAuth(), requireScope('admin'), RevokeKey);
 
 // Plain Hono routes (streaming/XML — not suited for OpenAPI)
 api.route('', ws);

@@ -30,9 +30,12 @@ export interface Bindings {
 }
 
 export interface ZooidJWT {
-  scope: 'admin' | 'publish' | 'subscribe';
-  channel?: string; // Legacy single-channel claim (backward compat)
-  channels?: string[]; // Multi-channel claim (preferred)
+  // New multi-scope claim: ["admin", "pub:channel-id", "sub:channel-id"]
+  scopes?: string[];
+  // Legacy fields (backward compat — normalized to scopes on verify)
+  scope?: 'admin' | 'publish' | 'subscribe';
+  channel?: string;
+  channels?: string[];
   sub?: string; // Publisher ID (standard JWT subject claim)
   name?: string; // Display name (used for auto-registering publishers)
   iat: number;
@@ -58,8 +61,7 @@ export interface TrustedKeyRow {
   kty: string;
   crv: string;
   x: string;
-  max_scope: string | null;
-  allowed_channels: string | null; // JSON array, null = unrestricted
+  max_scopes: string | null; // JSON array of scope patterns, null = unrestricted
   issuer: string | null;
   created_at: string;
 }

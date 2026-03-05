@@ -95,7 +95,9 @@ export function setTelemetryChannel(channelId: string): void {
   const config = loadConfig();
   const channelTokens = config.channels?.[channelId];
   const hasChannelToken = !!(
-    channelTokens?.publish_token || channelTokens?.subscribe_token
+    channelTokens?.token ||
+    channelTokens?.publish_token ||
+    channelTokens?.subscribe_token
   );
   telemetryCtx.usedToken = hasChannelToken || !!config.admin_token;
 }
@@ -277,8 +279,7 @@ channelCmd
         config,
       });
       printSuccess(`Created channel: ${id}`);
-      printInfo('Publish token', result.publish_token);
-      printInfo('Subscribe token', result.subscribe_token);
+      printInfo('Token', result.token);
     } catch (err) {
       handleError('channel create', err);
     }
@@ -628,28 +629,31 @@ serverCmd
 
 // --- token ---
 program
-  .command('token <scope>')
-  .description('Mint a new token (admin, publish, or subscribe)')
-  .argument('[channels...]', 'Channels to scope the token to')
+  .command('token')
+  .description(
+    'Mint a new token. Scopes: admin, pub:<channel>, sub:<channel>. Wildcards: pub:*, sub:prefix-*',
+  )
+  .argument(
+    '<scopes...>',
+    'Scopes to grant (e.g. admin, pub:my-channel, sub:*)',
+  )
   .option('--sub <sub>', 'Subject identifier (e.g. publisher ID)')
   .option('--name <name>', 'Display name (used for publisher identity)')
   .option('--expires-in <duration>', 'Token expiry (e.g. 5m, 1h, 7d, 30d)')
-  .action(async (scope: string, channels: string[], opts) => {
+  .action(async (scopes: string[], opts) => {
     try {
-      if (!['admin', 'publish', 'subscribe'].includes(scope)) {
-        throw new Error(
-          `Invalid scope "${scope}". Must be one of: admin, publish, subscribe`,
-        );
+      for (const s of scopes) {
+        if (s !== 'admin' && !s.startsWith('pub:') && !s.startsWith('sub:')) {
+          throw new Error(
+            `Invalid scope "${s}". Must be "admin", "pub:<channel>", or "sub:<channel>"`,
+          );
+        }
       }
-      const result = await runTokenMint(
-        scope as 'admin' | 'publish' | 'subscribe',
-        {
-          channels: channels.length > 0 ? channels : undefined,
-          sub: opts.sub,
-          name: opts.name,
-          expiresIn: opts.expiresIn,
-        },
-      );
+      const result = await runTokenMint(scopes, {
+        sub: opts.sub,
+        name: opts.name,
+        expiresIn: opts.expiresIn,
+      });
       console.log(result.token);
     } catch (err) {
       handleError('token', err);

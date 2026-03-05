@@ -1,9 +1,15 @@
 import { OpenAPIRoute } from 'chanfana';
 import { z } from 'zod';
 import type { Context } from 'hono';
-import type { Bindings, Variables } from '../types';
+import type { Bindings, Variables, ZooidJWT } from '../types';
 import { isValidChannelId } from '../lib/validation';
-import { mintServerToken } from '../lib/jwt';
+import {
+  mintServerToken,
+  normalizeScopes,
+  isAdmin,
+  canPublish,
+  canSubscribe,
+} from '../lib/jwt';
 import {
   createChannel,
   getChannel,
@@ -31,9 +37,10 @@ export class ListChannels extends OpenAPIRoute {
                   description: z.string().nullable(),
                   tags: z.array(z.string()),
                   is_public: z.boolean(),
+                  config: z.record(z.string(), z.unknown()).nullable(),
+                  strict: z.boolean(),
                   event_count: z.number(),
                   last_event_at: z.string().nullable(),
-                  created_at: z.string(),
                 }),
               ),
             }),
@@ -45,7 +52,27 @@ export class ListChannels extends OpenAPIRoute {
 
   async handle(c: Context<Env>) {
     const list = await listChannels(c.env.DB);
-    return c.json({ channels: list });
+
+    const payload = c.get('jwtPayload') as ZooidJWT | undefined;
+    if (!payload) {
+      // No auth — only public channels
+      return c.json({ channels: list.filter((ch) => ch.is_public) });
+    }
+
+    const scopes = normalizeScopes(payload);
+    if (isAdmin(scopes)) {
+      return c.json({ channels: list });
+    }
+
+    // Filter to public channels + channels the token has access to
+    return c.json({
+      channels: list.filter(
+        (ch) =>
+          ch.is_public ||
+          canPublish(scopes, ch.id) ||
+          canSubscribe(scopes, ch.id),
+      ),
+    });
   }
 }
 
@@ -78,8 +105,7 @@ export class CreateChannel extends OpenAPIRoute {
           'application/json': {
             schema: z.object({
               id: z.string(),
-              publish_token: z.string(),
-              subscribe_token: z.string(),
+              token: z.string(),
             }),
           },
         },
@@ -144,20 +170,15 @@ export class CreateChannel extends OpenAPIRoute {
 
     const channel = await createChannel(c.env.DB, body);
 
-    const publishToken = await mintServerToken(
-      { scope: 'publish', channels: [channel.id] },
-      c.env,
-    );
-    const subscribeToken = await mintServerToken(
-      { scope: 'subscribe', channels: [channel.id] },
+    const token = await mintServerToken(
+      { scopes: [`pub:${channel.id}`, `sub:${channel.id}`] },
       c.env,
     );
 
     return c.json(
       {
         id: channel.id,
-        publish_token: publishToken,
-        subscribe_token: subscribeToken,
+        token,
       },
       201,
     );

@@ -11,7 +11,7 @@ describe('GET /api/v1/tokens/claims', () => {
     await setupTestDb();
   });
 
-  it('returns claims for an admin token', async () => {
+  it('returns scopes for an admin token', async () => {
     const token = await createToken({ scope: 'admin' }, JWT_SECRET);
     const res = await app.request(
       '/api/v1/tokens/claims',
@@ -21,13 +21,11 @@ describe('GET /api/v1/tokens/claims', () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.scope).toBe('admin');
+    expect(body.scopes).toEqual(['admin']);
     expect(body.iat).toBeTypeOf('number');
-    expect(body).not.toHaveProperty('channel');
-    expect(body).not.toHaveProperty('sub');
   });
 
-  it('returns claims for a publish token with channels array', async () => {
+  it('normalizes legacy publish token to scoped format', async () => {
     const token = await createToken(
       { scope: 'publish', channels: ['test-channel'], sub: 'pub_abc' },
       JWT_SECRET,
@@ -40,14 +38,13 @@ describe('GET /api/v1/tokens/claims', () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.scope).toBe('publish');
-    expect(body.channels).toEqual(['test-channel']);
+    expect(body.scopes).toEqual(['pub:test-channel']);
     expect(body.sub).toBe('pub_abc');
   });
 
-  it('normalizes legacy channel claim to channels array', async () => {
+  it('normalizes legacy channel claim to scoped format', async () => {
     const token = await createToken(
-      { scope: 'publish', channel: 'legacy-ch', sub: 'pub_abc' },
+      { scope: 'subscribe', channel: 'legacy-ch' },
       JWT_SECRET,
     );
     const res = await app.request(
@@ -58,12 +55,10 @@ describe('GET /api/v1/tokens/claims', () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.scope).toBe('publish');
-    expect(body.channels).toEqual(['legacy-ch']);
-    expect(body).not.toHaveProperty('channel');
+    expect(body.scopes).toEqual(['sub:legacy-ch']);
   });
 
-  it('returns claims for a subscribe token', async () => {
+  it('normalizes legacy subscribe token with channels array', async () => {
     const token = await createToken(
       { scope: 'subscribe', channels: ['my-channel'] },
       JWT_SECRET,
@@ -76,8 +71,7 @@ describe('GET /api/v1/tokens/claims', () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
-    expect(body.scope).toBe('subscribe');
-    expect(body.channels).toEqual(['my-channel']);
+    expect(body.scopes).toEqual(['sub:my-channel']);
   });
 
   it('returns exp when token has expiry', async () => {
@@ -170,8 +164,7 @@ describe('POST /api/v1/tokens', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scope: 'publish',
-          channels: ['my-channel'],
+          scopes: ['pub:my-channel'],
         }),
       },
       { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
@@ -217,8 +210,7 @@ describe('POST /api/v1/tokens', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scope: 'publish',
-          channels: ['my-channel'],
+          scopes: ['pub:my-channel'],
           sub: 'bot-1',
           name: 'My Bot',
         }),
@@ -244,14 +236,12 @@ describe('POST /api/v1/tokens', () => {
       kty: 'OKP',
       crv: 'Ed25519',
       x: key.publicJwk.x!,
-      max_scope: null,
-      allowed_channels: null,
+      max_scopes: null,
       issuer: 'local',
       created_at: '',
     };
     const payload = await verifyEdDSAToken(body.token, keyRow);
-    expect(payload.scope).toBe('publish');
-    expect(payload.channels).toEqual(['my-channel']);
+    expect(payload.scopes).toEqual(['pub:my-channel']);
     expect(payload.sub).toBe('bot-1');
     expect(payload.name).toBe('My Bot');
   });
@@ -286,8 +276,7 @@ describe('POST /api/v1/tokens', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scope: 'subscribe',
-          channels: ['test'],
+          scopes: ['sub:test'],
           expires_in: '1h',
         }),
       },
@@ -306,8 +295,7 @@ describe('POST /api/v1/tokens', () => {
       kty: 'OKP',
       crv: 'Ed25519',
       x: key.publicJwk.x!,
-      max_scope: null,
-      allowed_channels: null,
+      max_scopes: null,
       issuer: 'local',
       created_at: '',
     };
@@ -329,7 +317,7 @@ describe('POST /api/v1/tokens', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scope: 'admin',
+          scopes: ['admin'],
           expires_in: 'forever',
         }),
       },
@@ -339,26 +327,6 @@ describe('POST /api/v1/tokens', () => {
     expect(res.status).toBe(400);
     const body = (await res.json()) as { error: string };
     expect(body.error).toContain('Invalid duration');
-  });
-
-  it('requires channels for publish scope', async () => {
-    const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
-    const res = await app.request(
-      '/api/v1/tokens',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${adminToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ scope: 'publish' }),
-      },
-      { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
-    );
-
-    expect(res.status).toBe(400);
-    const body = (await res.json()) as { error: string };
-    expect(body.error).toContain('channels required');
   });
 
   it('rejects non-admin callers', async () => {
@@ -374,7 +342,7 @@ describe('POST /api/v1/tokens', () => {
           Authorization: `Bearer ${publishToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ scope: 'subscribe', channels: ['ch'] }),
+        body: JSON.stringify({ scopes: ['sub:ch'] }),
       },
       { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
     );
@@ -382,7 +350,7 @@ describe('POST /api/v1/tokens', () => {
     expect(res.status).toBe(403);
   });
 
-  it('mints admin token without channels', async () => {
+  it('mints admin token with scopes array', async () => {
     const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
     const res = await app.request(
       '/api/v1/tokens',
@@ -392,7 +360,7 @@ describe('POST /api/v1/tokens', () => {
           Authorization: `Bearer ${adminToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ scope: 'admin' }),
+        body: JSON.stringify({ scopes: ['admin'] }),
       },
       { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
     );

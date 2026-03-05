@@ -2,9 +2,8 @@ import type { MintTokenOptions, MintTokenResult } from '@zooid/sdk';
 import { createClient } from '../lib/client';
 
 export async function runTokenMint(
-  scope: 'admin' | 'publish' | 'subscribe',
+  scopes: string[],
   options: {
-    channels?: string[];
     sub?: string;
     name?: string;
     expiresIn?: string;
@@ -12,8 +11,7 @@ export async function runTokenMint(
 ): Promise<MintTokenResult> {
   const client = createClient();
 
-  const body: MintTokenOptions = { scope };
-  if (options.channels?.length) body.channels = options.channels;
+  const body: MintTokenOptions = { scopes };
   if (options.sub) body.sub = options.sub;
   if (options.name) body.name = options.name;
   if (options.expiresIn) body.expires_in = options.expiresIn;

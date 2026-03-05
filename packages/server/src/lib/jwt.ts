@@ -33,18 +33,120 @@ function base64urlDecodeBuffer(str: string): ArrayBuffer {
   return bytes.buffer;
 }
 
-// --- Scope hierarchy ---
+// --- Scope utilities ---
 
-const SCOPE_HIERARCHY: Record<string, number> = {
-  subscribe: 0,
-  publish: 1,
-  admin: 2,
-};
+/**
+ * Normalize legacy JWT claims to the new `scopes` array format.
+ *
+ * Legacy: { scope: "admin" } → ["admin"]
+ * Legacy: { scope: "publish", channels: ["foo"] } → ["pub:foo"]
+ * Legacy: { scope: "subscribe", channel: "bar" } → ["sub:bar"]
+ * New:    { scopes: ["pub:foo", "sub:bar"] } → as-is
+ */
+export function normalizeScopes(payload: ZooidJWT): string[] {
+  if (payload.scopes) return payload.scopes;
 
-function isScopeAllowed(requested: string, maxScope: string): boolean {
-  return (
-    (SCOPE_HIERARCHY[requested] ?? -1) <= (SCOPE_HIERARCHY[maxScope] ?? -1)
-  );
+  // Legacy normalization
+  const scope = payload.scope;
+  if (!scope) return [];
+
+  if (scope === 'admin') return ['admin'];
+
+  const prefix = scope === 'publish' ? 'pub' : 'sub';
+  const channels =
+    payload.channels ?? (payload.channel ? [payload.channel] : []);
+
+  if (channels.length === 0) return [`${prefix}:*`];
+  return channels.map((ch) => `${prefix}:${ch}`);
+}
+
+/**
+ * Check if a scope string matches a pattern.
+ * Patterns: "admin", "pub:exact", "pub:prefix-*", "pub:*"
+ */
+export function scopeMatchesPattern(scope: string, pattern: string): boolean {
+  if (pattern === scope) return true;
+
+  // "admin" pattern matches everything
+  if (pattern === 'admin') return true;
+
+  // Extract prefix and channel from both
+  const [scopePrefix, scopeChannel] = splitScope(scope);
+  const [patternPrefix, patternChannel] = splitScope(pattern);
+
+  // Prefixes must match (or pattern is admin)
+  if (scopePrefix !== patternPrefix) return false;
+
+  // No channel part means exact match only (already checked above)
+  if (!patternChannel || !scopeChannel) return false;
+
+  // Wildcard: "pub:*" matches any pub:xxx
+  if (patternChannel === '*') return true;
+
+  // Prefix wildcard: "pub:product-*" matches "pub:product-foo"
+  if (patternChannel.endsWith('*')) {
+    const prefix = patternChannel.slice(0, -1);
+    return scopeChannel.startsWith(prefix);
+  }
+
+  return false;
+}
+
+/** Split "pub:channel-id" into ["pub", "channel-id"]. "admin" → ["admin", undefined] */
+function splitScope(scope: string): [string, string | undefined] {
+  const idx = scope.indexOf(':');
+  if (idx === -1) return [scope, undefined];
+  return [scope.slice(0, idx), scope.slice(idx + 1)];
+}
+
+/**
+ * Check if a token's scopes include a required scope.
+ * "admin" in scopes grants everything.
+ */
+export function hasScope(scopes: string[], required: string): boolean {
+  return scopes.some((s) => s === 'admin' || scopeMatchesPattern(required, s));
+}
+
+/**
+ * Check if a token grants publish access to a specific channel.
+ */
+export function canPublish(scopes: string[], channelId: string): boolean {
+  return hasScope(scopes, `pub:${channelId}`);
+}
+
+/**
+ * Check if a token grants subscribe access to a specific channel.
+ */
+export function canSubscribe(scopes: string[], channelId: string): boolean {
+  return hasScope(scopes, `sub:${channelId}`);
+}
+
+/**
+ * Check if a token has admin scope.
+ */
+export function isAdmin(scopes: string[]): boolean {
+  return scopes.includes('admin');
+}
+
+/**
+ * Enforce a max_scopes ceiling on a set of token scopes.
+ * Each token scope must be allowed by at least one ceiling pattern.
+ * null ceiling = unrestricted.
+ */
+export function enforceScopeCeiling(
+  scopes: string[],
+  maxScopes: string[] | null,
+): void {
+  if (!maxScopes) return; // unrestricted
+
+  for (const scope of scopes) {
+    const allowed = maxScopes.some((pattern) =>
+      scopeMatchesPattern(scope, pattern),
+    );
+    if (!allowed) {
+      throw new Error(`Scope "${scope}" exceeds key ceiling`);
+    }
+  }
 }
 
 // --- HS256 (legacy) ---
@@ -153,40 +255,14 @@ export async function verifyEdDSAToken(
     throw new Error('Token expired');
   }
 
-  // Enforce scope ceiling
-  if (keyRow.max_scope && !isScopeAllowed(payload.scope, keyRow.max_scope)) {
-    throw new Error('Scope exceeds key ceiling');
-  }
-
-  // Enforce channel allowlist
-  if (keyRow.allowed_channels) {
-    const allowed: string[] = JSON.parse(keyRow.allowed_channels);
-    const claimed =
-      payload.channels ?? (payload.channel ? [payload.channel] : []);
-    for (const ch of claimed) {
-      if (!channelMatchesAllowlist(ch, allowed)) {
-        throw new Error(`Channel "${ch}" not allowed for this key`);
-      }
-    }
-  }
+  // Normalize scopes and enforce ceiling
+  const scopes = normalizeScopes(payload);
+  const maxScopes = keyRow.max_scopes
+    ? (JSON.parse(keyRow.max_scopes) as string[])
+    : null;
+  enforceScopeCeiling(scopes, maxScopes);
 
   return payload;
-}
-
-/** Check if a channel ID matches an allowlist entry (exact or prefix.*) */
-function channelMatchesAllowlist(
-  channelId: string,
-  allowed: string[],
-): boolean {
-  for (const entry of allowed) {
-    if (entry.endsWith('.*')) {
-      const prefix = entry.slice(0, -1); // keep the dot: "foo."
-      if (channelId.startsWith(prefix)) return true;
-    } else {
-      if (channelId === entry) return true;
-    }
-  }
-  return false;
 }
 
 // --- Dual verification ---
@@ -274,13 +350,12 @@ export async function mintServerToken(
   throw new Error('No signing key available');
 }
 
-/** Check whether a token grants access to a specific channel.
- *  Supports both new `channels: [...]` and legacy `channel: "..."` claims. */
+/** @deprecated Use normalizeScopes + canPublish/canSubscribe instead */
 export function tokenCoversChannel(
   payload: ZooidJWT,
   channelId: string,
 ): boolean {
-  if (payload.channels) return payload.channels.includes(channelId);
-  if (payload.channel) return payload.channel === channelId;
-  return false;
+  const scopes = normalizeScopes(payload);
+  // Check both pub and sub — this function was used in both publish and subscribe contexts
+  return canPublish(scopes, channelId) || canSubscribe(scopes, channelId);
 }

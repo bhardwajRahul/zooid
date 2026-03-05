@@ -1,11 +1,9 @@
 <script lang="ts">
   let {
     status,
-    eventCount,
     pollInterval,
   }: {
     status: 'connected' | 'polling' | 'reconnecting' | 'error' | 'idle' | 'loading';
-    eventCount: number;
     pollInterval: number;
   } = $props();
 
@@ -38,5 +36,5 @@
       <span class="text-muted-foreground/60">poll every {pollInterval}s</span>
     {/if}
   </div>
-  <span>{eventCount} event{eventCount === 1 ? '' : 's'}</span>
+  <span class="text-muted-foreground/40"><a href="https://zooid.dev" class="underline hover:text-muted-foreground">Powered by Zooid</a></span>
 </div>

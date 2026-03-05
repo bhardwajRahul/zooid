@@ -28,22 +28,20 @@ type TestBindings = {
   ZOOID_JWT_SECRET: string;
   DB: D1Database;
 };
-type TestVariables = {
-  jwtPayload: { scope: string; channel?: string };
-  jwtKid?: string;
-};
 
 function createTestApp() {
   const app = new Hono<{
     Bindings: TestBindings;
-    Variables: TestVariables;
+    Variables: Record<string, unknown>;
   }>();
 
   app.get('/public', (c) => c.json({ ok: true }));
 
   app.get('/protected', requireAuth(), (c) => {
+    const payload = c.get('jwtPayload') as unknown as Record<string, unknown>;
     return c.json({
-      scope: c.get('jwtPayload').scope,
+      scope: payload.scope ?? null,
+      scopes: payload.scopes ?? null,
       kid: c.get('jwtKid') ?? null,
     });
   });
@@ -89,7 +87,7 @@ describe('Auth middleware', () => {
     expect(res.status).toBe(401);
   });
 
-  it('allows requests with valid token', async () => {
+  it('allows requests with valid legacy token', async () => {
     const token = await createToken({ scope: 'admin' }, JWT_SECRET);
     const res = await app.request(
       '/protected',
@@ -97,11 +95,25 @@ describe('Auth middleware', () => {
       testEnv,
     );
     expect(res.status).toBe(200);
-    const body = (await res.json()) as { scope: string };
+    const body = (await res.json()) as { scope: string; scopes: null };
     expect(body.scope).toBe('admin');
+    expect(body.scopes).toBeNull();
   });
 
-  it('enforces admin scope', async () => {
+  it('allows requests with new-format scoped token', async () => {
+    const token = await createToken({ scopes: ['admin'] }, JWT_SECRET);
+    const res = await app.request(
+      '/protected',
+      { headers: { Authorization: `Bearer ${token}` } },
+      testEnv,
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { scope: null; scopes: string[] };
+    expect(body.scope).toBeNull();
+    expect(body.scopes).toEqual(['admin']);
+  });
+
+  it('enforces admin scope with legacy token', async () => {
     const token = await createToken(
       { scope: 'publish', channel: 'test' },
       JWT_SECRET,
@@ -114,7 +126,17 @@ describe('Auth middleware', () => {
     expect(res.status).toBe(403);
   });
 
-  it('allows admin scope on admin route', async () => {
+  it('enforces admin scope with new-format token', async () => {
+    const token = await createToken({ scopes: ['pub:test'] }, JWT_SECRET);
+    const res = await app.request(
+      '/admin',
+      { headers: { Authorization: `Bearer ${token}` } },
+      testEnv,
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('allows admin scope on admin route (legacy)', async () => {
     const token = await createToken({ scope: 'admin' }, JWT_SECRET);
     const res = await app.request(
       '/admin',
@@ -124,7 +146,17 @@ describe('Auth middleware', () => {
     expect(res.status).toBe(200);
   });
 
-  it('rejects publish token for wrong channel', async () => {
+  it('allows admin scope on admin route (new format)', async () => {
+    const token = await createToken({ scopes: ['admin'] }, JWT_SECRET);
+    const res = await app.request(
+      '/admin',
+      { headers: { Authorization: `Bearer ${token}` } },
+      testEnv,
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects publish token for wrong channel (legacy)', async () => {
     const token = await createToken(
       { scope: 'publish', channel: 'channel-a' },
       JWT_SECRET,
@@ -140,8 +172,50 @@ describe('Auth middleware', () => {
     expect(res.status).toBe(403);
   });
 
-  it('allows admin token on any channel-scoped route', async () => {
+  it('rejects publish token for wrong channel (new format)', async () => {
+    const token = await createToken({ scopes: ['pub:channel-a'] }, JWT_SECRET);
+    const res = await app.request(
+      '/publish/channel-b',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      testEnv,
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it('allows publish token for correct channel (new format)', async () => {
+    const token = await createToken(
+      { scopes: ['pub:some-channel'] },
+      JWT_SECRET,
+    );
+    const res = await app.request(
+      '/publish/some-channel',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      testEnv,
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('allows admin token on any channel-scoped route (legacy)', async () => {
     const token = await createToken({ scope: 'admin' }, JWT_SECRET);
+    const res = await app.request(
+      '/publish/any-channel',
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      testEnv,
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it('allows admin token on any channel-scoped route (new format)', async () => {
+    const token = await createToken({ scopes: ['admin'] }, JWT_SECRET);
     const res = await app.request(
       '/publish/any-channel',
       {
@@ -193,6 +267,29 @@ describe('Auth middleware — EdDSA backward compatibility', () => {
     expect(body.kid).toBe('local-1');
   });
 
+  it('accepts EdDSA tokens with new scopes format', async () => {
+    await env.DB.prepare(
+      'INSERT INTO trusted_keys (kid, kty, crv, x, issuer) VALUES (?, ?, ?, ?, ?)',
+    )
+      .bind('local-2', 'OKP', 'Ed25519', publicJwk.x!, 'local')
+      .run();
+
+    const token = await createEdDSAToken(
+      { scopes: ['admin'] },
+      privateJwk,
+      'local-2',
+    );
+    const res = await app.request(
+      '/protected',
+      { headers: { Authorization: `Bearer ${token}` } },
+      { ZOOID_JWT_SECRET: JWT_SECRET, DB: env.DB },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { scopes: string[]; kid: string };
+    expect(body.scopes).toEqual(['admin']);
+    expect(body.kid).toBe('local-2');
+  });
+
   it('HS256 tokens still work alongside EdDSA (backward compat)', async () => {
     // Add an EdDSA key to D1 — HS256 should still work
     await env.DB.prepare(
@@ -226,14 +323,14 @@ describe('Auth middleware — EdDSA backward compatibility', () => {
 
   it('enforces scope ceiling on EdDSA tokens', async () => {
     await env.DB.prepare(
-      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scope, issuer) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scopes, issuer) VALUES (?, ?, ?, ?, ?, ?)',
     )
       .bind(
         'external-1',
         'OKP',
         'Ed25519',
         publicJwk.x!,
-        'publish',
+        '["pub:*","sub:*"]',
         'partner.dev',
       )
       .run();
@@ -254,14 +351,14 @@ describe('Auth middleware — EdDSA backward compatibility', () => {
 
   it('allows EdDSA token within scope ceiling', async () => {
     await env.DB.prepare(
-      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scope, issuer) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scopes, issuer) VALUES (?, ?, ?, ?, ?, ?)',
     )
       .bind(
         'external-1',
         'OKP',
         'Ed25519',
         publicJwk.x!,
-        'publish',
+        '["pub:*","sub:*"]',
         'partner.dev',
       )
       .run();
@@ -280,5 +377,63 @@ describe('Auth middleware — EdDSA backward compatibility', () => {
     const body = (await res.json()) as { scope: string; kid: string };
     expect(body.scope).toBe('publish');
     expect(body.kid).toBe('external-1');
+  });
+
+  it('allows EdDSA token with new scopes within ceiling', async () => {
+    await env.DB.prepare(
+      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scopes, issuer) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        'external-2',
+        'OKP',
+        'Ed25519',
+        publicJwk.x!,
+        '["pub:*","sub:*"]',
+        'partner.dev',
+      )
+      .run();
+
+    const token = await createEdDSAToken(
+      { scopes: ['pub:some-channel', 'sub:some-channel'] },
+      privateJwk,
+      'external-2',
+    );
+    const res = await app.request(
+      '/protected',
+      { headers: { Authorization: `Bearer ${token}` } },
+      { ZOOID_JWT_SECRET: JWT_SECRET, DB: env.DB },
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { scopes: string[]; kid: string };
+    expect(body.scopes).toEqual(['pub:some-channel', 'sub:some-channel']);
+    expect(body.kid).toBe('external-2');
+  });
+
+  it('rejects EdDSA token with new scopes exceeding ceiling', async () => {
+    await env.DB.prepare(
+      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scopes, issuer) VALUES (?, ?, ?, ?, ?, ?)',
+    )
+      .bind(
+        'external-3',
+        'OKP',
+        'Ed25519',
+        publicJwk.x!,
+        '["sub:*"]',
+        'partner.dev',
+      )
+      .run();
+
+    // Token claims pub:foo but key ceiling only allows sub:*
+    const token = await createEdDSAToken(
+      { scopes: ['pub:foo'] },
+      privateJwk,
+      'external-3',
+    );
+    const res = await app.request(
+      '/protected',
+      { headers: { Authorization: `Bearer ${token}` } },
+      { ZOOID_JWT_SECRET: JWT_SECRET, DB: env.DB },
+    );
+    expect(res.status).toBe(401);
   });
 });

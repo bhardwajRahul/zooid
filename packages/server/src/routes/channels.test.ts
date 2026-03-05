@@ -47,12 +47,10 @@ describe('Channel routes', () => {
       expect(res.status).toBe(201);
       const body = (await res.json()) as {
         id: string;
-        publish_token: string;
-        subscribe_token: string;
+        token: string;
       };
       expect(body.id).toBe('test-channel');
-      expect(body.publish_token).toBeTruthy();
-      expect(body.subscribe_token).toBeTruthy();
+      expect(body.token).toBeTruthy();
     });
 
     it('rejects without auth', async () => {
@@ -293,6 +291,86 @@ describe('Channel routes', () => {
 
       expect(body.channels[0]).toHaveProperty('event_count');
       expect(body.channels[0]).toHaveProperty('last_event_at');
+    });
+
+    it('hides private channels from unauthenticated requests', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'public-ch',
+          name: 'Public',
+          is_public: true,
+        }),
+      });
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'private-ch',
+          name: 'Private',
+          is_public: false,
+        }),
+      });
+
+      const res = await app.request(
+        '/api/v1/channels',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      const body = (await res.json()) as { channels: Array<{ id: string }> };
+      expect(body.channels).toHaveLength(1);
+      expect(body.channels[0].id).toBe('public-ch');
+    });
+
+    it('shows private channels to admin token', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'pub-ch', name: 'Public', is_public: true }),
+      });
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'priv-ch',
+          name: 'Private',
+          is_public: false,
+        }),
+      });
+
+      const res = await authRequest('/api/v1/channels', { method: 'GET' });
+      const body = (await res.json()) as { channels: Array<{ id: string }> };
+      expect(body.channels).toHaveLength(2);
+    });
+
+    it('shows private channels only when token has matching scope', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'visible-ch',
+          name: 'Visible',
+          is_public: false,
+        }),
+      });
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'hidden-ch',
+          name: 'Hidden',
+          is_public: false,
+        }),
+      });
+
+      // Token with sub:visible-ch should only see visible-ch
+      const token = await createToken(
+        { scope: 'subscribe', channel: 'visible-ch' },
+        JWT_SECRET,
+      );
+      const res = await app.request(
+        '/api/v1/channels',
+        { headers: { Authorization: `Bearer ${token}` } },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      const body = (await res.json()) as { channels: Array<{ id: string }> };
+      expect(body.channels).toHaveLength(1);
+      expect(body.channels[0].id).toBe('visible-ch');
     });
   });
 

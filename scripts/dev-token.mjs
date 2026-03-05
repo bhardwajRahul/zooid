@@ -26,7 +26,8 @@ const legacy = args.includes('--legacy');
 const expiresInIdx = args.indexOf('--expires-in');
 const expiresInRaw = expiresInIdx !== -1 ? args[expiresInIdx + 1] : null;
 const positional = args.filter(
-  (a, i) => !a.startsWith('--') && i !== expiresInIdx + 1,
+  (a, i) =>
+    !a.startsWith('--') && (expiresInIdx === -1 || i !== expiresInIdx + 1),
 );
 const [scope, ...channels] = positional;
 
@@ -95,12 +96,19 @@ function parseDuration(input) {
 
 // Build claims
 const now = Math.floor(Date.now() / 1000);
-const claims = { scope, iat: now };
-if (channels.length > 0) {
-  if (legacy) {
-    claims.channel = channels[0];
-  } else {
-    claims.channels = channels;
+const claims = { iat: now };
+if (legacy) {
+  // Legacy single-scope format
+  claims.scope = scope;
+  if (channels.length > 0) claims.channel = channels[0];
+} else {
+  // New scopes array format
+  if (scope === 'admin') {
+    claims.scopes = ['admin'];
+  } else if (scope === 'publish') {
+    claims.scopes = channels.map((ch) => `pub:${ch}`);
+  } else if (scope === 'subscribe') {
+    claims.scopes = channels.map((ch) => `sub:${ch}`);
   }
 }
 if (expiresInRaw) {
@@ -194,7 +202,7 @@ function mintAdminHS256() {
     JSON.stringify({ alg: 'HS256', typ: 'JWT' }),
   ).toString('base64url');
   const payload = Buffer.from(
-    JSON.stringify({ scope: 'admin', iat: Math.floor(Date.now() / 1000) }),
+    JSON.stringify({ scopes: ['admin'], iat: Math.floor(Date.now() / 1000) }),
   ).toString('base64url');
   const sig = createHmac('sha256', secret)
     .update(`${header}.${payload}`)
@@ -216,15 +224,18 @@ async function listKeys() {
     console.log(
       'kid'.padEnd(16) +
         'issuer'.padEnd(14) +
-        'max_scope'.padEnd(12) +
+        'max_scopes'.padEnd(24) +
         'created_at',
     );
-    console.log('-'.repeat(56));
+    console.log('-'.repeat(68));
     for (const k of body.keys) {
+      const scopes = Array.isArray(k.max_scopes)
+        ? k.max_scopes.join(', ')
+        : k.max_scopes || 'admin';
       console.log(
         (k.kid || '').padEnd(16) +
           (k.issuer || '-').padEnd(14) +
-          (k.max_scope || 'admin').padEnd(12) +
+          scopes.padEnd(24) +
           (k.created_at || ''),
       );
     }

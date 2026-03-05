@@ -2,10 +2,10 @@
 editUrl: false
 next: false
 prev: false
-title: "ServerDiscovery"
+title: 'ServerDiscovery'
 ---
 
-Defined in: [index.ts:94](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L94)
+Defined in: [index.ts:94](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L94)
 
 Server discovery metadata from `GET /.well-known/zooid.json`.
 
@@ -19,66 +19,66 @@ and recommended poll interval.
 
 > **algorithm**: `string`
 
-Defined in: [index.ts:102](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L102)
+Defined in: [index.ts:102](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L102)
 
 Signing algorithm (e.g. `"Ed25519"`).
 
-***
+---
 
 ### delivery
 
 > **delivery**: `string`[]
 
-Defined in: [index.ts:108](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L108)
+Defined in: [index.ts:108](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L108)
 
 Supported delivery mechanisms (e.g. `["polling", "webhooks", "rss"]`).
 
-***
+---
 
-### poll\_interval
+### poll_interval
 
-> **poll\_interval**: `number`
+> **poll_interval**: `number`
 
-Defined in: [index.ts:106](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L106)
+Defined in: [index.ts:106](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L106)
 
 Recommended poll interval in seconds.
 
-***
+---
 
-### public\_key
+### public_key
 
-> **public\_key**: `string`
+> **public_key**: `string`
 
-Defined in: [index.ts:98](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L98)
+Defined in: [index.ts:98](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L98)
 
 Base64-encoded Ed25519 public key for webhook signature verification.
 
-***
+---
 
-### public\_key\_format
+### public_key_format
 
-> **public\_key\_format**: `string`
+> **public_key_format**: `string`
 
-Defined in: [index.ts:100](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L100)
+Defined in: [index.ts:100](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L100)
 
 Key encoding format (e.g. `"raw"`).
 
-***
+---
 
-### server\_id
+### server_id
 
-> **server\_id**: `string`
+> **server_id**: `string`
 
-Defined in: [index.ts:104](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L104)
+Defined in: [index.ts:104](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L104)
 
 Unique identifier for this server instance.
 
-***
+---
 
 ### version
 
 > **version**: `string`
 
-Defined in: [index.ts:96](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/types/src/index.ts#L96)
+Defined in: [index.ts:96](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L96)
 
 Zooid protocol version (semver).

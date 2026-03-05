@@ -50,8 +50,7 @@ const SCHEMA_STATEMENTS = [
     kty              TEXT NOT NULL DEFAULT 'OKP',
     crv              TEXT NOT NULL DEFAULT 'Ed25519',
     x                TEXT NOT NULL,
-    max_scope        TEXT,
-    allowed_channels TEXT,
+    max_scopes       TEXT,
     issuer           TEXT,
     created_at       TEXT NOT NULL DEFAULT (datetime('now'))
   )`,

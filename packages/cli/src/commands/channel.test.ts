@@ -54,8 +54,7 @@ describe('channel commands', () => {
       writeConfig();
       mockClient.createChannel.mockResolvedValueOnce({
         id: 'signals',
-        publish_token: 'pub-tok',
-        subscribe_token: 'sub-tok',
+        token: 'channel-tok',
       });
 
       const result = await runChannelCreate('signals', {
@@ -71,13 +70,12 @@ describe('channel commands', () => {
         description: 'Test channel',
       });
       expect(result.id).toBe('signals');
-      expect(result.publish_token).toBe('pub-tok');
+      expect(result.token).toBe('channel-tok');
 
       const raw = fs.readFileSync(path.join(tmpDir, 'state.json'), 'utf-8');
       const file = JSON.parse(raw);
       const serverEntry = file.servers[TEST_SERVER];
-      expect(serverEntry.channels.signals.publish_token).toBe('pub-tok');
-      expect(serverEntry.channels.signals.subscribe_token).toBe('sub-tok');
+      expect(serverEntry.channels.signals.token).toBe('channel-tok');
     });
 
     it('throws when no server configured', async () => {

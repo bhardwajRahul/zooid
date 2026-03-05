@@ -43,12 +43,7 @@ export function objectToNodes(obj: Record<string, unknown>): PrettyNode[] {
         children: objectToNodes(value as Record<string, unknown>),
       };
     }
-    if (
-      Array.isArray(value) &&
-      value.length > 0 &&
-      typeof value[0] === 'object' &&
-      value[0] !== null
-    ) {
+    if (Array.isArray(value) && value.length > 0) {
       return {
         kind: 'list' as const,
         key,

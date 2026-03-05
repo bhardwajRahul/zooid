@@ -46,23 +46,20 @@ describe('token commands', () => {
       writeConfig();
       mockClient.mintToken.mockResolvedValueOnce({ token: 'new-admin-jwt' });
 
-      const result = await runTokenMint('admin', {});
+      const result = await runTokenMint(['admin'], {});
 
-      expect(mockClient.mintToken).toHaveBeenCalledWith({ scope: 'admin' });
+      expect(mockClient.mintToken).toHaveBeenCalledWith({ scopes: ['admin'] });
       expect(result.token).toBe('new-admin-jwt');
     });
 
-    it('mints a publish token with channels', async () => {
+    it('mints a publish token with channel scopes', async () => {
       writeConfig();
       mockClient.mintToken.mockResolvedValueOnce({ token: 'pub-jwt' });
 
-      const result = await runTokenMint('publish', {
-        channels: ['signals', 'alerts'],
-      });
+      const result = await runTokenMint(['pub:signals', 'pub:alerts'], {});
 
       expect(mockClient.mintToken).toHaveBeenCalledWith({
-        scope: 'publish',
-        channels: ['signals', 'alerts'],
+        scopes: ['pub:signals', 'pub:alerts'],
       });
       expect(result.token).toBe('pub-jwt');
     });
@@ -71,16 +68,14 @@ describe('token commands', () => {
       writeConfig();
       mockClient.mintToken.mockResolvedValueOnce({ token: 'custom-jwt' });
 
-      await runTokenMint('subscribe', {
-        channels: ['ch1'],
+      await runTokenMint(['sub:ch1'], {
         sub: 'agent-42',
         name: 'My Agent',
         expiresIn: '7d',
       });
 
       expect(mockClient.mintToken).toHaveBeenCalledWith({
-        scope: 'subscribe',
-        channels: ['ch1'],
+        scopes: ['sub:ch1'],
         sub: 'agent-42',
         name: 'My Agent',
         expires_in: '7d',
@@ -91,7 +86,7 @@ describe('token commands', () => {
       fs.mkdirSync(tmpDir, { recursive: true });
       fs.writeFileSync(path.join(tmpDir, 'state.json'), '{}');
 
-      await expect(runTokenMint('admin', {})).rejects.toThrow(
+      await expect(runTokenMint(['admin'], {})).rejects.toThrow(
         'No server configured',
       );
     });

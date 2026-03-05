@@ -2,10 +2,10 @@
 editUrl: false
 next: false
 prev: false
-title: "MintTokenResult"
+title: 'MintTokenResult'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:97](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/types.ts#L97)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:93](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L93)
 
 Result of minting a token.
 
@@ -15,6 +15,6 @@ Result of minting a token.
 
 > **token**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:99](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/types.ts#L99)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:95](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L95)
 
 The signed JWT string.

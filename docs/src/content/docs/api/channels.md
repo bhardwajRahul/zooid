@@ -11,7 +11,7 @@ Channels are named topics that events are published to and consumed from. Channe
 GET /api/v1/channels
 ```
 
-Returns all channels on the server. No authentication required.
+Returns channels visible to the caller. Without auth, only public channels are returned. With a token, private channels matching the token's scopes are also included. Admin tokens see all channels.
 
 ### Response
 
@@ -40,7 +40,7 @@ Returns all channels on the server. No authentication required.
 POST /api/v1/channels
 ```
 
-Creates a new channel and returns scoped publish and subscribe tokens.
+Creates a new channel and returns a scoped token for publishing and subscribing.
 
 ### Authentication
 
@@ -65,8 +65,7 @@ Admin token required.
 ```json
 {
   "id": "market-signals",
-  "publish_token": "eyJhbGciOiJIUzI1NiIs...",
-  "subscribe_token": "eyJhbGciOiJIUzI1NiIs..."
+  "token": "eyJhbGciOiJFZERTQSIs..."
 }
 ```
 

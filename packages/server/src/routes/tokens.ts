@@ -2,7 +2,7 @@ import { OpenAPIRoute } from 'chanfana';
 import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables, ZooidJWT } from '../types';
-import { mintServerToken } from '../lib/jwt';
+import { mintServerToken, normalizeScopes } from '../lib/jwt';
 import { parseDuration } from '../lib/duration';
 
 type Env = { Bindings: Bindings; Variables: Variables };
@@ -20,9 +20,9 @@ export class GetTokenClaims extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: z.object({
-              scope: z.enum(['admin', 'publish', 'subscribe']),
-              channels: z.array(z.string()).optional(),
+              scopes: z.array(z.string()),
               sub: z.string().optional(),
+              name: z.string().optional(),
               iat: z.number(),
               exp: z.number().optional(),
             }),
@@ -42,16 +42,15 @@ export class GetTokenClaims extends OpenAPIRoute {
 
   async handle(c: Context<Env>) {
     const payload = c.get('jwtPayload') as ZooidJWT;
+    const scopes = normalizeScopes(payload);
 
     const claims: Record<string, unknown> = {
-      scope: payload.scope,
+      scopes,
       iat: payload.iat,
     };
 
-    // Normalize legacy single-channel claim to channels array
-    if (payload.channels) claims.channels = payload.channels;
-    else if (payload.channel) claims.channels = [payload.channel];
     if (payload.sub) claims.sub = payload.sub;
+    if (payload.name) claims.name = payload.name;
     if (payload.exp) claims.exp = payload.exp;
 
     return c.json(claims);
@@ -70,8 +69,7 @@ export class MintToken extends OpenAPIRoute {
         content: {
           'application/json': {
             schema: z.object({
-              scope: z.enum(['admin', 'publish', 'subscribe']),
-              channels: z.array(z.string()).optional(),
+              scopes: z.array(z.string()).min(1),
               sub: z.string().optional(),
               name: z.string().optional(),
               expires_in: z.string().optional(),
@@ -122,14 +120,20 @@ export class MintToken extends OpenAPIRoute {
     const data = await this.getValidatedData<typeof this.schema>();
     const body = data.body;
 
-    if (
-      body.scope !== 'admin' &&
-      (!body.channels || body.channels.length === 0)
-    ) {
-      return c.json(
-        { error: 'channels required for publish/subscribe tokens' },
-        400,
-      );
+    // Validate scope format
+    for (const scope of body.scopes) {
+      if (
+        scope !== 'admin' &&
+        !scope.startsWith('pub:') &&
+        !scope.startsWith('sub:')
+      ) {
+        return c.json(
+          {
+            error: `Invalid scope "${scope}". Must be "admin", "pub:<channel>", or "sub:<channel>"`,
+          },
+          400,
+        );
+      }
     }
 
     let expiresIn: number | undefined;
@@ -144,8 +148,7 @@ export class MintToken extends OpenAPIRoute {
       }
     }
 
-    const claims: Partial<ZooidJWT> = { scope: body.scope };
-    if (body.channels) claims.channels = body.channels;
+    const claims: Partial<ZooidJWT> = { scopes: body.scopes };
     if (body.sub) claims.sub = body.sub;
     if (body.name) claims.name = body.name;
 

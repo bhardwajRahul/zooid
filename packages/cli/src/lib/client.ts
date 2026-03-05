@@ -14,6 +14,22 @@ export function createClient(token?: string): ZooidClient {
   return new ZooidClient({ server, token: token ?? config.admin_token });
 }
 
+/** Resolve a channel token from config, checking new `token` field then legacy fields. */
+function getChannelToken(
+  channelTokens:
+    | { token?: string; publish_token?: string; subscribe_token?: string }
+    | undefined,
+  tokenType?: 'publish' | 'subscribe',
+): string | undefined {
+  if (!channelTokens) return undefined;
+  // New unified token
+  if (channelTokens.token) return channelTokens.token;
+  // Legacy fallback
+  if (tokenType === 'publish') return channelTokens.publish_token;
+  if (tokenType === 'subscribe') return channelTokens.subscribe_token;
+  return channelTokens.publish_token ?? channelTokens.subscribe_token;
+}
+
 export function createChannelClient(
   channelId: string,
   tokenType: 'publish' | 'subscribe',
@@ -27,9 +43,7 @@ export function createChannelClient(
     );
   }
 
-  const tokenKey =
-    tokenType === 'publish' ? 'publish_token' : 'subscribe_token';
-  const channelToken = config.channels?.[channelId]?.[tokenKey];
+  const channelToken = getChannelToken(config.channels?.[channelId], tokenType);
   return new ZooidClient({ server, token: channelToken ?? config.admin_token });
 }
 
@@ -125,10 +139,8 @@ export function resolveChannel(
     let tokenSaved = false;
 
     // Save explicit token for future use
-    if (token && opts?.tokenType) {
-      const tokenKey =
-        opts.tokenType === 'publish' ? 'publish_token' : 'subscribe_token';
-      saveConfig({ channels: { [channelId]: { [tokenKey]: token } } }, server, {
+    if (token) {
+      saveConfig({ channels: { [channelId]: { token } } }, server, {
         setCurrent: false,
       });
       tokenSaved = true;
@@ -138,11 +150,7 @@ export function resolveChannel(
     if (!token) {
       const file = loadConfigFile();
       const channelTokens = file.servers?.[server]?.channels?.[channelId];
-      if (opts?.tokenType === 'publish') {
-        token = channelTokens?.publish_token;
-      } else {
-        token = channelTokens?.subscribe_token;
-      }
+      token = getChannelToken(channelTokens, opts?.tokenType);
     }
 
     return {
@@ -166,23 +174,18 @@ export function resolveChannel(
   let tokenSaved = false;
 
   // Save explicit token for future use
-  if (token && opts?.tokenType) {
-    const tokenKey =
-      opts.tokenType === 'publish' ? 'publish_token' : 'subscribe_token';
-    saveConfig({ channels: { [channel]: { [tokenKey]: token } } });
+  if (token) {
+    saveConfig({ channels: { [channel]: { token } } });
     tokenSaved = true;
   }
 
   // Look up token from config if none provided
   if (!token) {
-    const channelTokens = config.channels?.[channel];
-    if (opts?.tokenType === 'publish') {
-      token = channelTokens?.publish_token ?? config.admin_token;
-    } else if (opts?.tokenType === 'subscribe') {
-      token = channelTokens?.subscribe_token ?? config.admin_token;
-    } else {
-      token = config.admin_token;
-    }
+    const channelToken = getChannelToken(
+      config.channels?.[channel],
+      opts?.tokenType,
+    );
+    token = channelToken ?? config.admin_token;
   }
 
   return {

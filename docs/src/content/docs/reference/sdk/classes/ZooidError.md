@@ -2,10 +2,10 @@
 editUrl: false
 next: false
 prev: false
-title: "ZooidError"
+title: 'ZooidError'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/error.ts:7](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/error.ts#L7)
+Defined in: [Code/zooid/packages/sdk/src/error.ts:7](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/error.ts#L7)
 
 Error thrown by [ZooidClient](/docs/reference/sdk/classes/zooidclient/) when the server returns a non-2xx response.
 
@@ -22,7 +22,7 @@ the error description from the response body (or a fallback like `"HTTP 500"`).
 
 > **new ZooidError**(`status`, `message`): `ZooidError`
 
-Defined in: [Code/zooid/packages/sdk/src/error.ts:11](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/error.ts#L11)
+Defined in: [Code/zooid/packages/sdk/src/error.ts:11](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/error.ts#L11)
 
 #### Parameters
 
@@ -48,65 +48,65 @@ Defined in: [Code/zooid/packages/sdk/src/error.ts:11](https://github.com/zooid-a
 
 > `optional` **cause**: `unknown`
 
-Defined in: Code/zooid/node\_modules/.pnpm/typescript@5.9.3/node\_modules/typescript/lib/lib.es2022.error.d.ts:26
+Defined in: Code/zooid/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2022.error.d.ts:26
 
 #### Inherited from
 
 `Error.cause`
 
-***
+---
 
 ### message
 
 > **message**: `string`
 
-Defined in: Code/zooid/node\_modules/.pnpm/typescript@5.9.3/node\_modules/typescript/lib/lib.es5.d.ts:1077
+Defined in: Code/zooid/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es5.d.ts:1077
 
 #### Inherited from
 
 `Error.message`
 
-***
+---
 
 ### name
 
 > **name**: `string`
 
-Defined in: Code/zooid/node\_modules/.pnpm/typescript@5.9.3/node\_modules/typescript/lib/lib.es5.d.ts:1076
+Defined in: Code/zooid/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es5.d.ts:1076
 
 #### Inherited from
 
 `Error.name`
 
-***
+---
 
 ### stack?
 
 > `optional` **stack**: `string`
 
-Defined in: Code/zooid/node\_modules/.pnpm/typescript@5.9.3/node\_modules/typescript/lib/lib.es5.d.ts:1078
+Defined in: Code/zooid/node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es5.d.ts:1078
 
 #### Inherited from
 
 `Error.stack`
 
-***
+---
 
 ### status
 
 > **status**: `number`
 
-Defined in: [Code/zooid/packages/sdk/src/error.ts:9](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/error.ts#L9)
+Defined in: [Code/zooid/packages/sdk/src/error.ts:9](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/error.ts#L9)
 
 HTTP status code from the server response.
 
-***
+---
 
 ### prepareStackTrace()?
 
 > `static` `optional` **prepareStackTrace**: (`err`, `stackTraces`) => `any`
 
-Defined in: node\_modules/@types/node/globals.d.ts:11
+Defined in: node_modules/@types/node/globals.d.ts:11
 
 Optional override for formatting stack traces
 
@@ -132,13 +132,13 @@ https://v8.dev/docs/stack-trace-api#customizing-stack-traces
 
 `Error.prepareStackTrace`
 
-***
+---
 
 ### stackTraceLimit
 
 > `static` **stackTraceLimit**: `number`
 
-Defined in: node\_modules/@types/node/globals.d.ts:13
+Defined in: node_modules/@types/node/globals.d.ts:13
 
 #### Inherited from
 
@@ -150,7 +150,7 @@ Defined in: node\_modules/@types/node/globals.d.ts:13
 
 > `static` **captureStackTrace**(`targetObject`, `constructorOpt?`): `void`
 
-Defined in: node\_modules/@types/node/globals.d.ts:4
+Defined in: node_modules/@types/node/globals.d.ts:4
 
 Create .stack property on a target object
 

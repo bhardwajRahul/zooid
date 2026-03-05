@@ -11,7 +11,10 @@ export interface ChannelStats {
 }
 
 export interface ChannelTokens {
+  token?: string;
+  /** @deprecated Use `token` instead */
   publish_token?: string;
+  /** @deprecated Use `token` instead */
   subscribe_token?: string;
   name?: string;
   stats?: ChannelStats;

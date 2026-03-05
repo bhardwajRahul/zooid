@@ -453,33 +453,25 @@ export async function runDeploy(): Promise<void> {
       printSuccess('Schema up to date');
     }
 
-    // Run column migrations (idempotent — ignore "duplicate column" errors)
-    const migrations = [
-      'ALTER TABLE events ADD COLUMN publisher_name TEXT',
-      'ALTER TABLE channels ADD COLUMN config TEXT',
-    ];
-    for (const sql of migrations) {
-      try {
-        wrangler(
-          `d1 execute ${dbName} --remote --command="${sql}"`,
-          stagingDir,
-          creds,
-        );
-      } catch {
-        // Column already exists — skip
+    // Run SQL migration files (each is idempotent — ALTERs fail silently if column exists)
+    const migrationsDir = path.join(stagingDir, 'src/db/migrations');
+    if (fs.existsSync(migrationsDir)) {
+      const migrationFiles = fs
+        .readdirSync(migrationsDir)
+        .filter((f: string) => f.endsWith('.sql'))
+        .sort();
+      for (const file of migrationFiles) {
+        const migrationPath = path.join(migrationsDir, file);
+        try {
+          wrangler(
+            `d1 execute ${dbName} --remote --file=${migrationPath}`,
+            stagingDir,
+            creds,
+          );
+        } catch {
+          // Migration already applied or non-fatal — skip
+        }
       }
-    }
-
-    // Migrate schema → config (idempotent: only runs where config IS NULL)
-    try {
-      const dataMigrationSql = `UPDATE channels SET config = json_object('types', (SELECT json_group_object(key, json_object('schema', json_each.value)) FROM json_each(schema))) WHERE schema IS NOT NULL AND config IS NULL`;
-      wrangler(
-        `d1 execute ${dbName} --remote --command="${dataMigrationSql}"`,
-        stagingDir,
-        creds,
-      );
-    } catch {
-      // Non-fatal — schema column may not exist on fresh deploys
     }
 
     // Ensure EdDSA key is registered (upgrades old HS256-only deploys)

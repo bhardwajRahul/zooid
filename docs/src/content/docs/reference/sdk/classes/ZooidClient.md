@@ -2,10 +2,10 @@
 editUrl: false
 next: false
 prev: false
-title: "ZooidClient"
+title: 'ZooidClient'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:41](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L41)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:41](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L41)
 
 Client for the Zooid pub/sub API.
 
@@ -29,7 +29,7 @@ const channels = await client.listChannels();
 
 > **new ZooidClient**(`options`): `ZooidClient`
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:47](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L47)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:47](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L47)
 
 #### Parameters
 
@@ -47,7 +47,7 @@ Defined in: [Code/zooid/packages/sdk/src/client.ts:47](https://github.com/zooid-
 
 > `readonly` **server**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:43](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L43)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:43](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L43)
 
 Base URL of the Zooid server (trailing slashes stripped).
 
@@ -57,7 +57,7 @@ Base URL of the Zooid server (trailing slashes stripped).
 
 > **createChannel**(`options`): `Promise`\<[`CreateChannelResult`](/docs/reference/sdk/interfaces/createchannelresult/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:127](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L127)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:127](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L127)
 
 Create a new channel via `POST /api/v1/channels`. Requires admin token.
 
@@ -71,13 +71,13 @@ Create a new channel via `POST /api/v1/channels`. Requires admin token.
 
 `Promise`\<[`CreateChannelResult`](/docs/reference/sdk/interfaces/createchannelresult/)\>
 
-***
+---
 
 ### deleteChannel()
 
 > **deleteChannel**(`channelId`): `Promise`\<`void`\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:162](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L162)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:162](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L162)
 
 Delete a channel and all its data. Requires admin token.
 
@@ -91,13 +91,13 @@ Delete a channel and all its data. Requires admin token.
 
 `Promise`\<`void`\>
 
-***
+---
 
 ### getClaim()
 
 > **getClaim**(`channels`, `action?`): `Promise`\<[`ClaimResult`](/docs/reference/sdk/interfaces/claimresult/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:150](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L150)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:150](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L150)
 
 Generate a signed claim for the Zooid Directory. Requires admin token.
 
@@ -115,13 +115,13 @@ Generate a signed claim for the Zooid Directory. Requires admin token.
 
 `Promise`\<[`ClaimResult`](/docs/reference/sdk/interfaces/claimresult/)\>
 
-***
+---
 
 ### getMetadata()
 
 > **getMetadata**(): `Promise`\<[`ServerDiscovery`](/docs/reference/sdk/interfaces/serverdiscovery/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:101](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L101)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:101](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L101)
 
 Fetch server discovery metadata from `GET /.well-known/zooid.json`.
 
@@ -129,13 +129,13 @@ Fetch server discovery metadata from `GET /.well-known/zooid.json`.
 
 `Promise`\<[`ServerDiscovery`](/docs/reference/sdk/interfaces/serverdiscovery/)\>
 
-***
+---
 
 ### getServerMeta()
 
 > **getServerMeta**(): `Promise`\<[`ServerIdentity`](/docs/reference/sdk/interfaces/serveridentity/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:106](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L106)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:106](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L106)
 
 Fetch editable server identity from `GET /api/v1/server`.
 
@@ -143,13 +143,13 @@ Fetch editable server identity from `GET /api/v1/server`.
 
 `Promise`\<[`ServerIdentity`](/docs/reference/sdk/interfaces/serveridentity/)\>
 
-***
+---
 
 ### listChannels()
 
 > **listChannels**(): `Promise`\<`ChannelListItem`[]\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:118](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L118)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:118](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L118)
 
 List all channels via `GET /api/v1/channels`.
 
@@ -157,13 +157,13 @@ List all channels via `GET /api/v1/channels`.
 
 `Promise`\<`ChannelListItem`[]\>
 
-***
+---
 
 ### mintToken()
 
 > **mintToken**(`options`): `Promise`\<[`MintTokenResult`](/docs/reference/sdk/interfaces/minttokenresult/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:157](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L157)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:157](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L157)
 
 Mint a new token. Requires admin token.
 
@@ -177,13 +177,13 @@ Mint a new token. Requires admin token.
 
 `Promise`\<[`MintTokenResult`](/docs/reference/sdk/interfaces/minttokenresult/)\>
 
-***
+---
 
 ### poll()
 
 > **poll**(`channelId`, `options?`): `Promise`\<[`PollResult`](/docs/reference/sdk/interfaces/pollresult/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:302](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L302)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:302](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L302)
 
 Poll events from a channel with cursor-based pagination.
 
@@ -201,13 +201,13 @@ Poll events from a channel with cursor-based pagination.
 
 `Promise`\<[`PollResult`](/docs/reference/sdk/interfaces/pollresult/)\>
 
-***
+---
 
 ### publish()
 
 > **publish**(`channelId`, `options`): `Promise`\<[`ZooidEvent`](/docs/reference/sdk/interfaces/zooidevent/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:167](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L167)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:167](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L167)
 
 Publish a single event to a channel. Requires a publish-scoped token.
 
@@ -225,13 +225,13 @@ Publish a single event to a channel. Requires a publish-scoped token.
 
 `Promise`\<[`ZooidEvent`](/docs/reference/sdk/interfaces/zooidevent/)\>
 
-***
+---
 
 ### publishBatch()
 
 > **publishBatch**(`channelId`, `events`): `Promise`\<[`ZooidEvent`](/docs/reference/sdk/interfaces/zooidevent/)[]\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:183](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L183)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:183](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L183)
 
 Publish multiple events in a single request. Requires a publish-scoped token.
 
@@ -249,13 +249,13 @@ Publish multiple events in a single request. Requires a publish-scoped token.
 
 `Promise`\<[`ZooidEvent`](/docs/reference/sdk/interfaces/zooidevent/)[]\>
 
-***
+---
 
 ### registerWebhook()
 
 > **registerWebhook**(`channelId`, `url`, `options?`): `Promise`\<`Webhook`\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:316](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L316)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:316](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L316)
 
 Register a webhook to receive events via POST.
 
@@ -277,13 +277,13 @@ Register a webhook to receive events via POST.
 
 `Promise`\<`Webhook`\>
 
-***
+---
 
 ### removeWebhook()
 
 > **removeWebhook**(`channelId`, `webhookId`): `Promise`\<`void`\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:332](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L332)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:332](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L332)
 
 Remove a webhook registration. Requires admin token.
 
@@ -301,13 +301,13 @@ Remove a webhook registration. Requires admin token.
 
 `Promise`\<`void`\>
 
-***
+---
 
 ### subscribe()
 
 > **subscribe**(`channelId`, `callback`, `options?`): `Promise`\<() => `void`\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:354](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L354)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:354](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L354)
 
 Subscribe to a channel. Tries WebSocket first (mode `'auto'`), falls back to polling.
 
@@ -342,7 +342,7 @@ const unsub = await client.subscribe('my-channel', (event) => {
 unsub();
 ```
 
-***
+---
 
 ### tail()
 
@@ -350,7 +350,7 @@ unsub();
 
 > **tail**(`channelId`, `options`): [`TailStream`](/docs/reference/sdk/interfaces/tailstream/)
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:220](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L220)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:220](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L220)
 
 Fetch events from a channel.
 
@@ -388,7 +388,7 @@ for await (const event of stream) {
 
 > **tail**(`channelId`, `options?`): `Promise`\<[`PollResult`](/docs/reference/sdk/interfaces/pollresult/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:221](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L221)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:221](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L221)
 
 Fetch events from a channel.
 
@@ -422,13 +422,13 @@ for await (const event of stream) {
 }
 ```
 
-***
+---
 
 ### updateChannel()
 
 > **updateChannel**(`channelId`, `options`): `Promise`\<`ChannelListItem`\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:138](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L138)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:138](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L138)
 
 Update an existing channel via `PATCH /api/v1/channels/:id`. Requires admin token.
 
@@ -446,13 +446,13 @@ Update an existing channel via `PATCH /api/v1/channels/:id`. Requires admin toke
 
 `Promise`\<`ChannelListItem`\>
 
-***
+---
 
 ### updateServerMeta()
 
 > **updateServerMeta**(`options`): `Promise`\<[`ServerIdentity`](/docs/reference/sdk/interfaces/serveridentity/)\>
 
-Defined in: [Code/zooid/packages/sdk/src/client.ts:111](https://github.com/zooid-ai/zooid/blob/72dceaf8cbf9301a54bcc99d10c16e83bf471a88/packages/sdk/src/client.ts#L111)
+Defined in: [Code/zooid/packages/sdk/src/client.ts:111](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/client.ts#L111)
 
 Update server identity metadata via `PUT /api/v1/server`. Requires admin token.
 

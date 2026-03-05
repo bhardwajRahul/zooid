@@ -73,18 +73,14 @@ export interface UpdateChannelOptions {
 export interface CreateChannelResult {
   /** The channel's slug identifier. */
   id: string;
-  /** JWT token scoped for publishing to this channel. */
-  publish_token: string;
-  /** JWT token scoped for subscribing to this channel. */
-  subscribe_token: string;
+  /** JWT token with pub+sub scopes for this channel. */
+  token: string;
 }
 
 /** Options for minting a new token via `POST /api/v1/tokens`. */
 export interface MintTokenOptions {
-  /** Token scope: what the token can do. */
-  scope: 'admin' | 'publish' | 'subscribe';
-  /** Channels this token grants access to (required for publish/subscribe). */
-  channels?: string[];
+  /** Scopes: ["admin"], ["pub:channel-id", "sub:channel-id"], etc. */
+  scopes: string[];
   /** Subject identifier (e.g. publisher ID). */
   sub?: string;
   /** Display name (used for publisher identity). */

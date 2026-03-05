@@ -1,26 +1,23 @@
-export interface ChannelInfo {
-  id: string;
-  name: string;
-  description: string | null;
-  is_public: boolean;
-  event_count: number;
-  last_event_at: string | null;
+import type { ChannelListItem, ZooidEvent, PollResult } from '@zooid/types';
+
+export type { ChannelListItem, ZooidEvent, PollResult };
+
+// Alias for backward compat within the web app
+export type ChannelInfo = ChannelListItem;
+
+export interface ServerMeta {
+  server_name: string;
+  server_description: string | null;
+  poll_interval: number;
+  delivery: string[];
 }
 
-export interface ZooidEvent {
-  id: string;
-  channel_id: string;
-  publisher_id: string | null;
-  publisher_name: string | null;
-  type: string | null;
-  data: string;
-  created_at: string;
-}
-
-export interface PollResult {
-  events: ZooidEvent[];
-  cursor: string | null;
-  has_more: boolean;
+export interface TokenClaims {
+  scopes: string[];
+  sub?: string;
+  name?: string;
+  iat: number;
+  exp?: number;
 }
 
 function headers(token?: string): HeadersInit {
@@ -31,8 +28,13 @@ function headers(token?: string): HeadersInit {
   return h;
 }
 
-export async function listChannels(baseUrl: string): Promise<ChannelInfo[]> {
-  const res = await fetch(`${baseUrl}/api/v1/channels`);
+export async function listChannels(
+  baseUrl: string,
+  token?: string,
+): Promise<ChannelInfo[]> {
+  const res = await fetch(`${baseUrl}/api/v1/channels`, {
+    headers: headers(token),
+  });
   if (!res.ok) return [];
   const data: { channels: ChannelInfo[] } = await res.json();
   return data.channels;
@@ -43,22 +45,12 @@ export async function getChannel(
   channelId: string,
   token?: string,
 ): Promise<ChannelInfo | null> {
-  // Channel list endpoint returns all channels; find ours
   const res = await fetch(`${baseUrl}/api/v1/channels`, {
     headers: headers(token),
   });
-
   if (!res.ok) return null;
-
   const data: { channels: ChannelInfo[] } = await res.json();
   return data.channels.find((ch) => ch.id === channelId) ?? null;
-}
-
-export interface ServerMeta {
-  server_name: string;
-  server_description: string | null;
-  poll_interval: number;
-  delivery: string[];
 }
 
 const defaultMeta: ServerMeta = {
@@ -82,6 +74,35 @@ export async function fetchServerMeta(baseUrl: string): Promise<ServerMeta> {
   } catch {
     return defaultMeta;
   }
+}
+
+export async function getTokenClaims(
+  baseUrl: string,
+  token: string,
+): Promise<TokenClaims | null> {
+  try {
+    const res = await fetch(`${baseUrl}/api/v1/tokens/claims`, {
+      headers: headers(token),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function publishEvent(
+  baseUrl: string,
+  channelId: string,
+  payload: { type?: string; data: unknown },
+  token: string,
+): Promise<boolean> {
+  const res = await fetch(`${baseUrl}/api/v1/channels/${channelId}/events`, {
+    method: 'POST',
+    headers: { ...headers(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return res.ok;
 }
 
 export async function pollEvents(

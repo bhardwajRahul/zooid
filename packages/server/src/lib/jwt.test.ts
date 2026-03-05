@@ -6,6 +6,13 @@ import {
   createEdDSAToken,
   verifyEdDSAToken,
   verifyTokenAny,
+  normalizeScopes,
+  hasScope,
+  canPublish,
+  canSubscribe,
+  isAdmin,
+  enforceScopeCeiling,
+  scopeMatchesPattern,
 } from './jwt';
 import { setupTestDb } from '../test-utils';
 import type { TrustedKeyRow } from '../types';
@@ -38,8 +45,7 @@ function makeTrustedKeyRow(
     kty: publicJwk.kty!,
     crv: (publicJwk as { crv?: string }).crv!,
     x: publicJwk.x!,
-    max_scope: null,
-    allowed_channels: null,
+    max_scopes: null,
     issuer: 'local',
     created_at: new Date().toISOString(),
     ...overrides,
@@ -47,16 +53,136 @@ function makeTrustedKeyRow(
 }
 
 describe('JWT', () => {
+  describe('normalizeScopes', () => {
+    it('passes through new scopes array', () => {
+      expect(
+        normalizeScopes({ scopes: ['pub:foo', 'sub:bar'], iat: 0 }),
+      ).toEqual(['pub:foo', 'sub:bar']);
+    });
+
+    it('normalizes legacy admin scope', () => {
+      expect(normalizeScopes({ scope: 'admin', iat: 0 })).toEqual(['admin']);
+    });
+
+    it('normalizes legacy publish with channels', () => {
+      expect(
+        normalizeScopes({ scope: 'publish', channels: ['foo', 'bar'], iat: 0 }),
+      ).toEqual(['pub:foo', 'pub:bar']);
+    });
+
+    it('normalizes legacy subscribe with single channel', () => {
+      expect(
+        normalizeScopes({ scope: 'subscribe', channel: 'foo', iat: 0 }),
+      ).toEqual(['sub:foo']);
+    });
+
+    it('normalizes legacy publish without channels to wildcard', () => {
+      expect(normalizeScopes({ scope: 'publish', iat: 0 })).toEqual(['pub:*']);
+    });
+  });
+
+  describe('scopeMatchesPattern', () => {
+    it('exact match', () => {
+      expect(scopeMatchesPattern('pub:foo', 'pub:foo')).toBe(true);
+      expect(scopeMatchesPattern('pub:foo', 'pub:bar')).toBe(false);
+    });
+
+    it('wildcard match', () => {
+      expect(scopeMatchesPattern('pub:anything', 'pub:*')).toBe(true);
+      expect(scopeMatchesPattern('sub:anything', 'pub:*')).toBe(false);
+    });
+
+    it('prefix wildcard match', () => {
+      expect(scopeMatchesPattern('pub:product-foo', 'pub:product-*')).toBe(
+        true,
+      );
+      expect(scopeMatchesPattern('pub:other-foo', 'pub:product-*')).toBe(false);
+    });
+
+    it('admin pattern matches everything', () => {
+      expect(scopeMatchesPattern('pub:foo', 'admin')).toBe(true);
+      expect(scopeMatchesPattern('sub:bar', 'admin')).toBe(true);
+      expect(scopeMatchesPattern('admin', 'admin')).toBe(true);
+    });
+  });
+
+  describe('hasScope / canPublish / canSubscribe / isAdmin', () => {
+    it('admin scope grants everything', () => {
+      const scopes = ['admin'];
+      expect(hasScope(scopes, 'pub:foo')).toBe(true);
+      expect(hasScope(scopes, 'sub:bar')).toBe(true);
+      expect(canPublish(scopes, 'anything')).toBe(true);
+      expect(canSubscribe(scopes, 'anything')).toBe(true);
+      expect(isAdmin(scopes)).toBe(true);
+    });
+
+    it('pub scope grants publish to specific channel', () => {
+      const scopes = ['pub:foo'];
+      expect(canPublish(scopes, 'foo')).toBe(true);
+      expect(canPublish(scopes, 'bar')).toBe(false);
+      expect(canSubscribe(scopes, 'foo')).toBe(false);
+      expect(isAdmin(scopes)).toBe(false);
+    });
+
+    it('wildcard pub scope grants publish to any channel', () => {
+      const scopes = ['pub:*'];
+      expect(canPublish(scopes, 'foo')).toBe(true);
+      expect(canPublish(scopes, 'bar')).toBe(true);
+      expect(canSubscribe(scopes, 'foo')).toBe(false);
+    });
+
+    it('prefix wildcard works', () => {
+      const scopes = ['pub:product-*', 'sub:product-*'];
+      expect(canPublish(scopes, 'product-signals')).toBe(true);
+      expect(canPublish(scopes, 'other-signals')).toBe(false);
+      expect(canSubscribe(scopes, 'product-logs')).toBe(true);
+    });
+
+    it('combined pub+sub scopes', () => {
+      const scopes = ['pub:reddit-scout', 'sub:reddit-drafts'];
+      expect(canPublish(scopes, 'reddit-scout')).toBe(true);
+      expect(canSubscribe(scopes, 'reddit-drafts')).toBe(true);
+      expect(canPublish(scopes, 'reddit-drafts')).toBe(false);
+      expect(canSubscribe(scopes, 'reddit-scout')).toBe(false);
+    });
+  });
+
+  describe('enforceScopeCeiling', () => {
+    it('null ceiling allows everything', () => {
+      expect(() => enforceScopeCeiling(['admin'], null)).not.toThrow();
+    });
+
+    it('ceiling allows matching scopes', () => {
+      expect(() =>
+        enforceScopeCeiling(['pub:foo', 'sub:foo'], ['pub:*', 'sub:*']),
+      ).not.toThrow();
+    });
+
+    it('ceiling rejects non-matching scopes', () => {
+      expect(() => enforceScopeCeiling(['admin'], ['pub:*', 'sub:*'])).toThrow(
+        'Scope "admin" exceeds key ceiling',
+      );
+    });
+
+    it('ceiling with prefix patterns', () => {
+      expect(() =>
+        enforceScopeCeiling(['pub:product-foo'], ['pub:product-*']),
+      ).not.toThrow();
+      expect(() =>
+        enforceScopeCeiling(['pub:other-foo'], ['pub:product-*']),
+      ).toThrow();
+    });
+  });
+
   describe('HS256 (legacy)', () => {
     describe('createToken', () => {
-      it('creates a valid admin token', async () => {
-        const token = await createToken({ scope: 'admin' }, TEST_SECRET);
+      it('creates a valid token with scopes', async () => {
+        const token = await createToken({ scopes: ['admin'] }, TEST_SECRET);
         expect(token).toBeTruthy();
-        expect(typeof token).toBe('string');
         expect(token.split('.')).toHaveLength(3);
       });
 
-      it('creates a publish token scoped to a channel', async () => {
+      it('creates a token with legacy scope claim', async () => {
         const token = await createToken(
           { scope: 'publish', channel: 'test-channel' },
           TEST_SECRET,
@@ -66,19 +192,9 @@ describe('JWT', () => {
         expect(payload.channel).toBe('test-channel');
       });
 
-      it('creates a subscribe token scoped to a channel', async () => {
-        const token = await createToken(
-          { scope: 'subscribe', channel: 'test-channel' },
-          TEST_SECRET,
-        );
-        const payload = await verifyToken(token, TEST_SECRET);
-        expect(payload.scope).toBe('subscribe');
-        expect(payload.channel).toBe('test-channel');
-      });
-
       it('includes sub claim when provided', async () => {
         const token = await createToken(
-          { scope: 'publish', channel: 'test-channel', sub: 'bot-1' },
+          { scopes: ['pub:test-channel'], sub: 'bot-1' },
           TEST_SECRET,
         );
         const payload = await verifyToken(token, TEST_SECRET);
@@ -86,13 +202,13 @@ describe('JWT', () => {
       });
 
       it('includes iat claim', async () => {
-        const token = await createToken({ scope: 'admin' }, TEST_SECRET);
+        const token = await createToken({ scopes: ['admin'] }, TEST_SECRET);
         const payload = await verifyToken(token, TEST_SECRET);
         expect(payload.iat).toBeTypeOf('number');
       });
 
       it('includes exp claim when expiry is provided', async () => {
-        const token = await createToken({ scope: 'admin' }, TEST_SECRET, {
+        const token = await createToken({ scopes: ['admin'] }, TEST_SECRET, {
           expiresIn: 3600,
         });
         const payload = await verifyToken(token, TEST_SECRET);
@@ -101,7 +217,7 @@ describe('JWT', () => {
       });
 
       it('omits exp claim when no expiry', async () => {
-        const token = await createToken({ scope: 'admin' }, TEST_SECRET);
+        const token = await createToken({ scopes: ['admin'] }, TEST_SECRET);
         const payload = await verifyToken(token, TEST_SECRET);
         expect(payload.exp).toBeUndefined();
       });
@@ -109,13 +225,13 @@ describe('JWT', () => {
 
     describe('verifyToken', () => {
       it('verifies a valid token', async () => {
-        const token = await createToken({ scope: 'admin' }, TEST_SECRET);
+        const token = await createToken({ scopes: ['admin'] }, TEST_SECRET);
         const payload = await verifyToken(token, TEST_SECRET);
-        expect(payload.scope).toBe('admin');
+        expect(payload.scopes).toEqual(['admin']);
       });
 
       it('rejects a token signed with a different secret', async () => {
-        const token = await createToken({ scope: 'admin' }, TEST_SECRET);
+        const token = await createToken({ scopes: ['admin'] }, TEST_SECRET);
         await expect(verifyToken(token, 'wrong-secret')).rejects.toThrow();
       });
 
@@ -124,7 +240,7 @@ describe('JWT', () => {
       });
 
       it('rejects an expired token', async () => {
-        const token = await createToken({ scope: 'admin' }, TEST_SECRET, {
+        const token = await createToken({ scopes: ['admin'] }, TEST_SECRET, {
           expiresIn: -1,
         });
         await expect(verifyToken(token, TEST_SECRET)).rejects.toThrow();
@@ -145,7 +261,7 @@ describe('JWT', () => {
     describe('createEdDSAToken', () => {
       it('creates a valid 3-part JWT', async () => {
         const token = await createEdDSAToken(
-          { scope: 'admin' },
+          { scopes: ['admin'] },
           privateJwk,
           'test-1',
         );
@@ -154,7 +270,7 @@ describe('JWT', () => {
 
       it('includes kid in the header', async () => {
         const token = await createEdDSAToken(
-          { scope: 'admin' },
+          { scopes: ['admin'] },
           privateJwk,
           'my-kid',
         );
@@ -170,21 +286,20 @@ describe('JWT', () => {
 
       it('includes claims in the payload', async () => {
         const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['test-ch'], sub: 'bot-1' },
+          { scopes: ['pub:test-ch'], sub: 'bot-1' },
           privateJwk,
           'test-1',
         );
         const keyRow = makeTrustedKeyRow(publicJwk);
         const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.scope).toBe('publish');
-        expect(payload.channels).toEqual(['test-ch']);
+        expect(payload.scopes).toEqual(['pub:test-ch']);
         expect(payload.sub).toBe('bot-1');
         expect(payload.iat).toBeTypeOf('number');
       });
 
       it('includes exp when expiresIn is set', async () => {
         const token = await createEdDSAToken(
-          { scope: 'admin' },
+          { scopes: ['admin'] },
           privateJwk,
           'test-1',
           { expiresIn: 3600 },
@@ -199,19 +314,19 @@ describe('JWT', () => {
     describe('verifyEdDSAToken', () => {
       it('verifies a valid token', async () => {
         const token = await createEdDSAToken(
-          { scope: 'admin' },
+          { scopes: ['admin'] },
           privateJwk,
           'test-1',
         );
         const keyRow = makeTrustedKeyRow(publicJwk);
         const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.scope).toBe('admin');
+        expect(payload.scopes).toEqual(['admin']);
       });
 
       it('rejects a token signed with a different key', async () => {
         const other = await generateTestKeypair();
         const token = await createEdDSAToken(
-          { scope: 'admin' },
+          { scopes: ['admin'] },
           other.privateJwk,
           'test-1',
         );
@@ -223,7 +338,7 @@ describe('JWT', () => {
 
       it('rejects an expired token', async () => {
         const token = await createEdDSAToken(
-          { scope: 'admin' },
+          { scopes: ['admin'] },
           privateJwk,
           'test-1',
           { expiresIn: -1 },
@@ -239,200 +354,71 @@ describe('JWT', () => {
         await expect(verifyEdDSAToken('not.a.jwt', keyRow)).rejects.toThrow();
       });
 
-      it('enforces scope ceiling — publish key cannot verify admin token', async () => {
+      it('enforces scope ceiling — pub-only key rejects admin token', async () => {
         const token = await createEdDSAToken(
-          { scope: 'admin' },
+          { scopes: ['admin'] },
           privateJwk,
           'test-1',
         );
         const keyRow = makeTrustedKeyRow(publicJwk, {
-          max_scope: 'publish',
+          max_scopes: JSON.stringify(['pub:*', 'sub:*']),
         });
         await expect(verifyEdDSAToken(token, keyRow)).rejects.toThrow(
-          'Scope exceeds key ceiling',
+          'exceeds key ceiling',
         );
       });
 
-      it('allows scope within ceiling — publish key verifies publish token', async () => {
+      it('allows scope within ceiling', async () => {
         const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['ch'] },
+          { scopes: ['pub:ch', 'sub:ch'] },
           privateJwk,
           'test-1',
         );
         const keyRow = makeTrustedKeyRow(publicJwk, {
-          max_scope: 'publish',
+          max_scopes: JSON.stringify(['pub:*', 'sub:*']),
         });
         const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.scope).toBe('publish');
+        expect(payload.scopes).toEqual(['pub:ch', 'sub:ch']);
       });
 
-      it('allows scope within ceiling — publish key verifies subscribe token', async () => {
+      it('enforces channel-scoped ceiling', async () => {
         const token = await createEdDSAToken(
-          { scope: 'subscribe', channels: ['ch'] },
+          { scopes: ['pub:secret-channel'] },
           privateJwk,
           'test-1',
         );
         const keyRow = makeTrustedKeyRow(publicJwk, {
-          max_scope: 'publish',
-        });
-        const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.scope).toBe('subscribe');
-      });
-
-      it('no ceiling (null max_scope) allows admin tokens', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'admin' },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, { max_scope: null });
-        const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.scope).toBe('admin');
-      });
-    });
-
-    describe('channel allowlist', () => {
-      it('allows exact channel match', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['crypto-signals'] },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['crypto-signals', 'market-data']),
-        });
-        const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.channels).toEqual(['crypto-signals']);
-      });
-
-      it('rejects channel not in allowlist', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['secret-internal'] },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['crypto-signals']),
+          max_scopes: JSON.stringify(['pub:product-*']),
         });
         await expect(verifyEdDSAToken(token, keyRow)).rejects.toThrow(
-          'Channel "secret-internal" not allowed for this key',
+          'exceeds key ceiling',
         );
       });
 
-      it('allows prefix wildcard match', async () => {
+      it('no ceiling (null max_scopes) allows all tokens', async () => {
         const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['build-artifacts.main'] },
+          { scopes: ['admin'] },
           privateJwk,
           'test-1',
         );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['build-artifacts.*']),
-        });
+        const keyRow = makeTrustedKeyRow(publicJwk, { max_scopes: null });
         const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.channels).toEqual(['build-artifacts.main']);
+        expect(payload.scopes).toEqual(['admin']);
       });
 
-      it('rejects channel that does not match prefix', async () => {
+      it('normalizes legacy tokens through ceiling check', async () => {
+        // Legacy token with scope: 'publish', channels: ['foo']
         const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['other-artifacts.main'] },
+          { scope: 'publish', channels: ['foo'] },
           privateJwk,
           'test-1',
         );
         const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['build-artifacts.*']),
+          max_scopes: JSON.stringify(['pub:foo']),
         });
-        await expect(verifyEdDSAToken(token, keyRow)).rejects.toThrow(
-          'Channel "other-artifacts.main" not allowed for this key',
-        );
-      });
-
-      it('allows mix of exact and prefix entries', async () => {
-        const token = await createEdDSAToken(
-          {
-            scope: 'publish',
-            channels: ['crypto-signals', 'build-artifacts.staging'],
-          },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify([
-            'crypto-signals',
-            'build-artifacts.*',
-          ]),
-        });
+        // Should pass — legacy normalizes to pub:foo which matches
         const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.channels).toEqual([
-          'crypto-signals',
-          'build-artifacts.staging',
-        ]);
-      });
-
-      it('rejects if any channel in multi-channel token is not allowed', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['crypto-signals', 'secret-internal'] },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['crypto-signals']),
-        });
-        await expect(verifyEdDSAToken(token, keyRow)).rejects.toThrow(
-          'Channel "secret-internal" not allowed for this key',
-        );
-      });
-
-      it('allows any channel when allowed_channels is null', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'publish', channels: ['anything-goes'] },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: null,
-        });
-        const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.channels).toEqual(['anything-goes']);
-      });
-
-      it('works with legacy single-channel claim', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'publish', channel: 'crypto-signals' },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['crypto-signals']),
-        });
-        const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.channel).toBe('crypto-signals');
-      });
-
-      it('rejects legacy single-channel claim not in allowlist', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'publish', channel: 'secret-internal' },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['crypto-signals']),
-        });
-        await expect(verifyEdDSAToken(token, keyRow)).rejects.toThrow(
-          'Channel "secret-internal" not allowed for this key',
-        );
-      });
-
-      it('allows admin tokens with no channels even when allowlist is set', async () => {
-        const token = await createEdDSAToken(
-          { scope: 'admin' },
-          privateJwk,
-          'test-1',
-        );
-        const keyRow = makeTrustedKeyRow(publicJwk, {
-          allowed_channels: JSON.stringify(['crypto-signals']),
-        });
-        const payload = await verifyEdDSAToken(token, keyRow);
-        expect(payload.scope).toBe('admin');
+        expect(normalizeScopes(payload)).toEqual(['pub:foo']);
       });
     });
   });
@@ -454,7 +440,7 @@ describe('JWT', () => {
         ZOOID_JWT_SECRET: TEST_SECRET,
         DB: env.DB,
       });
-      expect(result.payload.scope).toBe('admin');
+      expect(normalizeScopes(result.payload)).toEqual(['admin']);
       expect(result.kid).toBeUndefined();
     });
 
@@ -467,7 +453,7 @@ describe('JWT', () => {
         .run();
 
       const token = await createEdDSAToken(
-        { scope: 'admin' },
+        { scopes: ['admin'] },
         privateJwk,
         'dual-test-1',
       );
@@ -475,7 +461,7 @@ describe('JWT', () => {
         ZOOID_JWT_SECRET: TEST_SECRET,
         DB: env.DB,
       });
-      expect(result.payload.scope).toBe('admin');
+      expect(result.payload.scopes).toEqual(['admin']);
       expect(result.kid).toBe('dual-test-1');
 
       // Cleanup
@@ -486,7 +472,7 @@ describe('JWT', () => {
 
     it('rejects EdDSA token with unknown kid', async () => {
       const token = await createEdDSAToken(
-        { scope: 'admin' },
+        { scopes: ['admin'] },
         privateJwk,
         'unknown-kid',
       );
@@ -510,7 +496,7 @@ describe('JWT', () => {
     it('rejects when no matching verification method exists', async () => {
       // EdDSA token without JWKS entry and no HS256 secret
       const token = await createEdDSAToken(
-        { scope: 'admin' },
+        { scopes: ['admin'] },
         privateJwk,
         'no-key',
       );

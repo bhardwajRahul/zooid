@@ -61,7 +61,7 @@ describe('Key rotation integration test', () => {
 
     // Mint an EdDSA admin token with local-1
     const eddsaAdmin1 = await createEdDSAToken(
-      { scope: 'admin' },
+      { scopes: ['admin'] },
       key1.privateJwk,
       'local-1',
     );
@@ -104,7 +104,7 @@ describe('Key rotation integration test', () => {
 
     // --- Step 3: Mint new token with local-2 ---
     const eddsaAdmin2 = await createEdDSAToken(
-      { scope: 'admin' },
+      { scopes: ['admin'] },
       key2.privateJwk,
       'local-2',
     );
@@ -175,7 +175,7 @@ describe('Key rotation integration test', () => {
     const hsAdmin = await createToken({ scope: 'admin' }, JWT_SECRET);
     const externalKey = await generateTestKeypair();
 
-    // --- Add external issuer's key with publish ceiling ---
+    // --- Add external issuer's key with scoped ceiling ---
     let res = await request('/api/v1/keys', {
       method: 'POST',
       token: hsAdmin,
@@ -183,7 +183,7 @@ describe('Key rotation integration test', () => {
       body: JSON.stringify({
         kid: 'partner-1',
         x: externalKey.publicJwk.x!,
-        max_scope: 'publish',
+        max_scopes: ['pub:*', 'sub:*'],
         issuer: 'partner.dev',
       }),
     });
@@ -192,8 +192,7 @@ describe('Key rotation integration test', () => {
     // --- External issuer mints a publish token with name ---
     const externalPublishToken = await createEdDSAToken(
       {
-        scope: 'publish',
-        channels: ['crypto-signals'],
+        scopes: ['pub:crypto-signals'],
         sub: 'price-bot',
         name: 'Price Tracker',
       },
@@ -224,7 +223,7 @@ describe('Key rotation integration test', () => {
 
     // --- External issuer tries admin token — rejected by scope ceiling ---
     const externalAdminAttempt = await createEdDSAToken(
-      { scope: 'admin' },
+      { scopes: ['admin'] },
       externalKey.privateJwk,
       'partner-1',
     );
@@ -247,6 +246,139 @@ describe('Key rotation integration test', () => {
       token: externalPublishToken,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ data: { signal: 'sell' } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('granular max_scopes on trusted key restricts token to specific channels', async () => {
+    const hsAdmin = await createToken({ scope: 'admin' }, JWT_SECRET);
+    const partnerKey = await generateTestKeypair();
+
+    // Register key with granular scopes: can only publish to product-tickets
+    let res = await request('/api/v1/keys', {
+      method: 'POST',
+      token: hsAdmin,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kid: 'granular-1',
+        x: partnerKey.publicJwk.x!,
+        max_scopes: ['pub:product-tickets', 'sub:*'],
+        issuer: 'partner.dev',
+      }),
+    });
+    expect(res.status).toBe(201);
+
+    // Create channels
+    for (const id of ['product-tickets', 'other-channel']) {
+      await request('/api/v1/channels', {
+        method: 'POST',
+        token: hsAdmin,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: id }),
+      });
+    }
+
+    // Token claiming pub:product-tickets — allowed by ceiling
+    const allowedToken = await createEdDSAToken(
+      { scopes: ['pub:product-tickets'] },
+      partnerKey.privateJwk,
+      'granular-1',
+    );
+    res = await request('/api/v1/channels/product-tickets/events', {
+      method: 'POST',
+      token: allowedToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { ticket: 'BUG-123' } }),
+    });
+    expect(res.status).toBe(201);
+
+    // Token claiming pub:other-channel — blocked by ceiling
+    const blockedToken = await createEdDSAToken(
+      { scopes: ['pub:other-channel'] },
+      partnerKey.privateJwk,
+      'granular-1',
+    );
+    res = await request('/api/v1/channels/other-channel/events', {
+      method: 'POST',
+      token: blockedToken,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { nope: true } }),
+    });
+    expect(res.status).toBe(401);
+
+    // Token claiming sub:other-channel — allowed (key has sub:*)
+    const subToken = await createEdDSAToken(
+      { scopes: ['sub:other-channel'] },
+      partnerKey.privateJwk,
+      'granular-1',
+    );
+    // Make other-channel private to test subscribe auth
+    await request('/api/v1/channels/other-channel', {
+      method: 'PATCH',
+      token: hsAdmin,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_public: false }),
+    });
+    res = await request('/api/v1/channels/other-channel/events', {
+      method: 'GET',
+      token: subToken,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('prefix wildcard max_scopes restricts to matching channels', async () => {
+    const hsAdmin = await createToken({ scope: 'admin' }, JWT_SECRET);
+    const partnerKey = await generateTestKeypair();
+
+    // Register key: can only publish to product-* channels
+    let res = await request('/api/v1/keys', {
+      method: 'POST',
+      token: hsAdmin,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kid: 'prefix-1',
+        x: partnerKey.publicJwk.x!,
+        max_scopes: ['pub:product-*'],
+        issuer: 'partner.dev',
+      }),
+    });
+    expect(res.status).toBe(201);
+
+    // Create channels
+    for (const id of ['product-tickets', 'product-bugs', 'other-stuff']) {
+      await request('/api/v1/channels', {
+        method: 'POST',
+        token: hsAdmin,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: id }),
+      });
+    }
+
+    // pub:product-tickets — matches pub:product-* ceiling
+    const allowed = await createEdDSAToken(
+      { scopes: ['pub:product-tickets'] },
+      partnerKey.privateJwk,
+      'prefix-1',
+    );
+    res = await request('/api/v1/channels/product-tickets/events', {
+      method: 'POST',
+      token: allowed,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { ok: true } }),
+    });
+    expect(res.status).toBe(201);
+
+    // pub:other-stuff — does NOT match pub:product-*
+    const blocked = await createEdDSAToken(
+      { scopes: ['pub:other-stuff'] },
+      partnerKey.privateJwk,
+      'prefix-1',
+    );
+    res = await request('/api/v1/channels/other-stuff/events', {
+      method: 'POST',
+      token: blocked,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { nope: true } }),
     });
     expect(res.status).toBe(401);
   });

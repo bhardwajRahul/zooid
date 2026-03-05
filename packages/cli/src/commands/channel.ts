@@ -37,14 +37,11 @@ export async function runChannelCreate(
     config: options.config,
   });
 
-  // Save tokens to config (only when using real config, not injected client)
+  // Save token to config (only when using real config, not injected client)
   if (!client) {
     const config = loadConfig();
     const channels = config.channels ?? {};
-    channels[id] = {
-      publish_token: result.publish_token,
-      subscribe_token: result.subscribe_token,
-    };
+    channels[id] = { token: result.token };
     saveConfig({ channels });
   }
 

@@ -569,8 +569,7 @@ export async function addTrustedKey(
   key: {
     kid: string;
     x: string;
-    max_scope?: string | null;
-    allowed_channels?: string[] | null;
+    max_scopes?: string[] | null;
     issuer?: string | null;
     kty?: string;
     crv?: string;
@@ -584,21 +583,18 @@ export async function addTrustedKey(
     throw new Error(`Maximum of ${MAX_TRUSTED_KEYS} trusted keys reached`);
   }
 
-  const allowedChannels = key.allowed_channels
-    ? JSON.stringify(key.allowed_channels)
-    : null;
+  const maxScopes = key.max_scopes ? JSON.stringify(key.max_scopes) : null;
 
   await db
     .prepare(
-      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scope, allowed_channels, issuer) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scopes, issuer) VALUES (?, ?, ?, ?, ?, ?)',
     )
     .bind(
       key.kid,
       key.kty ?? 'OKP',
       key.crv ?? 'Ed25519',
       key.x,
-      key.max_scope ?? null,
-      allowedChannels,
+      maxScopes,
       key.issuer ?? null,
     )
     .run();

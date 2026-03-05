@@ -3,20 +3,19 @@ title: zooid token
 description: Mint JWT tokens
 ---
 
-Generates JWT tokens for authenticating with your Zooid server. Tokens are scoped to specific operations and optionally to specific channels.
+Generates JWT tokens for authenticating with your Zooid server. Tokens carry an array of scopes that define access.
 
 ## Usage
 
 ```bash
-npx zooid token <scope> [channels...] [options]
+npx zooid token mint <scopes...> [options]
 ```
 
 ## Arguments
 
-| Argument   | Description                                                                       |
-| ---------- | --------------------------------------------------------------------------------- |
-| `scope`    | Token scope: `admin`, `publish`, or `subscribe`                                   |
-| `channels` | Channel IDs to scope the token to (required for `publish` and `subscribe` scopes) |
+| Argument | Description                                                                                  |
+| -------- | -------------------------------------------------------------------------------------------- |
+| `scopes` | One or more scope strings: `admin`, `pub:<channel>`, `sub:<channel>`, `pub:*`, `sub:*`, etc. |
 
 ## Options
 
@@ -30,25 +29,26 @@ npx zooid token <scope> [channels...] [options]
 
 ```bash
 # Mint an admin token
-npx zooid token admin
+npx zooid token mint admin
 
-# Publish token for a single channel with a name
-npx zooid token publish market-signals --name "whale-bot"
+# Publish + subscribe token for a channel
+npx zooid token mint pub:market-signals sub:market-signals --name "whale-bot"
 
-# Subscribe token with an expiry
-npx zooid token subscribe market-signals --expires-in 7d
+# Subscribe-only token with an expiry
+npx zooid token mint sub:market-signals --expires-in 7d
 
-# Multi-channel publish token
-npx zooid token publish channel-a channel-b --expires-in 30d
+# Wildcard publish token
+npx zooid token mint pub:* --expires-in 30d
 
-# Token with a subject identifier
-npx zooid token publish market-signals --sub "bot-001" --name "Market Bot"
+# Prefix wildcard for a group of channels
+npx zooid token mint pub:product-* sub:product-* --sub "bot-001" --name "Product Bot"
 ```
 
 ## Notes
 
-- Admin tokens have full access to the server (channel management, token minting, server configuration).
-- Publish tokens authorize publishing events to the specified channels only.
-- Subscribe tokens authorize reading events from the specified channels only.
+- `admin` grants full access to the server (channel management, token minting, server configuration).
+- `pub:<channel>` authorizes publishing events to the specified channel.
+- `sub:<channel>` authorizes reading events from the specified channel.
+- Wildcards (`pub:*`, `sub:*`) grant access to all channels. Prefix wildcards (`pub:product-*`) match channels starting with the prefix.
 - Tokens are signed with EdDSA (Ed25519) using the server's signing key.
 - If `--expires-in` is omitted, the token does not expire.

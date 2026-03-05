@@ -7,20 +7,22 @@ Zooid uses stateless JWT tokens for authentication. Tokens are signed with EdDSA
 
 ## Scopes
 
-Every token has one of three scopes:
+Every token carries an array of scopes that define what it can do:
 
-| Scope       | Access                                                                       |
-| ----------- | ---------------------------------------------------------------------------- |
-| `admin`     | Full access to all endpoints. Generated on deploy.                           |
-| `publish`   | Can publish events to specific channels. Returned when a channel is created. |
-| `subscribe` | Can read events and register webhooks on private channels.                   |
+| Scope pattern   | Access                                                              |
+| --------------- | ------------------------------------------------------------------- |
+| `admin`         | Full access to all endpoints. Generated on deploy.                  |
+| `pub:<channel>` | Can publish events to a specific channel.                           |
+| `sub:<channel>` | Can read events and register webhooks on a channel.                 |
+| `pub:*`         | Can publish to all channels.                                        |
+| `sub:*`         | Can subscribe to all channels.                                      |
+| `pub:prefix-*`  | Can publish to channels matching the prefix (e.g. `pub:product-*`). |
 
 ## JWT Payload
 
 ```json
 {
-  "scope": "publish",
-  "channels": ["market-signals"],
+  "scopes": ["pub:market-signals", "sub:market-signals"],
   "sub": "agent-001",
   "name": "Market Agent",
   "iat": 1700000000,
@@ -28,8 +30,7 @@ Every token has one of three scopes:
 }
 ```
 
-- `scope` (required): one of `admin`, `publish`, `subscribe`
-- `channels` (optional): array of channel IDs. Omitted for admin tokens.
+- `scopes` (required): array of scope strings
 - `sub` (optional): subject identifier for the token holder
 - `name` (optional): human-readable name for the token holder
 - `iat` (required): issued-at timestamp
@@ -50,7 +51,7 @@ Not every endpoint requires authentication. Public channels are readable without
 
 | Endpoint                            | Public channel | Private channel       |
 | ----------------------------------- | -------------- | --------------------- |
-| `GET /channels`                     | No auth        | No auth               |
+| `GET /channels`                     | No auth        | Subscribe/admin token |
 | `POST /channels`                    | Admin          | Admin                 |
 | `POST /channels/:id/events`         | Publish token  | Publish token         |
 | `GET /channels/:id/events`          | No auth        | Subscribe token       |
@@ -71,13 +72,13 @@ Use the CLI to create tokens:
 
 ```bash
 # Admin token (requires existing admin token in config)
-npx zooid token admin
+npx zooid token mint admin
 
-# Publish token for a specific channel
-npx zooid token publish my-channel
+# Publish + subscribe token for a specific channel
+npx zooid token mint pub:my-channel sub:my-channel
 
-# Subscribe token with expiry
-npx zooid token subscribe my-channel --expires-in 7d
+# Subscribe-only token with expiry
+npx zooid token mint sub:my-channel --expires-in 7d
 ```
 
 The `--expires-in` flag accepts durations like `1h`, `7d`, `30d`. Without it, tokens do not expire.
@@ -87,7 +88,7 @@ The `--expires-in` flag accepts durations like `1h`, `7d`, `30d`. Without it, to
 Expiration is optional. When set, the server rejects expired tokens with a `401 Unauthorized` response. Use short-lived tokens for temporary access:
 
 ```bash
-npx zooid token subscribe my-channel --expires-in 1h
+npx zooid token mint sub:my-channel --expires-in 1h
 ```
 
 ## Trusted Keys
@@ -101,15 +102,14 @@ An admin can manage trusted public keys via the [Keys REST API](/docs/api/keys/)
 curl https://your-server.workers.dev/api/v1/keys \
   -H "Authorization: Bearer <admin-token>"
 
-# Add a trusted public key
+# Add a trusted public key with granular scopes
 curl -X POST https://your-server.workers.dev/api/v1/keys \
   -H "Authorization: Bearer <admin-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "kid": "partner-server-01",
     "x": "base64-encoded-ed25519-public-key",
-    "max_scope": "publish",
-    "allowed_channels": ["market-signals"],
+    "max_scopes": ["pub:market-signals", "sub:market-signals"],
     "issuer": "https://partner.zooid.dev"
   }'
 
@@ -120,8 +120,7 @@ curl -X DELETE https://your-server.workers.dev/api/v1/keys/partner-server-01 \
 
 Each trusted key can be scoped with:
 
-- `max_scope` — the highest scope tokens signed by this key can claim (`subscribe`, `publish`, or `admin`)
-- `allowed_channels` — restrict which channels the key can access
+- `max_scopes` — the maximum scopes tokens signed by this key can claim. The server intersects the token's requested scopes with these maximums.
 - `issuer` — expected `iss` claim in JWTs signed by this key
 
 When a JWT with an `EdDSA` algorithm and a `kid` header arrives, the server looks up the matching trusted key and verifies the signature against its public key.

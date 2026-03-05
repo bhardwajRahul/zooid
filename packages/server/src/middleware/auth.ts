@@ -1,6 +1,12 @@
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables, ZooidJWT } from '../types';
-import { verifyTokenAny, tokenCoversChannel } from '../lib/jwt';
+import {
+  verifyTokenAny,
+  normalizeScopes,
+  isAdmin,
+  canPublish,
+  canSubscribe,
+} from '../lib/jwt';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -31,26 +37,75 @@ export function requireScope(
 ) {
   return createMiddleware<Env>(async (c, next) => {
     const payload = c.get('jwtPayload') as ZooidJWT;
+    const scopes = normalizeScopes(payload);
 
     // Admin can do anything
-    if (payload.scope === 'admin') {
+    if (isAdmin(scopes)) {
       await next();
       return;
     }
 
-    // Check scope matches
-    if (payload.scope !== scope) {
+    if (scope === 'admin') {
       return c.json({ error: 'Insufficient permissions' }, 403);
     }
 
-    // Check channel matches if channel-scoped
-    if (options?.channelParam) {
+    if (scope === 'publish' && options?.channelParam) {
       const channelId = c.req.param(options.channelParam)!;
-      if (!tokenCoversChannel(payload, channelId)) {
-        return c.json({ error: 'Token not valid for this channel' }, 403);
+      if (!canPublish(scopes, channelId)) {
+        return c.json({ error: 'Insufficient permissions' }, 403);
       }
+      await next();
+      return;
     }
 
+    if (scope === 'subscribe' && options?.channelParam) {
+      const channelId = c.req.param(options.channelParam)!;
+      if (!canSubscribe(scopes, channelId)) {
+        return c.json({ error: 'Insufficient permissions' }, 403);
+      }
+      await next();
+      return;
+    }
+
+    // Generic scope check (for legacy callers)
+    // Map legacy scope names to new format
+    const required =
+      scope === 'publish' ? 'pub:*' : scope === 'subscribe' ? 'sub:*' : scope;
+    const hasIt = scopes.some(
+      (s) =>
+        s === required ||
+        s.startsWith(
+          scope === 'publish' ? 'pub:' : scope === 'subscribe' ? 'sub:' : '',
+        ),
+    );
+    if (!hasIt) {
+      return c.json({ error: 'Insufficient permissions' }, 403);
+    }
+
+    await next();
+  });
+}
+
+/**
+ * Optionally extracts JWT payload if an Authorization header is present.
+ * Does NOT reject unauthenticated requests — just sets jwtPayload if valid.
+ */
+export function optionalAuth() {
+  return createMiddleware<Env>(async (c, next) => {
+    const authHeader = c.req.header('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const { payload, kid, issuer } = await verifyTokenAny(
+          authHeader.slice(7),
+          c.env,
+        );
+        c.set('jwtPayload', payload);
+        if (kid) c.set('jwtKid', kid);
+        if (issuer) c.set('jwtIssuer', issuer);
+      } catch {
+        // Invalid token — treat as unauthenticated
+      }
+    }
     await next();
   });
 }
@@ -90,15 +145,12 @@ export function requireSubscribeIfPrivate(channelParam: string) {
 
     try {
       const { payload, kid, issuer } = await verifyTokenAny(rawToken, c.env);
-      if (payload.scope !== 'admin' && payload.scope !== 'subscribe') {
+      const scopes = normalizeScopes(payload);
+
+      if (!isAdmin(scopes) && !canSubscribe(scopes, channelId)) {
         return c.json({ error: 'Insufficient permissions' }, 403);
       }
-      if (
-        payload.scope === 'subscribe' &&
-        !tokenCoversChannel(payload, channelId)
-      ) {
-        return c.json({ error: 'Token not valid for this channel' }, 403);
-      }
+
       c.set('jwtPayload', payload);
       if (kid) c.set('jwtKid', kid);
       if (issuer) c.set('jwtIssuer', issuer);
