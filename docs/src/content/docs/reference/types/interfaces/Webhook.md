@@ -2,10 +2,10 @@
 editUrl: false
 next: false
 prev: false
-title: 'Webhook'
+title: "Webhook"
 ---
 
-Defined in: [index.ts:70](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L70)
+Defined in: [index.ts:70](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/types/src/index.ts#L70)
 
 A registered webhook subscription.
 
@@ -14,60 +14,60 @@ to the subscribed channel.
 
 ## Properties
 
-### channel_id
+### channel\_id
 
-> **channel_id**: `string`
+> **channel\_id**: `string`
 
-Defined in: [index.ts:74](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L74)
+Defined in: [index.ts:74](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/types/src/index.ts#L74)
 
 Channel this webhook is subscribed to.
 
----
+***
 
-### created_at
+### created\_at
 
-> **created_at**: `string`
+> **created\_at**: `string`
 
-Defined in: [index.ts:82](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L82)
+Defined in: [index.ts:82](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/types/src/index.ts#L82)
 
 ISO 8601 timestamp when this webhook was created.
 
----
+***
 
-### event_types
+### event\_types
 
-> **event_types**: `string` \| `null`
+> **event\_types**: `string` \| `null`
 
-Defined in: [index.ts:78](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L78)
+Defined in: [index.ts:78](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/types/src/index.ts#L78)
 
 JSON-encoded array of event types to filter, or `null` for all events.
 
----
+***
 
-### expires_at
+### expires\_at
 
-> **expires_at**: `string`
+> **expires\_at**: `string`
 
-Defined in: [index.ts:80](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L80)
+Defined in: [index.ts:80](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/types/src/index.ts#L80)
 
 ISO 8601 timestamp when this webhook expires.
 
----
+***
 
 ### id
 
 > **id**: `string`
 
-Defined in: [index.ts:72](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L72)
+Defined in: [index.ts:72](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/types/src/index.ts#L72)
 
 ULID identifier for this webhook registration.
 
----
+***
 
 ### url
 
 > **url**: `string`
 
-Defined in: [index.ts:76](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L76)
+Defined in: [index.ts:76](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/types/src/index.ts#L76)
 
 URL that receives event POST requests.

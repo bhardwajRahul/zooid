@@ -27,6 +27,7 @@ app.get('/.well-known/openid-configuration', (c) => {
 // 2. Visit /setup?redirect_uri=https://your-zooid-server.com/api/v1/auth/callback
 // 3. Save the returned client_id and client_secret
 // 4. Remove this route and redeploy
+/*
 app.get('/setup', async (c) => {
   const redirectUri = c.req.query('redirect_uri');
   if (!redirectUri) {
@@ -52,5 +53,6 @@ app.get('/setup', async (c) => {
     );
   }
 });
+*/
 
 export default app;

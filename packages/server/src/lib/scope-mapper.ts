@@ -78,14 +78,30 @@ export function resolveScopes(
 }
 
 /**
- * Filter scopes to only those allowed by the ceiling patterns.
- * Uses the same pattern matching as enforceScopeCeiling but filters
- * instead of throwing.
+ * Intersect scopes with a ceiling.
+ * - If a scope exactly matches or is covered by a ceiling pattern, keep it.
+ * - If a scope is a wildcard (e.g. pub:*) and the ceiling has specific entries
+ *   (e.g. pub:public-chatter), narrow it to those ceiling entries.
  */
 function capScopes(scopes: string[], ceiling: string[]): string[] {
-  return scopes.filter((scope) =>
-    ceiling.some((pattern) => scopeAllowedBy(scope, pattern)),
-  );
+  const result = new Set<string>();
+
+  for (const scope of scopes) {
+    // Scope is directly allowed by a ceiling pattern
+    if (ceiling.some((pattern) => scopeAllowedBy(scope, pattern))) {
+      result.add(scope);
+      continue;
+    }
+
+    // Scope is a wildcard — expand to matching ceiling entries
+    for (const cap of ceiling) {
+      if (scopeAllowedBy(cap, scope)) {
+        result.add(cap);
+      }
+    }
+  }
+
+  return [...result];
 }
 
 function scopeAllowedBy(scope: string, pattern: string): boolean {

@@ -2,12 +2,12 @@
 editUrl: false
 next: false
 prev: false
-title: 'verifyWebhook'
+title: "verifyWebhook"
 ---
 
 > **verifyWebhook**(`options`): `Promise`\<`boolean`\>
 
-Defined in: [Code/zooid/packages/sdk/src/verify.ts:31](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/verify.ts#L31)
+Defined in: [Code/zooid/packages/sdk/src/verify.ts:31](https://github.com/zooid-ai/zooid/blob/36c058ed097bff2acde6fe6189c261be7b5a43eb/packages/sdk/src/verify.ts#L31)
 
 Verify an Ed25519 webhook signature from a Zooid server.
 
