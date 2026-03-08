@@ -32,6 +32,7 @@ coverage
 docs/api
 docs/.astro
 docs/dist
+docs/src/content/docs/reference/
 
 # Project
 .claude/*/*

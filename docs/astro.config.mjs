@@ -4,6 +4,7 @@ import starlightTypeDoc from 'starlight-typedoc';
 import starlightCopyButton from 'starlight-copy-button';
 
 export default defineConfig({
+  site: 'https://zooid.dev',
   base: '/docs',
   integrations: [
     starlight({

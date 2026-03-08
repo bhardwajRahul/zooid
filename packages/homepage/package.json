@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node --import tsx build.ts",
+    "build": "pnpm --filter @zooid/docs build && node --import tsx build.ts",
     "dev": "pnpm build && wrangler pages dev dist",
     "deploy": "pnpm build && wrangler pages deploy dist --project-name=zooid-homepage"
   },
