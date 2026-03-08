@@ -683,8 +683,10 @@ serverCmd
   });
 
 // --- token ---
-program
-  .command('token')
+const tokenCmd = program.command('token').description('Manage tokens');
+
+tokenCmd
+  .command('mint')
   .description(
     'Mint a new token. Scopes: admin, pub:<channel>, sub:<channel>. Wildcards: pub:*, sub:prefix-*',
   )
