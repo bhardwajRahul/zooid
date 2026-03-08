@@ -157,113 +157,11 @@ This prevents OIDC users from getting `admin` even if the provider returns it.
 
 ### Self-Hosting with Better Auth
 
-[Better Auth](https://www.better-auth.com/) is an open-source auth framework that runs on Cloudflare Workers. Its [OAuth Provider plugin](https://www.better-auth.com/docs/plugins/oauth-provider) turns it into an OAuth 2.1 / OIDC-compliant provider. Here's how to set it up as your Zooid auth provider.
+[Better Auth](https://www.better-auth.com/) is an open-source auth framework that runs on Cloudflare Workers. Its [OAuth Provider plugin](https://www.better-auth.com/docs/plugins/oauth-provider) turns it into an OAuth 2.1 / OIDC-compliant provider.
 
-#### 1. Create the Better Auth worker
+See the complete working example at [`examples/better-auth-worker/`](https://github.com/zooid-ai/zooid/tree/main/examples/better-auth-worker) — it includes sign-in/consent pages, D1 database setup, and a one-time `/setup` route to register Zooid as a trusted OAuth client.
 
-```bash
-mkdir zooid-auth && cd zooid-auth
-npm init -y
-npm install better-auth @better-auth/oauth-provider hono
-```
-
-Create `src/auth.ts`:
-
-```ts
-import { betterAuth } from 'better-auth';
-import { jwt } from 'better-auth/plugins';
-import { oauthProvider } from '@better-auth/oauth-provider';
-
-export const auth = betterAuth({
-  basePath: '/api/auth',
-  database: {
-    type: 'd1',
-    binding: 'DB',
-  },
-  emailAndPassword: {
-    enabled: true,
-  },
-  plugins: [
-    jwt(),
-    oauthProvider({
-      loginPage: '/sign-in',
-      consentPage: '/consent',
-    }),
-  ],
-});
-```
-
-Create `src/index.ts`:
-
-```ts
-import { Hono } from 'hono';
-import { auth } from './auth';
-import { oauthProviderOpenIdConfigMetadata } from '@better-auth/oauth-provider';
-
-const app = new Hono();
-
-// Mount Better Auth routes
-app.all('/api/auth/*', (c) => auth.handler(c.req.raw));
-
-// OIDC discovery (required for Zooid to find endpoints)
-app.get('/.well-known/openid-configuration', (c) => {
-  return oauthProviderOpenIdConfigMetadata(auth)(c.req.raw);
-});
-
-export default app;
-```
-
-You'll also need login and consent pages — see the [Better Auth docs](https://www.better-auth.com/docs/plugins/oauth-provider) for details.
-
-#### 2. Run database migrations
-
-```bash
-npx auth migrate
-```
-
-#### 3. Register Zooid as a trusted client
-
-Create the OAuth client for your Zooid server. You can do this in a setup script or via the Better Auth API:
-
-```ts
-await auth.api.adminCreateOAuthClient({
-  headers, // admin session headers
-  body: {
-    redirect_uris: ['https://your-zooid-server.com/api/v1/auth/callback'],
-    skip_consent: true, // trusted first-party client
-    enable_end_session: true,
-  },
-});
-// Save the returned client_id and client_secret
-```
-
-#### 4. Deploy
-
-```bash
-npx wrangler deploy
-```
-
-Note the deployed URL (e.g. `https://zooid-auth.your-account.workers.dev`).
-
-#### 5. Configure Zooid
-
-Add these environment variables to your Zooid worker (via Cloudflare dashboard or `wrangler secret`):
-
-```bash
-# Env vars
-ZOOID_OIDC_ISSUER=https://zooid-auth.your-account.workers.dev
-ZOOID_OIDC_CLIENT_ID=<client_id from step 3>
-ZOOID_SERVER_URL=https://your-zooid-server.com
-
-# Secret
-ZOOID_OIDC_CLIENT_SECRET=<client_secret from step 3>
-```
-
-The `ZOOID_OIDC_ISSUER` should match the base URL where `/.well-known/openid-configuration` is served.
-
-#### 6. Test
-
-Open your Zooid web dashboard. The "Sign in" button now redirects to your Better Auth instance. After authenticating, you're redirected back with a valid Zooid JWT.
+Note: Better Auth does password hashing which sometimes exceeds the Workers free tier CPU limit (10ms). You'll need the Workers paid plan ($5/mo) or host it on another platform (Node.js, Fly.io, etc.).
 
 ### BFF Auth Endpoints
 

@@ -1,4 +1,5 @@
 import type { Bindings } from '../types';
+import { scopeMatchesPattern } from './jwt';
 
 /**
  * Three-tier scope resolution for OIDC-authenticated users:
@@ -88,40 +89,18 @@ function capScopes(scopes: string[], ceiling: string[]): string[] {
 
   for (const scope of scopes) {
     // Scope is directly allowed by a ceiling pattern
-    if (ceiling.some((pattern) => scopeAllowedBy(scope, pattern))) {
+    if (ceiling.some((pattern) => scopeMatchesPattern(scope, pattern))) {
       result.add(scope);
       continue;
     }
 
     // Scope is a wildcard — expand to matching ceiling entries
     for (const cap of ceiling) {
-      if (scopeAllowedBy(cap, scope)) {
+      if (scopeMatchesPattern(cap, scope)) {
         result.add(cap);
       }
     }
   }
 
   return [...result];
-}
-
-function scopeAllowedBy(scope: string, pattern: string): boolean {
-  if (pattern === scope) return true;
-  if (pattern === 'admin') return true;
-
-  const [scopePrefix, scopeChannel] = splitAt(scope, ':');
-  const [patternPrefix, patternChannel] = splitAt(pattern, ':');
-
-  if (scopePrefix !== patternPrefix) return false;
-  if (!patternChannel || !scopeChannel) return false;
-  if (patternChannel === '*') return true;
-  if (patternChannel.endsWith('*')) {
-    return scopeChannel.startsWith(patternChannel.slice(0, -1));
-  }
-  return false;
-}
-
-function splitAt(str: string, sep: string): [string, string | undefined] {
-  const idx = str.indexOf(sep);
-  if (idx === -1) return [str, undefined];
-  return [str.slice(0, idx), str.slice(idx + 1)];
 }
