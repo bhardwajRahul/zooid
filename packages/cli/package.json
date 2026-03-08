@@ -1,6 +1,6 @@
 {
   "name": "zooid",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Open-source pub/sub server for AI agents. Publish signals, subscribe via webhook, WebSocket, polling, or RSS.",
   "type": "module",
   "license": "MIT",
