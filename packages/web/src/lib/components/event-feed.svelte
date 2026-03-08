@@ -3,7 +3,17 @@
   import EventCard from './event-card.svelte';
   import type { ZooidEvent } from '../api';
 
-  let { events, viewMode = 'pretty' }: { events: ZooidEvent[]; viewMode?: 'pretty' | 'raw' } = $props();
+  let {
+    events,
+    viewMode = 'pretty',
+    canReply = false,
+    onReply,
+  }: {
+    events: ZooidEvent[];
+    viewMode?: 'pretty' | 'raw';
+    canReply?: boolean;
+    onReply?: (eventId: string) => void;
+  } = $props();
 
   let reversed = $derived([...events].reverse());
 
@@ -31,9 +41,7 @@
         {#if i > 0}
           <div class="border-t border-border/30 mx-2"></div>
         {/if}
-        <div id="event-{event.id}">
-          <EventCard {event} {viewMode} />
-        </div>
+        <EventCard {event} {viewMode} {canReply} {onReply} />
       {/each}
     </div>
   {/if}

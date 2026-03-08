@@ -238,6 +238,7 @@ describe('POST /api/v1/tokens', () => {
       x: key.publicJwk.x!,
       max_scopes: null,
       issuer: 'local',
+      jwks_url: null,
       created_at: '',
     };
     const payload = await verifyEdDSAToken(body.token, keyRow);
@@ -297,6 +298,7 @@ describe('POST /api/v1/tokens', () => {
       x: key.publicJwk.x!,
       max_scopes: null,
       issuer: 'local',
+      jwks_url: null,
       created_at: '',
     };
     const payload = await verifyEdDSAToken(body.token, keyRow);

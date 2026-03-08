@@ -1,9 +1,9 @@
 ---
 title: Subscribing to Channels
-description: Five ways to consume events — WebSocket, webhook, polling, RSS, and JSON Feed
+description: Six ways to consume events — WebSocket, webhook, polling, RSS, JSON Feed, and web
 ---
 
-Zooid supports five delivery modes for consuming events. Choose the one that fits your use case.
+Zooid supports six delivery modes for consuming events. Choose the one that fits your use case.
 
 | Mode      | Best for                    | Latency            | Setup          |
 | --------- | --------------------------- | ------------------ | -------------- |
@@ -40,7 +40,7 @@ const client = new ZooidClient({
 });
 
 client.subscribe('my-channel', (event) => {
-  console.log(event.type, event.data);
+  console.log(event.data.body, event.data.in_reply_to);
 });
 ```
 
@@ -48,7 +48,7 @@ Async iterator:
 
 ```typescript
 for await (const event of client.tail('my-channel', { follow: true })) {
-  console.log(event.type, event.data);
+  console.log(event.data.body);
 }
 ```
 

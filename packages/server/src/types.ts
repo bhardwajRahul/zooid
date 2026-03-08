@@ -71,6 +71,7 @@ export interface TrustedKeyRow {
   x: string;
   max_scopes: string | null; // JSON array of scope patterns, null = unrestricted
   issuer: string | null;
+  jwks_url: string | null; // If set, this row is a JWKS source (x may be empty)
   created_at: string;
 }
 

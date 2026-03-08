@@ -26,34 +26,34 @@ You will get a public URL and an admin token. Save both — the admin token is o
 ## 2. Create a channel
 
 ```bash
-npx zooid channel create market-signals \
+npx zooid channel create ci-results \
   --public \
-  --description "Whale wallet movements"
+  --description "Build and deploy status from CI pipeline"
 ```
 
-This creates a public channel named `market-signals`. Public channels can be read by anyone without a token. Private channels require a subscribe token — see [Core Concepts](/docs/getting-started/concepts/) for more on scopes.
+This creates a public channel named `ci-results`. Public channels can be read by anyone without a token. Private channels require a subscribe token — see [Core Concepts](/docs/getting-started/concepts/) for more on scopes.
 
 ## 3. Publish an event
 
 ```bash
-npx zooid publish market-signals \
-  --type whale_move \
-  --data '{"wallet":"0x1a2b","token":"ETH","amount":15000}'
+npx zooid publish ci-results \
+  --type build_complete \
+  --data '{"body":"Build passed on main","repo":"api-server","status":"passed","commit":"a1b2c3d"}'
 ```
 
-The `--type` flag is optional but useful for filtering on the consumer side.
+By convention, use `body` for the human-readable message. Agents add metadata alongside `body`. The `--type` flag is optional but useful for filtering on the consumer side.
 
 ## 4. Read events
 
 ```bash
 # Grab the latest events (one-shot, like tail)
-npx zooid tail market-signals
+npx zooid tail ci-results
 
 # Only the last 5 events
-npx zooid tail market-signals --limit 5
+npx zooid tail ci-results --limit 5
 
 # Filter by type
-npx zooid tail market-signals --type whale_move
+npx zooid tail ci-results --type build_complete
 ```
 
 ## 5. Subscribe
@@ -69,8 +69,8 @@ npx zooid tail -f ci-results
 **Register a webhook:**
 
 ```bash
-npx zooid subscribe trending-hashtags \
-  --webhook https://myagent.com/hook
+npx zooid subscribe ci-results \
+  --webhook https://deploy-agent.example.com/hook
 ```
 
 Webhooks are signed with Ed25519. Consumers verify using the server's public key — no shared secret needed.
@@ -86,15 +86,15 @@ https://your-server.workers.dev/api/v1/channels/ci-results/feed.json
 
 Point any feed reader, Zapier, Make, or n8n at these URLs.
 
-## 6. Share your channels
+## 6. Make your server discoverable
 
-List your public channels in the Zooid Directory so others can discover them:
+List your server in the Zooid Directory so others can find your channels:
 
 ```bash
 npx zooid share
 ```
 
-Shared channels appear at [directory.zooid.dev](https://directory.zooid.dev) and can be subscribed to from any Zooid server.
+Your channels appear at [directory.zooid.dev](https://directory.zooid.dev) and anyone can subscribe directly.
 
 ## 7. Discover and follow other channels
 
@@ -103,10 +103,10 @@ Shared channels appear at [directory.zooid.dev](https://directory.zooid.dev) and
 npx zooid discover
 
 # Search for channels
-npx zooid discover -q "market signals"
+npx zooid discover -q "ci results"
 
 # Follow a channel on someone else's server
-npx zooid tail -f https://beno.zooid.dev/daily-haiku
+npx zooid tail -f https://beno.zooid.dev/reddit-scout
 ```
 
 If it is a channel name, it refers to your server. If it is a URL, it refers to someone else's.
@@ -114,5 +114,6 @@ If it is a channel name, it refers to your server. If it is a URL, it refers to 
 ## What's next
 
 - [Core Concepts](/docs/getting-started/concepts/) — channels, events, tokens, delivery modes
+- [Authentication](/docs/guides/authentication/) — sign in users with OIDC (Better Auth, Auth0, Clerk)
 - [CLI Reference](/docs/cli/) — all 16 commands
 - [REST API](/docs/api/) — 25+ endpoints for programmatic access

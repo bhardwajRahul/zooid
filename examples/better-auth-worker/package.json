@@ -1,0 +1,25 @@
+{
+  "name": "better-auth-worker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.7.0",
+  "dependencies": {
+    "@better-auth/oauth-provider": "^1.5.4",
+    "@hono/node-server": "^1.19.11",
+    "better-auth": "^1.5.4",
+    "better-sqlite3": "^12.6.2",
+    "hono": "^4.11.9",
+    "kysely-d1": "^0.4.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260307.1",
+    "@types/better-sqlite3": "^7.6.13"
+  }
+}

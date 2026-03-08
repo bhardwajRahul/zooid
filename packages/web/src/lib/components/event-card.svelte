@@ -1,16 +1,29 @@
 <script lang="ts">
   import type { ZooidEvent } from '../api';
   import { parsePretty, renderMarkdown, type PrettyNode } from '../pretty-json';
-  import { formatRelative } from '../time';
+  import { formatRelative, formatFull } from '../time';
   import Avatar from './avatar.svelte';
 
-  let { event, viewMode = 'pretty' }: { event: ZooidEvent; viewMode?: 'pretty' | 'raw' } = $props();
+  let {
+    event,
+    viewMode = 'pretty',
+    canReply = false,
+    onReply,
+  }: {
+    event: ZooidEvent;
+    viewMode?: 'pretty' | 'raw';
+    canReply?: boolean;
+    onReply?: (eventId: string) => void;
+  } = $props();
 
   let rawData = $derived(formatRaw(event.data));
   let prettyEntries = $derived(parsePretty(event.data));
   let relativeTime = $derived(formatRelative(event.created_at));
+  let fullTime = $derived(formatFull(event.created_at));
   let publisherLabel = $derived(formatPublisher(event));
   let inReplyTo = $derived(extractReplyTo(event.data));
+
+  let detailOpen = $state(false);
 
   function formatRaw(raw: string): string {
     try {
@@ -47,6 +60,14 @@
     if (name && isExternal) return `${name} (@${issuer})`;
     if (name) return name;
     return id;
+  }
+
+  function toggleDetail() {
+    detailOpen = !detailOpen;
+  }
+
+  function closeDetail() {
+    detailOpen = false;
   }
 </script>
 
@@ -89,7 +110,7 @@
   {/if}
 {/snippet}
 
-<div class="group py-2 px-2 hover:bg-secondary/30 rounded transition-colors">
+<div id="event-{event.id}" class="group py-2 px-2 hover:bg-secondary/30 rounded transition-colors">
   <!-- Header: publisher + type + time -->
   <div class="flex items-center gap-2 mb-0.5">
     <Avatar {event} size={20} />
@@ -106,7 +127,23 @@
         title="Scroll to parent event"
       >&#8593; reply</button>
     {/if}
-    <span class="text-[10px] text-muted-foreground/40 ml-auto shrink-0">{relativeTime}</span>
+    <div class="ml-auto shrink-0 flex items-center gap-1">
+      {#if canReply}
+        <button
+          class="text-[10px] text-muted-foreground/0 group-hover:text-muted-foreground/40 hover:!text-foreground transition-colors px-1"
+          onclick={() => onReply?.(event.id)}
+          title="Reply"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+        </button>
+      {/if}
+      <button
+        class="text-[10px] text-muted-foreground/40 hover:text-foreground transition-colors relative"
+        onclick={toggleDetail}
+      >
+        {relativeTime}
+      </button>
+    </div>
   </div>
 
   <!-- Body -->
@@ -120,3 +157,53 @@
     <pre class="text-xs text-foreground/60 overflow-x-auto whitespace-pre-wrap break-all font-mono">{rawData}</pre>
   {/if}
 </div>
+
+<!-- Detail slide-over panel (from right) -->
+{#if detailOpen}
+  <button
+    type="button"
+    class="fixed inset-0 bg-background/40 z-40"
+    onclick={closeDetail}
+    aria-label="Close detail panel"
+  ></button>
+  <div class="fixed inset-y-0 right-0 w-72 max-w-[80vw] bg-card border-l border-border shadow-lg z-50 p-4 flex flex-col gap-3 animate-slide-in-right">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold">Event detail</h3>
+      <button class="text-muted-foreground hover:text-foreground transition-colors" onclick={closeDetail} aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="flex flex-col gap-2 text-xs">
+      <div>
+        <div class="text-muted-foreground mb-0.5">Created</div>
+        <div class="text-foreground font-mono">{fullTime}</div>
+      </div>
+      <div>
+        <div class="text-muted-foreground mb-0.5">Event ID</div>
+        <div class="text-foreground font-mono break-all select-all">{event.id}</div>
+      </div>
+      {#if event.type}
+        <div>
+          <div class="text-muted-foreground mb-0.5">Type</div>
+          <div class="text-foreground font-mono">{event.type}</div>
+        </div>
+      {/if}
+      {#if publisherLabel}
+        <div>
+          <div class="text-muted-foreground mb-0.5">Publisher</div>
+          <div class="text-foreground">{publisherLabel}</div>
+        </div>
+      {/if}
+    </div>
+  </div>
+{/if}
+
+<style>
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .animate-slide-in-right {
+    animation: slide-in-right 0.15s ease-out;
+  }
+</style>

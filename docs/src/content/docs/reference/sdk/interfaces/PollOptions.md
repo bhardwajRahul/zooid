@@ -5,7 +5,7 @@ prev: false
 title: 'PollOptions'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:103](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L103)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:103](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L103)
 
 Options for polling events from a channel.
 
@@ -19,7 +19,7 @@ Options for polling events from a channel.
 
 > `optional` **cursor**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:105](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L105)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:105](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L105)
 
 Opaque cursor from a previous poll response.
 
@@ -29,7 +29,7 @@ Opaque cursor from a previous poll response.
 
 > `optional` **limit**: `number`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:109](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L109)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:109](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L109)
 
 Maximum number of events to return (default: 50).
 
@@ -39,7 +39,7 @@ Maximum number of events to return (default: 50).
 
 > `optional` **since**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:107](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L107)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:107](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L107)
 
 ISO 8601 timestamp — only return events created after this time.
 
@@ -49,6 +49,6 @@ ISO 8601 timestamp — only return events created after this time.
 
 > `optional` **type**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:111](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L111)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:111](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L111)
 
 Filter events by type.

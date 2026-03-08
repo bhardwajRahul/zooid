@@ -2,15 +2,19 @@
   import { Button } from '@ui/components/button/index';
   import { Input } from '@ui/components/input/index';
 
+  import type { TokenClaims } from '../api';
+
   let {
     open,
     currentToken,
+    claims,
     onSave,
     onLogout,
     onClose,
   }: {
     open: boolean;
     currentToken: string | null;
+    claims: TokenClaims | null;
     onSave: (token: string) => Promise<boolean>;
     onLogout: () => void;
     onClose: () => void;
@@ -71,11 +75,13 @@
         Paste an admin or publish token to unlock channels and publishing.
       </p>
 
-      {#if currentToken}
+      {#if currentToken && claims}
         <div class="bg-secondary rounded-md px-3 py-2 mb-4">
-          <div class="text-[10px] text-muted-foreground mb-1">Current token</div>
-          <div class="text-xs font-mono truncate text-foreground/80">
-            {currentToken.slice(0, 20)}...{currentToken.slice(-10)}
+          <div class="text-sm font-medium text-foreground">
+            Signed in as {claims.name || claims.sub || 'Unknown'}
+          </div>
+          <div class="text-xs text-muted-foreground mt-1 font-mono">
+            {claims.scopes.join(', ')}
           </div>
         </div>
         <div class="flex gap-2">

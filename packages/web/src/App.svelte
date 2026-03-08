@@ -11,6 +11,8 @@
     pollEvents,
     publishEvent,
     getTokenClaims,
+    refreshAuth,
+    authLogout,
     type ChannelInfo,
     type ZooidEvent,
     type TokenClaims,
@@ -39,6 +41,9 @@
   let reconnectAttempt = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let serverName = $state('Zooid');
+  let authUrl = $state<string | undefined>(undefined);
+  let refreshTimer = $state<ReturnType<typeof setInterval> | null>(null);
+  let replyTo = $state<string | null>(null);
 
   // Mobile sidebar
   let sidebarOpen = $state(false);
@@ -56,6 +61,21 @@
     );
   });
 
+  // Show reply button when user can publish and channel supports message replies
+  let canReply = $derived.by(() => {
+    if (!canPublishToChannel) return false;
+    if (!channel) return false;
+    const config = channel.config as { strict?: boolean; types?: Record<string, unknown> } | null;
+    // Non-strict channels always allow reply
+    if (!config?.strict) return true;
+    // Strict channels: only if "message" type is configured
+    return !!config?.types?.['message'];
+  });
+
+  function handleReply(eventId: string) {
+    replyTo = eventId;
+  }
+
   // --- Init ---
 
   // Parse initial route
@@ -64,6 +84,12 @@
   if (routeMatch) selectedId = routeMatch[1];
 
   async function init() {
+    // Check if we just came back from an OIDC callback (token set in localStorage by callback page)
+    const storedToken = localStorage.getItem('zooid_token');
+    if (storedToken && storedToken !== token) {
+      token = storedToken;
+    }
+
     const [meta] = await Promise.all([
       fetchServerMeta(baseUrl),
       refreshChannels(),
@@ -71,6 +97,12 @@
     ]);
     serverName = meta.server_name;
     pollInterval = meta.poll_interval;
+    authUrl = meta.auth_url;
+
+    // Start token refresh loop if we have a token with expiry
+    if (claims?.exp) {
+      startRefreshLoop();
+    }
 
     if (selectedId) {
       selectChannel(selectedId);
@@ -112,6 +144,7 @@
     seenIds.clear();
     events = [];
     cursor = null;
+    replyTo = null;
   }
 
   async function loadChannel() {
@@ -258,27 +291,70 @@
 
   // --- Auth ---
 
+  function handleAuthClick() {
+    // Already signed in — open modal to show token / sign out
+    if (claims) {
+      authModalOpen = true;
+      return;
+    }
+    // OIDC available — redirect directly, skip modal
+    if (authUrl) {
+      window.location.href = authUrl;
+      return;
+    }
+    // No OIDC — open modal for paste-token flow
+    authModalOpen = true;
+  }
+
   async function handleAuthSave(newToken: string): Promise<boolean> {
     token = newToken;
     localStorage.setItem('zooid_token', newToken);
     await validateToken();
     if (!claims) {
-      // Token was invalid — validateToken already cleared it
       return false;
     }
     authModalOpen = false;
+    if (claims.exp) startRefreshLoop();
     await refreshChannels();
     if (selectedId) loadChannel();
     return true;
   }
 
-  function handleAuthLogout() {
+  async function handleAuthLogout() {
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+    await authLogout(baseUrl);
     token = '';
     claims = null;
     localStorage.removeItem('zooid_token');
     authModalOpen = false;
     refreshChannels();
     if (selectedId) loadChannel();
+  }
+
+  /**
+   * Refresh loop: checks token expiry and refreshes via the BFF
+   * endpoint ~2 minutes before it expires.
+   */
+  function startRefreshLoop() {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = setInterval(async () => {
+      if (!claims?.exp) return;
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = claims.exp - now;
+
+      // Refresh when less than 2 minutes remain
+      if (remaining < 120) {
+        const result = await refreshAuth(baseUrl);
+        if (result?.token) {
+          token = result.token;
+          localStorage.setItem('zooid_token', token);
+          await validateToken();
+        } else {
+          // Refresh failed — sign out
+          handleAuthLogout();
+        }
+      }
+    }, 30_000); // Check every 30 seconds
   }
 
   // --- Publish ---
@@ -320,7 +396,7 @@
       {status}
       {pollInterval}
       onSelect={selectChannel}
-      onAuthClick={() => authModalOpen = true}
+      onAuthClick={handleAuthClick}
     />
   </div>
 
@@ -336,7 +412,7 @@
         {status}
         {pollInterval}
         onSelect={selectChannel}
-        onAuthClick={() => { sidebarOpen = false; authModalOpen = true; }}
+        onAuthClick={() => { sidebarOpen = false; handleAuthClick(); }}
         onClose={() => sidebarOpen = false}
       />
     </div>
@@ -346,9 +422,9 @@
   <div class="flex-1 flex flex-col min-w-0">
     {#if channel}
       <ChannelHeader {channel} bind:viewMode onMenuClick={() => sidebarOpen = true} />
-      <EventFeed {events} {viewMode} />
+      <EventFeed {events} {viewMode} {canReply} onReply={handleReply} />
       {#if canPublishToChannel}
-        <MessageBar {channel} onPublish={handlePublish} />
+        <MessageBar {channel} bind:replyTo onPublish={handlePublish} />
       {/if}
     {:else if selectedId}
       <!-- Channel loading or not found -->
@@ -386,6 +462,7 @@
 <AuthModal
   open={authModalOpen}
   currentToken={claims ? token : null}
+  {claims}
   onSave={handleAuthSave}
   onLogout={handleAuthLogout}
   onClose={() => authModalOpen = false}

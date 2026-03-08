@@ -52,6 +52,7 @@ const SCHEMA_STATEMENTS = [
     x                TEXT NOT NULL,
     max_scopes       TEXT,
     issuer           TEXT,
+    jwks_url         TEXT,
     created_at       TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
 ];

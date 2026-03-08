@@ -47,6 +47,7 @@ function makeTrustedKeyRow(
     x: publicJwk.x!,
     max_scopes: null,
     issuer: 'local',
+    jwks_url: null,
     created_at: new Date().toISOString(),
     ...overrides,
   };

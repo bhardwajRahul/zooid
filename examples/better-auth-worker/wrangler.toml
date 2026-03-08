@@ -1,0 +1,20 @@
+name = "zooid-auth"
+main = "src/index.ts"
+compatibility_date = "2025-03-03"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./public"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zooid-auth-db"
+database_id = "a7450acc-dceb-4d11-b9be-734539dc60ab"
+
+[vars]
+BETTER_AUTH_URL = "https://auth.beno.zooid.dev"
+
+[observability]
+[observability.logs]
+enabled = true
+invocation_logs = true

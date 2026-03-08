@@ -42,7 +42,7 @@ wellKnown.get('/.well-known/zooid.json', async (c) => {
   const pollInterval = parseInt(c.env.ZOOID_POLL_INTERVAL || '30', 10);
   const meta = await getServerMeta(c.env.DB);
 
-  return c.json({
+  const response: Record<string, unknown> = {
     version: '0.1',
     public_key: c.env.ZOOID_PUBLIC_KEY
       ? rawKeyToSpkiBase64Url(c.env.ZOOID_PUBLIC_KEY)
@@ -54,7 +54,18 @@ wellKnown.get('/.well-known/zooid.json', async (c) => {
     server_description: meta?.description || c.env.ZOOID_SERVER_DESC || null,
     poll_interval: pollInterval,
     delivery: ['poll', 'webhook', 'websocket', 'rss'],
-  });
+  };
+
+  // Auth discovery — advertise the login endpoint when OIDC is configured
+  if (c.env.ZOOID_AUTH_URL) {
+    response.auth_url = c.env.ZOOID_AUTH_URL;
+  } else if (c.env.ZOOID_OIDC_ISSUER) {
+    // BFF auth is available — construct login URL from server URL
+    const serverUrl = c.env.ZOOID_SERVER_URL || new URL(c.req.url).origin;
+    response.auth_url = `${serverUrl}/api/v1/auth/login`;
+  }
+
+  return c.json(response);
 });
 
 export { wellKnown };

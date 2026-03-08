@@ -19,8 +19,46 @@ function resolvePackageDir(packageName: string): string {
   return path.dirname(pkgJson);
 }
 
+/** Path to the user's wrangler.toml in the project directory. */
+const USER_WRANGLER_TOML = path.join(process.cwd(), 'wrangler.toml');
+
+/**
+ * Eject a wrangler.toml template into the user's project directory.
+ * Only called on first deploy. The user can then customize it freely.
+ */
+function ejectWranglerToml(opts: {
+  workerName: string;
+  dbName: string;
+  databaseId: string;
+  serverSlug: string;
+}): void {
+  const serverDir = resolvePackageDir('@zooid/server');
+  let toml = fs.readFileSync(path.join(serverDir, 'wrangler.toml'), 'utf-8');
+
+  // Rewrite asset directory for staging layout
+  toml = toml.replace(/directory\s*=\s*"[^"]*"/, 'directory = "./web-dist/"');
+
+  // Fill in deploy-specific values
+  toml = toml.replace(/name = "[^"]*"/, `name = "${opts.workerName}"`);
+  toml = toml.replace(
+    /database_name = "[^"]*"/,
+    `database_name = "${opts.dbName}"`,
+  );
+  toml = toml.replace(
+    /database_id = "[^"]*"/,
+    `database_id = "${opts.databaseId}"`,
+  );
+  toml = toml.replace(
+    /ZOOID_SERVER_ID = "[^"]*"/,
+    `ZOOID_SERVER_ID = "${opts.serverSlug}"`,
+  );
+
+  fs.writeFileSync(USER_WRANGLER_TOML, toml);
+}
+
 /**
  * Set up a temporary deploy directory with the server source and web assets.
+ * Uses the user's wrangler.toml if it exists, otherwise the template from @zooid/server.
  * Returns the path to the temp directory.
  */
 function prepareStagingDir(): string {
@@ -29,10 +67,6 @@ function prepareStagingDir(): string {
   const serverRequire = createRequire(path.join(serverDir, 'package.json'));
   const webDir = path.dirname(serverRequire.resolve('@zooid/web/package.json'));
   const webDistDir = path.join(webDir, 'dist');
-
-  if (!fs.existsSync(path.join(serverDir, 'wrangler.toml'))) {
-    throw new Error(`Server package missing wrangler.toml at ${serverDir}`);
-  }
 
   if (!fs.existsSync(webDistDir)) {
     throw new Error(`Web dashboard not built. Missing: ${webDistDir}`);
@@ -47,10 +81,17 @@ function prepareStagingDir(): string {
   // Copy web dist
   copyDirSync(webDistDir, path.join(tmpDir, 'web-dist'));
 
-  // Copy wrangler.toml and rewrite the asset directory path
-  let toml = fs.readFileSync(path.join(serverDir, 'wrangler.toml'), 'utf-8');
-  toml = toml.replace(/directory\s*=\s*"[^"]*"/, 'directory = "./web-dist/"');
-  fs.writeFileSync(path.join(tmpDir, 'wrangler.toml'), toml);
+  // Use user's wrangler.toml if it exists, otherwise fall back to template
+  if (fs.existsSync(USER_WRANGLER_TOML)) {
+    fs.copyFileSync(USER_WRANGLER_TOML, path.join(tmpDir, 'wrangler.toml'));
+  } else {
+    if (!fs.existsSync(path.join(serverDir, 'wrangler.toml'))) {
+      throw new Error(`Server package missing wrangler.toml at ${serverDir}`);
+    }
+    let toml = fs.readFileSync(path.join(serverDir, 'wrangler.toml'), 'utf-8');
+    toml = toml.replace(/directory\s*=\s*"[^"]*"/, 'directory = "./web-dist/"');
+    fs.writeFileSync(path.join(tmpDir, 'wrangler.toml'), toml);
+  }
 
   // Symlink node_modules so wrangler/esbuild can resolve server dependencies
   const nodeModules = findServerNodeModules(serverDir);
@@ -316,27 +357,13 @@ export async function runDeploy(): Promise<void> {
     const databaseId = dbIdMatch[1];
     printSuccess(`D1 database created (${databaseId})`);
 
-    // Update wrangler.toml in staging dir with real values
-    const wranglerTomlPath = path.join(stagingDir, 'wrangler.toml');
-    let tomlContent = fs.readFileSync(wranglerTomlPath, 'utf-8');
-    tomlContent = tomlContent.replace(
-      /name = "[^"]*"/,
-      `name = "${workerName}"`,
+    // Eject wrangler.toml into user's project directory
+    ejectWranglerToml({ workerName, dbName, databaseId, serverSlug });
+    // Copy into staging dir for this deploy
+    fs.copyFileSync(USER_WRANGLER_TOML, path.join(stagingDir, 'wrangler.toml'));
+    printSuccess(
+      'Created wrangler.toml (edit to add vars, observability, etc.)',
     );
-    tomlContent = tomlContent.replace(
-      /database_name = "[^"]*"/,
-      `database_name = "${dbName}"`,
-    );
-    tomlContent = tomlContent.replace(
-      /database_id = "[^"]*"/,
-      `database_id = "${databaseId}"`,
-    );
-    tomlContent = tomlContent.replace(
-      /ZOOID_SERVER_ID = "[^"]*"/,
-      `ZOOID_SERVER_ID = "${serverSlug}"`,
-    );
-    fs.writeFileSync(wranglerTomlPath, tomlContent);
-    printSuccess('Configured wrangler.toml');
 
     // 7. Run schema migration
     const schemaPath = path.join(stagingDir, 'src/db/schema.sql');
@@ -405,41 +432,31 @@ export async function runDeploy(): Promise<void> {
     printInfo('Deploy type', 'Redeploying existing server');
     console.log('');
 
-    // Rewrite wrangler.toml for existing deploy
-    const wranglerTomlPath = path.join(stagingDir, 'wrangler.toml');
-    let tomlContent = fs.readFileSync(wranglerTomlPath, 'utf-8');
-    tomlContent = tomlContent.replace(
-      /name = "[^"]*"/,
-      `name = "${workerName}"`,
-    );
-    tomlContent = tomlContent.replace(
-      /ZOOID_SERVER_ID = "[^"]*"/,
-      `ZOOID_SERVER_ID = "${serverSlug}"`,
-    );
-
-    // For redeployment, we need the existing database ID
-    try {
-      const output = wrangler('d1 list --json', stagingDir, creds);
-      const databases = JSON.parse(output) as Array<{
-        name: string;
-        uuid: string;
-      }>;
-      const db = databases.find((d) => d.name === dbName);
-      if (db) {
-        tomlContent = tomlContent.replace(
-          /database_name = "[^"]*"/,
-          `database_name = "${dbName}"`,
-        );
-        tomlContent = tomlContent.replace(
-          /database_id = "[^"]*"/,
-          `database_id = "${db.uuid}"`,
-        );
+    // Use user's wrangler.toml — it already has the correct values.
+    // If missing (e.g. old deploy), eject one now.
+    if (!fs.existsSync(USER_WRANGLER_TOML)) {
+      printStep('Ejecting wrangler.toml...');
+      // Need database ID for the toml
+      let databaseId = '';
+      try {
+        const output = wrangler('d1 list --json', stagingDir, creds);
+        const databases = JSON.parse(output) as Array<{
+          name: string;
+          uuid: string;
+        }>;
+        const db = databases.find((d) => d.name === dbName);
+        if (db) databaseId = db.uuid;
+      } catch {
+        // Fall through
       }
-    } catch {
-      // Fall through — wrangler will error if DB config is wrong
+      ejectWranglerToml({ workerName, dbName, databaseId, serverSlug });
+      printSuccess(
+        'Created wrangler.toml (edit to add vars, observability, etc.)',
+      );
     }
 
-    fs.writeFileSync(wranglerTomlPath, tomlContent);
+    // Copy user's toml into staging dir
+    fs.copyFileSync(USER_WRANGLER_TOML, path.join(stagingDir, 'wrangler.toml'));
 
     // Run schema migration (idempotent — all CREATE IF NOT EXISTS)
     const schemaPath = path.join(stagingDir, 'src/db/schema.sql');
@@ -629,6 +646,7 @@ export async function runDeploy(): Promise<void> {
   console.log('');
   if (isFirstDeploy) {
     console.log('  Next steps:');
+    console.log('    Edit wrangler.toml to add env vars, observability, etc.');
     console.log('    npx zooid channel create my-channel');
     console.log(
       '    npx zooid publish my-channel --data=\'{"hello": "world"}\'',

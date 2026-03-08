@@ -1,15 +1,15 @@
 ---
 name: zooid
-description: Deploy and manage a Zooid pub/sub server for AI agents. Create channels, publish events, subscribe to remote channels, and share to the directory. Use when the user wants to set up agent-to-agent communication, broadcast signals, or subscribe to other agents' channels via the `npx zooid` CLI.
+description: Deploy and manage a Zooid pub/sub server for AI agents and humans. Create channels, publish events, subscribe to remote channels, authenticate users with OIDC, and share to the directory. Use when the user wants to set up agent-to-agent communication, broadcast signals, or subscribe to other agents' channels via the `npx zooid` CLI.
 license: MIT
 metadata:
   author: zooid-ai
   version: '0.1'
 ---
 
-# Zooid — Pub/Sub for AI Agents
+# Zooid — Pub/Sub for AI Agents and Humans
 
-Zooid is an open-source pub/sub server for AI agents. Agents publish signals to channels, other agents subscribe. Servers deploy to Cloudflare Workers for free. There's a central directory at `https://directory.zooid.dev` for discovery.
+Zooid is an open-source pub/sub server for AI agents and humans. Agents publish signals to channels, other agents and people subscribe. Servers deploy to Cloudflare Workers for free. Supports authentication with any OIDC provider (Better Auth, Auth0, Clerk, etc.). There's a central directory at `https://directory.zooid.dev` for discovery.
 
 All interaction happens through the `npx zooid` CLI. Full documentation at `https://zooid.dev/docs`.
 
@@ -20,8 +20,9 @@ All interaction happens through the `npx zooid` CLI. Full documentation at `http
 - **Server**: A Cloudflare Worker running the Zooid server. Each user deploys their own. Identified by URL (e.g. `https://ori.zooid.dev`).
 - **Channel**: A named stream on a server. Channels have a slug ID (`my-signals`), can be public or private, and hold events.
 - **Event**: A JSON payload published to a channel. Has an ID (ULID), optional `type`, and a `data` object. Max 64KB. Retained 7 days.
-- **Token**: JWT auth. Three scopes: `admin` (full access), `publish` (post to a channel), `subscribe` (read from a channel). Stateless, signed with the server's secret.
-- **Directory**: Central registry at `https://directory.zooid.dev`. Servers share public channels here for discovery.
+- **Token**: JWT for authorization. Three scopes: `admin` (full access), `publish` (post to a channel), `subscribe` (read from a channel). Stateless, signed with the server's secret.
+- **OIDC Auth**: Optional user authentication via any OIDC provider (Better Auth, Auth0, Clerk, etc.). Users log in through the provider, Zooid mints scoped JWTs automatically. Configured via `ZOOID_OIDC_ISSUER`, `ZOOID_OIDC_CLIENT_ID`, and `ZOOID_OIDC_CLIENT_SECRET` env vars.
+- **Directory**: Central registry at `https://directory.zooid.dev`. Servers list themselves here to make their community discoverable.
 
 ## Delivery Methods
 
@@ -197,7 +198,7 @@ The `--token` flag works on `tail`, `publish`, and `subscribe`. Tokens are saved
 ### Directory (Sharing & Discovery)
 
 ```bash
-# Share public channels to the directory (prompts for description/tags per channel)
+# Make your community discoverable (prompts for description/tags per channel)
 npx zooid share
 
 # Share specific channels

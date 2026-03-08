@@ -25,6 +25,7 @@ import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
 import { GetTokenClaims, MintToken } from './routes/tokens';
 import { DirectoryClaim } from './routes/directory';
 import { ListKeys, AddKey, RevokeKey } from './routes/keys';
+import { auth } from './routes/auth';
 import { ws } from './routes/ws';
 import { rss } from './routes/rss';
 import { feed } from './routes/feed';
@@ -116,6 +117,9 @@ openapi.get('/keys', requireAuth(), requireScope('admin'), ListKeys);
 openapi.post('/keys', requireAuth(), requireScope('admin'), AddKey);
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.delete('/keys/:kid', requireAuth(), requireScope('admin'), RevokeKey);
+
+// BFF auth routes (OIDC proxy — plain Hono, not OpenAPI)
+api.route('', auth);
 
 // Plain Hono routes (streaming/XML — not suited for OpenAPI)
 api.route('', ws);

@@ -30,6 +30,7 @@ export class ListKeys extends OpenAPIRoute {
                   x: z.string(),
                   max_scopes: z.array(z.string()).nullable(),
                   issuer: z.string().nullable(),
+                  jwks_url: z.string().nullable(),
                   created_at: z.string(),
                 }),
               ),
@@ -50,6 +51,7 @@ export class ListKeys extends OpenAPIRoute {
         x: r.x,
         max_scopes: r.max_scopes ? JSON.parse(r.max_scopes) : null,
         issuer: r.issuer,
+        jwks_url: r.jwks_url,
         created_at: r.created_at,
       })),
     });
@@ -65,14 +67,20 @@ export class AddKey extends OpenAPIRoute {
       body: {
         content: {
           'application/json': {
-            schema: z.object({
-              kid: z.string().min(1),
-              x: z.string().min(1),
-              max_scopes: z.array(z.string()).optional(),
-              issuer: z.string().optional(),
-              kty: z.string().optional(),
-              crv: z.string().optional(),
-            }),
+            schema: z
+              .object({
+                kid: z.string().min(1),
+                x: z.string().optional(),
+                max_scopes: z.array(z.string()).optional(),
+                issuer: z.string().optional(),
+                jwks_url: z.string().url().optional(),
+                kty: z.string().optional(),
+                crv: z.string().optional(),
+              })
+              .refine((data) => data.x || data.jwks_url, {
+                message:
+                  'Either "x" (public key) or "jwks_url" must be provided',
+              }),
           },
         },
       },
@@ -89,6 +97,7 @@ export class AddKey extends OpenAPIRoute {
               x: z.string(),
               max_scopes: z.array(z.string()).nullable(),
               issuer: z.string().nullable(),
+              jwks_url: z.string().nullable(),
               created_at: z.string(),
             }),
           },
@@ -128,6 +137,7 @@ export class AddKey extends OpenAPIRoute {
         {
           ...key,
           max_scopes: key.max_scopes ? JSON.parse(key.max_scopes) : null,
+          jwks_url: key.jwks_url,
         },
         201,
       );

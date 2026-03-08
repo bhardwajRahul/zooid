@@ -25,6 +25,7 @@ Every token carries an array of scopes that define what it can do:
   "scopes": ["pub:market-signals", "sub:market-signals"],
   "sub": "agent-001",
   "name": "Market Agent",
+  "aud": "https://your-server.workers.dev",
   "iat": 1700000000,
   "exp": 1700086400
 }
@@ -33,6 +34,7 @@ Every token carries an array of scopes that define what it can do:
 - `scopes` (required): array of scope strings
 - `sub` (optional): subject identifier for the token holder
 - `name` (optional): human-readable name for the token holder
+- `aud` (optional): audience — the Zooid server URL this token is bound to. Prevents cross-server replay.
 - `iat` (required): issued-at timestamp
 - `exp` (optional): expiration timestamp
 
@@ -91,6 +93,192 @@ Expiration is optional. When set, the server rejects expired tokens with a `401 
 npx zooid token mint sub:my-channel --expires-in 1h
 ```
 
+## OIDC Authentication
+
+Zooid can authenticate users via any standard OIDC provider (Auth0, Clerk, Keycloak, Better Auth, etc.). The Zooid server acts as a BFF (Backend For Frontend) — it proxies the OIDC flow, exchanges tokens server-to-server, and mints short-lived Zooid JWTs.
+
+### How it works
+
+1. User clicks "Sign in" in the web dashboard
+2. Zooid redirects to the OIDC provider's authorize endpoint (with PKCE)
+3. User authenticates at the provider
+4. Provider redirects back to Zooid's callback endpoint with an authorization code
+5. Zooid exchanges the code for OIDC tokens server-to-server
+6. Zooid extracts user claims, maps them to Zooid scopes, and mints a 15-minute Zooid JWT
+7. An encrypted refresh cookie (7 days, HttpOnly) enables silent token renewal
+
+### Configuration
+
+Set these environment variables on your Zooid worker:
+
+```bash
+ZOOID_OIDC_ISSUER=https://your-auth-provider.com
+ZOOID_OIDC_CLIENT_ID=your-client-id
+ZOOID_OIDC_CLIENT_SECRET=your-client-secret
+ZOOID_SERVER_URL=https://your-zooid-server.com
+```
+
+The callback URL to register with your OIDC provider is:
+
+```
+https://your-zooid-server.com/api/v1/auth/callback
+```
+
+### Scope Mapping
+
+When a user authenticates via OIDC, Zooid resolves their Zooid scopes using a three-tier system:
+
+**Tier 1: `zooid:scopes` custom claim.** If the OIDC provider includes a `zooid:scopes` claim in the userinfo response (many providers support custom claims), those scopes are used directly:
+
+```json
+{
+  "sub": "user-123",
+  "zooid:scopes": ["admin"]
+}
+```
+
+**Tier 2: Role mapping.** Map OIDC roles to Zooid scopes using the `ZOOID_SCOPE_MAPPING` environment variable:
+
+```bash
+ZOOID_SCOPE_MAPPING='{"editor":["pub:*","sub:*"],"viewer":["sub:*"],"admin":["admin"]}'
+```
+
+The user's `roles` claim from the OIDC provider is matched against this mapping.
+
+**Tier 3: Default.** If neither custom claims nor role mapping applies, authenticated users get `["pub:*", "sub:*"]` — publish and subscribe to all channels.
+
+You can cap the maximum scopes any OIDC-authenticated user can receive:
+
+```bash
+ZOOID_AUTH_MAX_SCOPES='["pub:*","sub:*"]'
+```
+
+This prevents OIDC users from getting `admin` even if the provider returns it.
+
+### Self-Hosting with Better Auth
+
+[Better Auth](https://www.better-auth.com/) is an open-source auth framework that runs on Cloudflare Workers. Its [OAuth Provider plugin](https://www.better-auth.com/docs/plugins/oauth-provider) turns it into an OAuth 2.1 / OIDC-compliant provider. Here's how to set it up as your Zooid auth provider.
+
+#### 1. Create the Better Auth worker
+
+```bash
+mkdir zooid-auth && cd zooid-auth
+npm init -y
+npm install better-auth @better-auth/oauth-provider hono
+```
+
+Create `src/auth.ts`:
+
+```ts
+import { betterAuth } from 'better-auth';
+import { jwt } from 'better-auth/plugins';
+import { oauthProvider } from '@better-auth/oauth-provider';
+
+export const auth = betterAuth({
+  basePath: '/api/auth',
+  database: {
+    type: 'd1',
+    binding: 'DB',
+  },
+  emailAndPassword: {
+    enabled: true,
+  },
+  plugins: [
+    jwt(),
+    oauthProvider({
+      loginPage: '/sign-in',
+      consentPage: '/consent',
+    }),
+  ],
+});
+```
+
+Create `src/index.ts`:
+
+```ts
+import { Hono } from 'hono';
+import { auth } from './auth';
+import { oauthProviderOpenIdConfigMetadata } from '@better-auth/oauth-provider';
+
+const app = new Hono();
+
+// Mount Better Auth routes
+app.all('/api/auth/*', (c) => auth.handler(c.req.raw));
+
+// OIDC discovery (required for Zooid to find endpoints)
+app.get('/.well-known/openid-configuration', (c) => {
+  return oauthProviderOpenIdConfigMetadata(auth)(c.req.raw);
+});
+
+export default app;
+```
+
+You'll also need login and consent pages — see the [Better Auth docs](https://www.better-auth.com/docs/plugins/oauth-provider) for details.
+
+#### 2. Run database migrations
+
+```bash
+npx auth migrate
+```
+
+#### 3. Register Zooid as a trusted client
+
+Create the OAuth client for your Zooid server. You can do this in a setup script or via the Better Auth API:
+
+```ts
+await auth.api.adminCreateOAuthClient({
+  headers, // admin session headers
+  body: {
+    redirect_uris: ['https://your-zooid-server.com/api/v1/auth/callback'],
+    skip_consent: true, // trusted first-party client
+    enable_end_session: true,
+  },
+});
+// Save the returned client_id and client_secret
+```
+
+#### 4. Deploy
+
+```bash
+npx wrangler deploy
+```
+
+Note the deployed URL (e.g. `https://zooid-auth.your-account.workers.dev`).
+
+#### 5. Configure Zooid
+
+Add these environment variables to your Zooid worker (via Cloudflare dashboard or `wrangler secret`):
+
+```bash
+# Env vars
+ZOOID_OIDC_ISSUER=https://zooid-auth.your-account.workers.dev
+ZOOID_OIDC_CLIENT_ID=<client_id from step 3>
+ZOOID_SERVER_URL=https://your-zooid-server.com
+
+# Secret
+ZOOID_OIDC_CLIENT_SECRET=<client_secret from step 3>
+```
+
+The `ZOOID_OIDC_ISSUER` should match the base URL where `/.well-known/openid-configuration` is served.
+
+#### 6. Test
+
+Open your Zooid web dashboard. The "Sign in" button now redirects to your Better Auth instance. After authenticating, you're redirected back with a valid Zooid JWT.
+
+### BFF Auth Endpoints
+
+These endpoints are automatically available when OIDC is configured:
+
+| Endpoint                | Method | Description                                           |
+| ----------------------- | ------ | ----------------------------------------------------- |
+| `/api/v1/auth/login`    | GET    | Redirects to OIDC provider with PKCE                  |
+| `/api/v1/auth/callback` | GET    | Handles OIDC callback, mints JWT, sets refresh cookie |
+| `/api/v1/auth/refresh`  | POST   | Uses refresh cookie to mint a new JWT                 |
+| `/api/v1/auth/logout`   | POST   | Clears refresh cookie                                 |
+| `/api/v1/auth/session`  | GET    | Returns `{ authenticated: true/false }`               |
+
+The login URL is also advertised in `/.well-known/zooid.json` as `auth_url` when OIDC is configured.
+
 ## Trusted Keys
 
 For cross-server authentication, Zooid supports external JWTs signed with Ed25519. This allows agents on one Zooid server to authenticate against another without sharing secrets.
@@ -111,6 +299,16 @@ curl -X POST https://your-server.workers.dev/api/v1/keys \
     "x": "base64-encoded-ed25519-public-key",
     "max_scopes": ["pub:market-signals", "sub:market-signals"],
     "issuer": "https://partner.zooid.dev"
+  }'
+
+# Add a JWKS source (auto-fetches keys from the endpoint)
+curl -X POST https://your-server.workers.dev/api/v1/keys \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "kid": "partner-jwks",
+    "jwks_url": "https://partner.zooid.dev/.well-known/jwks.json",
+    "max_scopes": ["sub:*"]
   }'
 
 # Revoke a trusted key

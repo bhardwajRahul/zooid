@@ -611,13 +611,19 @@ export async function addTrustedKey(
   db: D1Database,
   key: {
     kid: string;
-    x: string;
+    x?: string;
     max_scopes?: string[] | null;
     issuer?: string | null;
+    jwks_url?: string | null;
     kty?: string;
     crv?: string;
   },
 ): Promise<TrustedKeyRow> {
+  // Must have either x (explicit key) or jwks_url (JWKS source)
+  if (!key.x && !key.jwks_url) {
+    throw new Error('Either "x" (public key) or "jwks_url" must be provided');
+  }
+
   // Check max keys
   const count = await db
     .prepare('SELECT COUNT(*) as cnt FROM trusted_keys')
@@ -630,15 +636,16 @@ export async function addTrustedKey(
 
   await db
     .prepare(
-      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scopes, issuer) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO trusted_keys (kid, kty, crv, x, max_scopes, issuer, jwks_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
     )
     .bind(
       key.kid,
       key.kty ?? 'OKP',
       key.crv ?? 'Ed25519',
-      key.x,
+      key.x ?? '',
       maxScopes,
       key.issuer ?? null,
+      key.jwks_url ?? null,
     )
     .run();
 

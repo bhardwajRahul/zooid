@@ -5,7 +5,7 @@ prev: false
 title: 'UpdateServerMetaOptions'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:163](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L163)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:163](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L163)
 
 Options for updating server identity metadata.
 
@@ -15,7 +15,7 @@ Options for updating server identity metadata.
 
 > `optional` **company**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:173](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L173)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:173](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L173)
 
 Company name (set to `null` to clear).
 
@@ -25,7 +25,7 @@ Company name (set to `null` to clear).
 
 > `optional` **description**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:167](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L167)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:167](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L167)
 
 Server description (set to `null` to clear).
 
@@ -35,7 +35,7 @@ Server description (set to `null` to clear).
 
 > `optional` **email**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:175](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L175)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:175](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L175)
 
 Contact email (set to `null` to clear).
 
@@ -45,7 +45,7 @@ Contact email (set to `null` to clear).
 
 > `optional` **name**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:165](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L165)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:165](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L165)
 
 Server display name.
 
@@ -55,7 +55,7 @@ Server display name.
 
 > `optional` **owner**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:171](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L171)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:171](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L171)
 
 Operator name (set to `null` to clear).
 
@@ -65,6 +65,6 @@ Operator name (set to `null` to clear).
 
 > `optional` **tags**: `string`[]
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:169](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L169)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:169](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/types.ts#L169)
 
 Tags for categorization.

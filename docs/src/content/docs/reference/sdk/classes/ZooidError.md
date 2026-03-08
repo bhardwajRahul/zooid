@@ -5,7 +5,7 @@ prev: false
 title: 'ZooidError'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/error.ts:7](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/error.ts#L7)
+Defined in: [Code/zooid/packages/sdk/src/error.ts:7](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/error.ts#L7)
 
 Error thrown by [ZooidClient](/docs/reference/sdk/classes/zooidclient/) when the server returns a non-2xx response.
 
@@ -22,7 +22,7 @@ the error description from the response body (or a fallback like `"HTTP 500"`).
 
 > **new ZooidError**(`status`, `message`): `ZooidError`
 
-Defined in: [Code/zooid/packages/sdk/src/error.ts:11](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/error.ts#L11)
+Defined in: [Code/zooid/packages/sdk/src/error.ts:11](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/error.ts#L11)
 
 #### Parameters
 
@@ -96,7 +96,7 @@ Defined in: Code/zooid/node_modules/.pnpm/typescript@5.9.3/node_modules/typescri
 
 > **status**: `number`
 
-Defined in: [Code/zooid/packages/sdk/src/error.ts:9](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/error.ts#L9)
+Defined in: [Code/zooid/packages/sdk/src/error.ts:9](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/sdk/src/error.ts#L9)
 
 HTTP status code from the server response.
 

@@ -1,3 +1,9 @@
+export function formatFull(iso: string): string {
+  const hasOffset = /Z|[+-]\d{2}:?\d{2}$/.test(iso);
+  const ts = hasOffset ? iso : iso + 'Z';
+  return new Date(ts).toLocaleString();
+}
+
 export function formatRelative(iso: string): string {
   const hasOffset = /Z|[+-]\d{2}:?\d{2}$/.test(iso);
   const ts = hasOffset ? iso : iso + 'Z';

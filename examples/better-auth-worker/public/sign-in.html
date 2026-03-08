@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sign in</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #0a0a0a;
+        color: #fafafa;
+      }
+      .card {
+        width: 100%;
+        max-width: 360px;
+        padding: 2rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+      .subtitle {
+        font-size: 0.8125rem;
+        color: #888;
+        margin-bottom: 1.5rem;
+      }
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      label {
+        font-size: 0.8125rem;
+        color: #aaa;
+      }
+      input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #333;
+        border-radius: 6px;
+        background: #141414;
+        color: #fafafa;
+        font-size: 0.875rem;
+        outline: none;
+      }
+      input:focus {
+        border-color: #555;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 6px;
+        background: #fafafa;
+        color: #0a0a0a;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #e0e0e0;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .error {
+        font-size: 0.8125rem;
+        color: #ef4444;
+        display: none;
+      }
+      .toggle {
+        font-size: 0.8125rem;
+        color: #888;
+        text-align: center;
+        margin-top: 1rem;
+      }
+      .toggle a {
+        color: #3b82f6;
+        text-decoration: none;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 id="title">Sign in</h1>
+      <p class="subtitle">Sign in to continue to Zooid</p>
+
+      <form id="auth-form">
+        <div id="name-field" style="display: none">
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" placeholder="Your name" />
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            placeholder="you@example.com"
+            required
+          />
+        </div>
+        <div>
+          <label for="password">Password</label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            placeholder="Password"
+            required
+          />
+        </div>
+        <p id="error" class="error"></p>
+        <button type="submit" id="submit">Sign in</button>
+      </form>
+
+      <p class="toggle" id="toggle">
+        Don't have an account? <a id="toggle-link">Sign up</a>
+      </p>
+    </div>
+
+    <script>
+      const form = document.getElementById('auth-form');
+      const emailInput = document.getElementById('email');
+      const passwordInput = document.getElementById('password');
+      const nameField = document.getElementById('name-field');
+      const nameInput = document.getElementById('name');
+      const errorEl = document.getElementById('error');
+      const submitBtn = document.getElementById('submit');
+      const titleEl = document.getElementById('title');
+      const toggleEl = document.getElementById('toggle');
+
+      // After login, redirect back to authorize with the same OAuth query params
+      const continueUrl = '/api/auth/oauth2/authorize' + window.location.search;
+
+      let isSignUp = false;
+
+      function bindToggle() {
+        document.getElementById('toggle-link').addEventListener('click', () => {
+          isSignUp = !isSignUp;
+          titleEl.textContent = isSignUp ? 'Sign up' : 'Sign in';
+          submitBtn.textContent = isSignUp ? 'Sign up' : 'Sign in';
+          nameField.style.display = isSignUp ? 'block' : 'none';
+          toggleEl.innerHTML = isSignUp
+            ? 'Already have an account? <a id="toggle-link">Sign in</a>'
+            : 'Don\'t have an account? <a id="toggle-link">Sign up</a>';
+          bindToggle();
+          errorEl.style.display = 'none';
+        });
+      }
+      bindToggle();
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorEl.style.display = 'none';
+        submitBtn.disabled = true;
+        submitBtn.textContent = isSignUp
+          ? 'Creating account...'
+          : 'Signing in...';
+
+        try {
+          const endpoint = isSignUp
+            ? '/api/auth/sign-up/email'
+            : '/api/auth/sign-in/email';
+          const body = {
+            email: emailInput.value,
+            password: passwordInput.value,
+          };
+          if (isSignUp)
+            body.name = nameInput.value || emailInput.value.split('@')[0];
+
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include',
+          });
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            throw new Error(
+              data?.message ||
+                (isSignUp ? 'Sign up failed' : 'Invalid credentials'),
+            );
+          }
+
+          // Session cookie is set — redirect back to the authorize endpoint
+          window.location.href = continueUrl;
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = isSignUp ? 'Sign up' : 'Sign in';
+        }
+      });
+    </script>
+  </body>
+</html>

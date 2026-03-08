@@ -172,9 +172,17 @@ export async function createToken(
 export async function verifyToken(
   token: string,
   secret: string,
+  serverUrl?: string,
 ): Promise<ZooidJWT> {
   const payload = await verify(token, secret, 'HS256');
-  return payload as unknown as ZooidJWT;
+  const jwt = payload as unknown as ZooidJWT;
+
+  // Check audience (reject mismatched, accept missing for backward compat)
+  if (jwt.aud && serverUrl && jwt.aud !== serverUrl) {
+    throw new Error('Token audience mismatch');
+  }
+
+  return jwt;
 }
 
 // --- EdDSA (new) ---
@@ -222,6 +230,7 @@ export async function createEdDSAToken(
 export async function verifyEdDSAToken(
   token: string,
   keyRow: TrustedKeyRow,
+  serverUrl?: string,
 ): Promise<ZooidJWT> {
   const parts = token.split('.');
   if (parts.length !== 3) throw new Error('Malformed token');
@@ -255,6 +264,11 @@ export async function verifyEdDSAToken(
     throw new Error('Token expired');
   }
 
+  // Check audience (reject mismatched, accept missing for backward compat)
+  if (payload.aud && serverUrl && payload.aud !== serverUrl) {
+    throw new Error('Token audience mismatch');
+  }
+
   // Normalize scopes and enforce ceiling
   const scopes = normalizeScopes(payload);
   const maxScopes = keyRow.max_scopes
@@ -279,7 +293,7 @@ export interface VerifyResult {
  */
 export async function verifyTokenAny(
   token: string,
-  env: { ZOOID_JWT_SECRET?: string; DB: D1Database },
+  env: { ZOOID_JWT_SECRET?: string; ZOOID_SERVER_URL?: string; DB: D1Database },
 ): Promise<VerifyResult> {
   const dotIndex = token.indexOf('.');
   if (dotIndex === -1) throw new Error('Malformed token');
@@ -298,13 +312,17 @@ export async function verifyTokenAny(
     const keyRow = keys.get(header.kid);
     if (!keyRow) throw new Error('Unknown key ID');
 
-    const payload = await verifyEdDSAToken(token, keyRow);
+    const payload = await verifyEdDSAToken(token, keyRow, env.ZOOID_SERVER_URL);
     return { payload, kid: header.kid, issuer: keyRow.issuer ?? undefined };
   }
 
   // HS256 path — legacy shared secret
   if ((header.alg === 'HS256' || !header.alg) && env.ZOOID_JWT_SECRET) {
-    const payload = await verifyToken(token, env.ZOOID_JWT_SECRET);
+    const payload = await verifyToken(
+      token,
+      env.ZOOID_JWT_SECRET,
+      env.ZOOID_SERVER_URL,
+    );
     return { payload };
   }
 
@@ -320,9 +338,16 @@ export async function verifyTokenAny(
  */
 export async function mintServerToken(
   claims: Partial<ZooidJWT>,
-  env: Pick<Bindings, 'ZOOID_SIGNING_KEY' | 'ZOOID_JWT_SECRET' | 'DB'>,
+  env: Pick<
+    Bindings,
+    'ZOOID_SIGNING_KEY' | 'ZOOID_JWT_SECRET' | 'ZOOID_SERVER_URL' | 'DB'
+  >,
   options?: { expiresIn?: number },
 ): Promise<string> {
+  // Include audience claim if server URL is configured
+  if (env.ZOOID_SERVER_URL && !claims.aud) {
+    claims = { ...claims, aud: env.ZOOID_SERVER_URL };
+  }
   if (env.ZOOID_SIGNING_KEY) {
     const privateKey = await importPrivateKey(env.ZOOID_SIGNING_KEY);
     const jwk = await crypto.subtle.exportKey('jwk', privateKey);

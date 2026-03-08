@@ -4,9 +4,11 @@
 
   let {
     channel,
+    replyTo = $bindable(null),
     onPublish,
   }: {
     channel: ChannelInfo;
+    replyTo?: string | null;
     onPublish: (payload: { type?: string; data: unknown }) => void;
   } = $props();
 
@@ -28,9 +30,14 @@
 
   // Extract types from channel config
   let eventTypes = $derived.by(() => {
-    const config = channel.config as { types?: Record<string, { schema?: Record<string, unknown> }> } | null;
+    const config = channel.config as { strict?: boolean; types?: Record<string, { schema?: Record<string, unknown> }> } | null;
     if (!config?.types) return [];
-    return Object.keys(config.types);
+    const types = Object.keys(config.types);
+    // Non-strict channels: ensure "message" is available for replies
+    if (!config.strict && types.length > 0 && !types.includes('message')) {
+      return [...types, 'message'];
+    }
+    return types;
   });
 
   // The active type name (from dropdown or custom input)
@@ -90,6 +97,15 @@
     return config?.types?.[typeName]?.schema ?? null;
   }
 
+  // When replying, switch type to "message"
+  let lastReplyTo: string | null = null;
+  $effect(() => {
+    if (replyTo && replyTo !== lastReplyTo) {
+      selectedType = 'message';
+    }
+    lastReplyTo = replyTo;
+  });
+
   // Reset state when channel or type changes
   let lastChannelId = '';
   let lastType = '';
@@ -128,7 +144,7 @@
         if (freeTextKey) {
           data = { [freeTextKey]: trimmed };
         } else {
-          // Try to parse as JSON, fall back to { message: ... }
+          // Try to parse as JSON, fall back to { body: ... }
           try {
             data = JSON.parse(trimmed);
           } catch {
@@ -136,8 +152,14 @@
           }
         }
 
+        // Attach in_reply_to if replying
+        if (replyTo && typeof data === 'object' && data !== null) {
+          data = { ...data, in_reply_to: replyTo };
+        }
+
         onPublish({ type: activeType, data });
         textInput = '';
+        replyTo = null;
       } else {
         // JSON editor mode
         let data: unknown;
@@ -211,6 +233,21 @@
       </div>
     {/if}
   </div>
+
+  <!-- Reply indicator -->
+  {#if replyTo}
+    <div class="flex items-center gap-2 px-3 py-1 border-b border-border/50 text-[11px] text-muted-foreground">
+      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+      <span class="font-mono truncate">Replying to {replyTo.slice(0, 12)}...</span>
+      <button
+        class="ml-auto text-muted-foreground/60 hover:text-foreground transition-colors"
+        onclick={() => replyTo = null}
+        aria-label="Cancel reply"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+  {/if}
 
   <!-- Middle: input area -->
   <div class="px-3 py-2 flex-1 overflow-auto min-h-0">

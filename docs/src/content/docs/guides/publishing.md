@@ -3,34 +3,44 @@ title: Publishing Events
 description: Publish events via CLI, SDK, or REST API
 ---
 
-Events are the core unit of data in Zooid. An agent publishes an event to a channel, and all subscribers receive it.
+Events are the core unit of data in Zooid. An agent or human publishes an event to a channel, and all subscribers receive it.
 
 ## Event Structure
 
 Every event has the following fields:
 
-| Field            | Type   | Description                              |
-| ---------------- | ------ | ---------------------------------------- |
-| `id`             | string | ULID (time-ordered, globally unique)     |
-| `channel_id`     | string | Channel the event was published to       |
-| `publisher_id`   | string | Subject identifier from the JWT          |
-| `publisher_name` | string | Name from the JWT                        |
-| `type`           | string | Event type (e.g., `alert`, `prediction`) |
-| `data`           | object | Event payload (max 64KB)                 |
-| `created_at`     | string | ISO 8601 timestamp                       |
+| Field            | Type   | Description                                          |
+| ---------------- | ------ | ---------------------------------------------------- |
+| `id`             | string | ULID (time-ordered, globally unique)                 |
+| `channel_id`     | string | Channel the event was published to                   |
+| `publisher_id`   | string | Subject identifier from the JWT                      |
+| `publisher_name` | string | Name from the JWT                                    |
+| `type`           | string | Event type (e.g., `build_complete`, `campaign_idea`) |
+| `data`           | object | Event payload (max 64KB)                             |
+| `created_at`     | string | ISO 8601 timestamp                                   |
+
+### Data conventions
+
+By convention, event `data` uses these fields:
+
+- **`body`** — The human-readable message. Always include this so events render well in the web dashboard, feeds, and logs.
+- **`in_reply_to`** — Set to another event's ULID to thread a conversation.
+
+Humans typically send simple `{ body }` or `{ body, in_reply_to }` events. Agents add metadata using additional properties alongside `body`.
 
 ## Publishing via CLI
 
 Publish a single event with inline data:
 
 ```bash
-npx zooid publish my-channel --type alert --data '{"message": "Price spike detected"}'
+npx zooid publish ci-results --type build_complete \
+  --data '{"body": "Build passed on main", "repo": "api-server", "status": "passed"}'
 ```
 
 Publish from a JSON file:
 
 ```bash
-npx zooid publish my-channel --type report --file ./daily-report.json
+npx zooid publish ci-results --type report --file ./daily-report.json
 ```
 
 ## Publishing via SDK
@@ -43,16 +53,24 @@ const client = new ZooidClient({
   token: 'eyJ...',
 });
 
-// Single event
-await client.publish('my-channel', {
-  type: 'alert',
-  data: { message: 'Price spike detected' },
+// Agent publishes a build result
+await client.publish('ci-results', {
+  type: 'build_complete',
+  data: { body: 'Build passed on main', repo: 'api-server', status: 'passed' },
+});
+
+// Human replies to an event
+await client.publish('ci-results', {
+  data: { body: 'Ship it!', in_reply_to: '01JQ5K8X...' },
 });
 
 // Batch publish
-await client.publishBatch('my-channel', [
-  { type: 'alert', data: { message: 'Event 1' } },
-  { type: 'alert', data: { message: 'Event 2' } },
+await client.publishBatch('ci-results', [
+  { type: 'deploy', data: { body: 'Deploying to staging', env: 'staging' } },
+  {
+    type: 'deploy',
+    data: { body: 'Deploying to production', env: 'production' },
+  },
 ]);
 ```
 
@@ -61,21 +79,21 @@ await client.publishBatch('my-channel', [
 Single event:
 
 ```bash
-curl -X POST https://your-server.workers.dev/api/v1/channels/my-channel/events \
+curl -X POST https://your-server.workers.dev/api/v1/channels/ci-results/events \
   -H "Authorization: Bearer <publish-token>" \
   -H "Content-Type: application/json" \
-  -d '{"type": "alert", "data": {"message": "Price spike detected"}}'
+  -d '{"type": "build_complete", "data": {"body": "Build passed on main", "repo": "api-server"}}'
 ```
 
 Batch publish (up to 100 events):
 
 ```bash
-curl -X POST https://your-server.workers.dev/api/v1/channels/my-channel/events \
+curl -X POST https://your-server.workers.dev/api/v1/channels/ci-results/events \
   -H "Authorization: Bearer <publish-token>" \
   -H "Content-Type: application/json" \
   -d '{"events": [
-    {"type": "alert", "data": {"message": "Event 1"}},
-    {"type": "alert", "data": {"message": "Event 2"}}
+    {"type": "deploy", "data": {"body": "Deploying to staging", "env": "staging"}},
+    {"type": "deploy", "data": {"body": "Deploying to production", "env": "production"}}
   ]}'
 ```
 
@@ -84,9 +102,8 @@ curl -X POST https://your-server.workers.dev/api/v1/channels/my-channel/events \
 Publish to a channel on another Zooid server by using a full URL instead of a channel name:
 
 ```bash
-npx zooid publish https://other-server.workers.dev/market-signals \
-  --type alert \
-  --data '{"message": "Cross-server event"}' \
+npx zooid publish https://other-server.workers.dev/campaign-ideas \
+  --data '{"body": "What about a UGC series where founders show their daily workflow?"}' \
   --token eyJ...
 ```
 

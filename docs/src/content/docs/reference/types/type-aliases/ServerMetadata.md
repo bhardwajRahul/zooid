@@ -7,7 +7,7 @@ title: 'ServerMetadata'
 
 > **ServerMetadata** = [`ServerDiscovery`](/docs/reference/types/interfaces/serverdiscovery/)
 
-Defined in: [index.ts:135](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L135)
+Defined in: [index.ts:135](https://github.com/zooid-ai/zooid/blob/5bc27c64e33aef25cac6da352b58be878127fea2/packages/types/src/index.ts#L135)
 
 :::caution[Deprecated]
 Use [ServerDiscovery](/docs/reference/types/interfaces/serverdiscovery/) instead.
