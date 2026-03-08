@@ -25,8 +25,16 @@ export interface Bindings {
   ZOOID_SERVER_ID?: string;
   ZOOID_SERVER_NAME?: string;
   ZOOID_SERVER_DESC?: string;
+  ZOOID_SERVER_URL?: string;
   ZOOID_TOKEN_EXPIRY?: string;
   ZOOID_POLL_INTERVAL?: string;
+  // OIDC auth proxy
+  ZOOID_AUTH_URL?: string;
+  ZOOID_OIDC_ISSUER?: string;
+  ZOOID_OIDC_CLIENT_ID?: string;
+  ZOOID_OIDC_CLIENT_SECRET?: string;
+  ZOOID_AUTH_MAX_SCOPES?: string;
+  ZOOID_SCOPE_MAPPING?: string;
 }
 
 export interface ZooidJWT {
@@ -38,11 +46,12 @@ export interface ZooidJWT {
   channels?: string[];
   sub?: string; // Publisher ID (standard JWT subject claim)
   name?: string; // Display name (used for auto-registering publishers)
+  aud?: string; // Audience — the Zooid server URL this token is bound to
   iat: number;
   exp?: number;
 }
 
-/** Raw DB row — is_public and strict are stored as INTEGER (0/1) */
+/** Raw DB row — is_public is stored as INTEGER (0/1) */
 export interface Channel {
   id: string;
   name: string;
@@ -50,7 +59,6 @@ export interface Channel {
   tags: string | null;
   is_public: number;
   config: string | null;
-  strict: number;
   max_subscribers: number;
   created_at: string;
 }

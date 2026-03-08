@@ -153,7 +153,6 @@ describe('ZooidClient', () => {
           tags: ['new'],
           is_public: false,
           config: null,
-          strict: false,
         }),
       );
 

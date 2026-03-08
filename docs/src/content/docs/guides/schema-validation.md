@@ -3,7 +3,7 @@ title: Schema Validation
 description: Enforce event structure with JSON Schema
 ---
 
-Channels can define JSON Schema for their event types. When strict mode is enabled, the server rejects events that do not conform to the schema.
+Channels can define JSON Schema for their event types. When `strict_types` is enabled in the channel config, the server rejects events that do not conform to the schema.
 
 ## Defining a Schema
 
@@ -41,7 +41,7 @@ npx zooid channel create market-signals --public --schema ./schema.json
 
 By default, the schema is informational only. Events that do not match the schema are still accepted. The schema is published in the channel metadata so consumers know what to expect.
 
-## Strict Mode
+## Strict Types
 
 Add the `--strict` flag to enforce the schema on publish:
 
@@ -49,7 +49,7 @@ Add the `--strict` flag to enforce the schema on publish:
 npx zooid channel create market-signals --public --schema ./schema.json --strict
 ```
 
-With strict mode enabled:
+This sets `config.strict_types: true`. With strict types enabled:
 
 - Events with a `type` that matches a schema key are validated against that schema
 - Events that fail validation are rejected with `422 Unprocessable Entity` and a response body containing the validation errors
@@ -78,15 +78,15 @@ Replace the schema on an existing channel:
 npx zooid channel update market-signals --schema ./new-schema.json
 ```
 
-This replaces the entire schema. There is no merging -- if you remove a type from the new schema file, that type is no longer validated even in strict mode.
+This replaces the entire schema. There is no merging -- if you remove a type from the new schema file, that type is no longer validated.
 
-### Enabling Strict Mode on an Existing Channel
+### Enabling Strict Types on an Existing Channel
 
 ```bash
 npx zooid channel update market-signals --strict
 ```
 
-### Disabling Strict Mode
+### Disabling Strict Types
 
 ```bash
 npx zooid channel update market-signals --no-strict
@@ -94,13 +94,13 @@ npx zooid channel update market-signals --no-strict
 
 ## Events Without a Type
 
-Events published without a `type` field are never validated, even in strict mode. This allows channels to accept untyped events alongside typed, validated ones.
+Events published without a `type` field are never validated, even with `strict_types` enabled. This allows channels to accept untyped events alongside typed, validated ones.
 
 If you want to require every event to have a type, enforce that at the application level.
 
 ## Schema Storage
 
-The schema is stored in the channel's `config.types` field in the database. You can inspect it via the channel detail endpoint:
+The schema is stored in the channel's `config.types` field. Strict enforcement is controlled by `config.strict_types`. You can inspect them via the channel detail endpoint:
 
 ```bash
 curl https://your-server.workers.dev/api/v1/channels/market-signals
@@ -110,18 +110,33 @@ curl https://your-server.workers.dev/api/v1/channels/market-signals
 {
   "id": "market-signals",
   "name": "Market Signals",
-  "public": true,
-  "strict": true,
+  "is_public": true,
   "config": {
+    "strict_types": true,
     "types": {
       "odds_shift": {
-        "type": "object",
-        "properties": {
-          "market": { "type": "string" },
-          "shift": { "type": "number" }
-        },
-        "required": ["market", "shift"]
+        "schema": {
+          "type": "object",
+          "properties": {
+            "market": { "type": "string" },
+            "shift": { "type": "number" }
+          },
+          "required": ["market", "shift"]
+        }
       }
+    }
+  }
+}
+```
+
+You can also set `strict_types` directly in a config file passed via `--config`:
+
+```json
+{
+  "strict_types": true,
+  "types": {
+    "odds_shift": {
+      "schema": { ... }
     }
   }
 }
@@ -129,7 +144,7 @@ curl https://your-server.workers.dev/api/v1/channels/market-signals
 
 ## Recommendations
 
-- Define schemas early, even without strict mode. They serve as documentation for consumers.
-- Enable strict mode for channels where data integrity matters (e.g., financial signals, structured alerts).
+- Define schemas early, even without strict types. They serve as documentation for consumers.
+- Enable `strict_types` for channels where data integrity matters (e.g., financial signals, structured alerts).
 - Use `required` fields liberally to catch missing data at publish time.
 - Keep schemas focused. Each event type should validate only its own `data` payload.

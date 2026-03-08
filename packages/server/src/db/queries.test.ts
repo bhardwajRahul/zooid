@@ -8,6 +8,7 @@ import {
   createEvents,
   pollEvents,
   cleanupExpiredEvents,
+  getRetentionDays,
   createWebhook,
   deleteWebhook,
   getWebhooksForChannel,
@@ -120,6 +121,51 @@ describe('Event queries', () => {
       expect(result.events[0].type).toBe('signal');
     });
 
+    it('filters by multiple comma-separated types', async () => {
+      await createEvent(env.DB, {
+        channelId: 'test-channel',
+        type: 'signal',
+        data: {},
+      });
+      await createEvent(env.DB, {
+        channelId: 'test-channel',
+        type: 'alert',
+        data: {},
+      });
+      await createEvent(env.DB, {
+        channelId: 'test-channel',
+        type: 'metric',
+        data: {},
+      });
+
+      const result = await pollEvents(env.DB, 'test-channel', {
+        type: 'signal,alert',
+      });
+      expect(result.events).toHaveLength(2);
+      const types = result.events.map((e) => e.type);
+      expect(types).toContain('signal');
+      expect(types).toContain('alert');
+      expect(types).not.toContain('metric');
+    });
+
+    it('handles comma-separated types with whitespace', async () => {
+      await createEvent(env.DB, {
+        channelId: 'test-channel',
+        type: 'triage',
+        data: {},
+      });
+      await createEvent(env.DB, {
+        channelId: 'test-channel',
+        type: 'clarification',
+        data: {},
+      });
+
+      const result = await pollEvents(env.DB, 'test-channel', {
+        type: 'triage, clarification',
+      });
+      expect(result.events).toHaveLength(2);
+    });
+
     it('returns the most recent events when no cursor/since (tail behavior)', async () => {
       for (let i = 0; i < 5; i++) {
         await createEvent(env.DB, {
@@ -227,12 +273,59 @@ describe('Event queries', () => {
         data: {},
       });
 
-      const deleted = await cleanupExpiredEvents(env.DB, 'test-channel');
+      const deleted = await cleanupExpiredEvents(env.DB, 'test-channel', 7);
       expect(deleted).toBe(1);
 
       const result = await pollEvents(env.DB, 'test-channel', {});
       expect(result.events).toHaveLength(1);
       expect(result.events[0].type).toBe('fresh');
+    });
+  });
+
+  describe('getRetentionDays', () => {
+    const base = {
+      id: 'test',
+      name: 'Test',
+      description: null,
+      tags: null,
+      is_public: 1,
+      max_subscribers: 100,
+      created_at: '2024-01-01T00:00:00Z',
+    };
+
+    it('returns 7 when config is null', () => {
+      expect(getRetentionDays({ ...base, config: null })).toBe(7);
+    });
+
+    it('returns 7 when config has no storage', () => {
+      expect(getRetentionDays({ ...base, config: '{"display":{}}' })).toBe(7);
+    });
+
+    it('returns custom retention_days from config.storage', () => {
+      expect(
+        getRetentionDays({
+          ...base,
+          config: '{"storage":{"retention_days":30}}',
+        }),
+      ).toBe(30);
+    });
+
+    it('floors fractional values', () => {
+      expect(
+        getRetentionDays({
+          ...base,
+          config: '{"storage":{"retention_days":3.9}}',
+        }),
+      ).toBe(3);
+    });
+
+    it('clamps to minimum of 1', () => {
+      expect(
+        getRetentionDays({
+          ...base,
+          config: '{"storage":{"retention_days":0}}',
+        }),
+      ).toBe(7);
     });
   });
 });

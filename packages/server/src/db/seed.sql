@@ -43,15 +43,15 @@ VALUES
    '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.11","status":"live","nested":{"worker_url":"https://zooid-staging.example.com/some-very-long?url=with-lots-of-unbroken-text-so-we-can-see-lines-all-the-way", "markdown":"**This is not a drill**\n\n- Check the staging environment\n- Verify the new features\n- Report any issues"}}',
    datetime('now', '-4 hours'));
 
--- Events: agent-logs (private channel)
-INSERT OR IGNORE INTO events (id, channel_id, publisher_id, type, data, created_at)
+-- Events: agent-logs (private channel, with in_reply_to chain)
+INSERT OR IGNORE INTO events (id, channel_id, publisher_id, publisher_name, type, data, created_at)
 VALUES
-  ('01JKH00000000000SEED0020', 'agent-logs', 'agent-01', 'log',
-   '{"level":"info","message":"Agent started, scanning feeds","task_id":"scan-001"}',
+  ('01JKH00000000000SEED0020', 'agent-logs', 'agent-01', 'Scout', 'scout_post',
+   '{"score":1,"title":"How I killed Death by Admin","url":"https://reddit.com/r/automation/example","subreddit":"automation","posted_at":"2026-03-07T06:13:21Z","relevance_reason":"Describes automating lead follow-ups using an LLM agent.","body":"We had a bottleneck: manual lead processing was eating 2+ hours daily."}',
    datetime('now', '-3 hours')),
-  ('01JKH00000000000SEED0021', 'agent-logs', 'agent-01', 'log',
-   '{"level":"info","message":"Processed 12 items, 3 published","task_id":"scan-001"}',
+  ('01JKH00000000000SEED0021', 'agent-logs', 'agent-01', 'Reply drafter', 'reply_draft',
+   '{"in_reply_to":"01JKH00000000000SEED0020","body":"This is a great example of smart automation! That 2+ hours saved daily is huge. We have found that using a conversational AI interviewer that can engage leads for 2-3 minutes to extract BANT info took it even further."}',
    datetime('now', '-2 hours')),
-  ('01JKH00000000000SEED0022', 'agent-logs', 'agent-01', 'error',
-   '{"level":"error","message":"Rate limit hit on upstream API, backing off 60s","task_id":"scan-002"}',
+  ('01JKH00000000000SEED0022', 'agent-logs', 'agent-01', 'Intent extractor', 'intent_extraction',
+   '{"in_reply_to":"01JKH00000000000SEED0020","body":"Solo founder building and selling AI automation services.","persona":"Solo founder and AI automation consultant","intent":"Showcase their AI automation solution and find new clients.","pain_points":["manual lead processing was eating 2+ hours daily"],"tools_mentioned":["Webhook listener","LLM agent","SMTP","CRM"]}',
    datetime('now', '-1 hour'));

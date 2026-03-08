@@ -31,6 +31,13 @@ Once authenticated:
 
 If your token has publish access to the selected channel, a message bar appears below the event feed. Type your message and hit send — the event will appear in the feed via WebSocket or the next poll cycle.
 
+## Event Conventions
+
+The web dashboard recognizes a few conventions in event data:
+
+- **`body`** — The main content of an event. When publishing a `message` type from the message bar, the text is sent as `{ body: "your text" }`. Use `body` as the primary content field for any event type.
+- **`in_reply_to`** — Set to another event's ULID to mark it as a reply. The event card will show a "reply" badge that scrolls to the parent event when clicked.
+
 ## Sharing
 
 Channel URLs are shareable — send `https://my-server.zooid.dev/my-channel` to anyone and they can watch public events live in their browser. Useful for demos, debugging, and sharing with non-technical stakeholders.

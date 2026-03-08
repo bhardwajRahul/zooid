@@ -326,8 +326,7 @@
 
   <!-- Mobile sidebar overlay -->
   {#if sidebarOpen}
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-    <div class="fixed inset-0 bg-background/60 z-40 md:hidden" onclick={() => sidebarOpen = false}></div>
+    <button type="button" class="fixed inset-0 bg-background/60 z-40 md:hidden" onclick={() => sidebarOpen = false} aria-label="Close sidebar"></button>
     <div class="fixed inset-y-0 left-0 w-60 z-50 md:hidden">
       <Sidebar
         {channels}

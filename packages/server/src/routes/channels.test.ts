@@ -138,8 +138,9 @@ describe('Channel routes', () => {
       expect(res.status).toBe(201);
     });
 
-    it('creates a strict channel with config', async () => {
+    it('creates a strict_types channel with config', async () => {
       const config = {
+        strict_types: true,
         types: {
           alert: {
             schema: {
@@ -156,26 +157,25 @@ describe('Channel routes', () => {
           id: 'strict-channel',
           name: 'Strict Channel',
           config,
-          strict: true,
         }),
       });
 
       expect(res.status).toBe(201);
     });
 
-    it('rejects strict channel without config', async () => {
+    it('rejects strict_types without types in config', async () => {
       const res = await authRequest('/api/v1/channels', {
         method: 'POST',
         body: JSON.stringify({
-          id: 'strict-no-config',
+          id: 'strict-no-types',
           name: 'Bad Strict',
-          strict: true,
+          config: { strict_types: true },
         }),
       });
 
       expect(res.status).toBe(400);
       const body = (await res.json()) as { error: string };
-      expect(body.error).toContain('config');
+      expect(body.error).toContain('strict_types requires types');
     });
 
     it('creates a channel with tags', async () => {
@@ -440,30 +440,27 @@ describe('Channel routes', () => {
           },
         },
       };
+      const configWithStrict = { ...config, strict_types: true };
       const res1 = await authRequest('/api/v1/channels/config-update', {
         method: 'PATCH',
-        body: JSON.stringify({ config, strict: true }),
+        body: JSON.stringify({ config: configWithStrict }),
       });
       expect(res1.status).toBe(200);
       const body1 = (await res1.json()) as {
         config: Record<string, unknown> | null;
-        strict: boolean;
       };
-      expect(body1.config).toEqual(config);
-      expect(body1.strict).toBe(true);
+      expect(body1.config).toEqual(configWithStrict);
 
       // Clear config
       const res2 = await authRequest('/api/v1/channels/config-update', {
         method: 'PATCH',
-        body: JSON.stringify({ config: null, strict: false }),
+        body: JSON.stringify({ config: null }),
       });
       expect(res2.status).toBe(200);
       const body2 = (await res2.json()) as {
         config: Record<string, unknown> | null;
-        strict: boolean;
       };
       expect(body2.config).toBeNull();
-      expect(body2.strict).toBe(false);
     });
 
     it('clears description with null', async () => {

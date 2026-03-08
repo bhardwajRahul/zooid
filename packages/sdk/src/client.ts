@@ -163,6 +163,14 @@ export class ZooidClient {
     await this.request<void>('DELETE', `/api/v1/channels/${channelId}`);
   }
 
+  /** Delete a single event by ID. Requires admin or publish token. */
+  async deleteEvent(channelId: string, eventId: string): Promise<void> {
+    await this.request<void>(
+      'DELETE',
+      `/api/v1/channels/${channelId}/events/${eventId}`,
+    );
+  }
+
   /** Publish a single event to a channel. Requires a publish-scoped token. */
   async publish(
     channelId: string,

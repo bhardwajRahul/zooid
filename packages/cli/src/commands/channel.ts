@@ -28,13 +28,16 @@ export async function runChannelCreate(
   client?: ZooidClient,
 ): Promise<CreateChannelResult> {
   const c = client ?? createClient();
+  let config = options.config;
+  if (options.strict !== undefined) {
+    config = { ...config, strict_types: options.strict };
+  }
   const result = await c.createChannel({
     id,
     name: options.name ?? id,
     description: options.description,
     is_public: options.public ?? true,
-    strict: options.strict,
-    config: options.config,
+    config,
   });
 
   // Save token to config (only when using real config, not injected client)

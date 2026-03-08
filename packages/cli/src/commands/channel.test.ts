@@ -112,7 +112,6 @@ describe('channel commands', () => {
         tags: ['ai'],
         is_public: false,
         config: null,
-        strict: false,
       });
 
       const result = await runChannelUpdate(

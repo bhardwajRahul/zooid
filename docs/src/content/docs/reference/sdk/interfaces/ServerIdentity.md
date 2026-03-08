@@ -5,7 +5,7 @@ prev: false
 title: 'ServerIdentity'
 ---
 
-Defined in: [Code/zooid/packages/types/src/index.ts:117](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L117)
+Defined in: [Code/zooid/packages/types/src/index.ts:115](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L115)
 
 Editable server identity from `GET /api/v1/server` and `PUT /api/v1/server`.
 
@@ -18,7 +18,7 @@ Editable by admins.
 
 > **company**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:127](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L127)
+Defined in: [Code/zooid/packages/types/src/index.ts:125](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L125)
 
 Company or organization name.
 
@@ -28,7 +28,7 @@ Company or organization name.
 
 > **description**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:121](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L121)
+Defined in: [Code/zooid/packages/types/src/index.ts:119](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L119)
 
 Optional description of this server's purpose.
 
@@ -38,7 +38,7 @@ Optional description of this server's purpose.
 
 > **email**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:129](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L129)
+Defined in: [Code/zooid/packages/types/src/index.ts:127](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L127)
 
 Contact email address.
 
@@ -48,7 +48,7 @@ Contact email address.
 
 > **name**: `string`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:119](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L119)
+Defined in: [Code/zooid/packages/types/src/index.ts:117](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L117)
 
 Display name for this server.
 
@@ -58,7 +58,7 @@ Display name for this server.
 
 > **owner**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:125](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L125)
+Defined in: [Code/zooid/packages/types/src/index.ts:123](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L123)
 
 Name of the server operator.
 
@@ -68,7 +68,7 @@ Name of the server operator.
 
 > **tags**: `string`[]
 
-Defined in: [Code/zooid/packages/types/src/index.ts:123](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L123)
+Defined in: [Code/zooid/packages/types/src/index.ts:121](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L121)
 
 Arbitrary tags for categorization.
 
@@ -78,6 +78,6 @@ Arbitrary tags for categorization.
 
 > **updated_at**: `string`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:131](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L131)
+Defined in: [Code/zooid/packages/types/src/index.ts:129](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L129)
 
 ISO 8601 timestamp of the last update.

@@ -23,14 +23,15 @@ npx zooid channel create <id> [options]
 
 ### Options
 
-| Option                 | Description                     |
-| ---------------------- | ------------------------------- |
-| `--name <name>`        | Display name (defaults to id)   |
-| `--description <desc>` | Channel description             |
-| `--public`             | Make channel public (default)   |
-| `--private`            | Make channel private            |
-| `--strict`             | Enable strict schema validation |
-| `--schema <file>`      | Path to JSON schema file        |
+| Option                 | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `--name <name>`        | Display name (defaults to id)                   |
+| `--description <desc>` | Channel description                             |
+| `--public`             | Make channel public (default)                   |
+| `--private`            | Make channel private                            |
+| `--strict`             | Set `config.strict_types: true`                 |
+| `--config <file>`      | Path to channel config JSON file                |
+| `--schema <file>`      | Path to JSON schema file (shorthand for config) |
 
 ### Examples
 
@@ -41,7 +42,10 @@ npx zooid channel create market-signals
 # Create a private channel with a description
 npx zooid channel create internal-alerts --private --description "Internal monitoring alerts"
 
-# Create a channel with schema validation
+# Create a channel with full config (types, storage, etc.)
+npx zooid channel create typed-events --config ./channel.json
+
+# Create a channel with schema validation (shorthand)
 npx zooid channel create typed-events --strict --schema ./event-schema.json
 ```
 
@@ -91,16 +95,17 @@ npx zooid channel update <id> [options]
 
 ### Options
 
-| Option                 | Description                      |
-| ---------------------- | -------------------------------- |
-| `--name <name>`        | Update display name              |
-| `--description <desc>` | Update description               |
-| `--tags <csv>`         | Set tags (comma-separated)       |
-| `--public`             | Make channel public              |
-| `--private`            | Make channel private             |
-| `--strict`             | Enable strict schema validation  |
-| `--no-strict`          | Disable strict schema validation |
-| `--schema <file>`      | Path to JSON schema file         |
+| Option                 | Description                                     |
+| ---------------------- | ----------------------------------------------- |
+| `--name <name>`        | Update display name                             |
+| `--description <desc>` | Update description                              |
+| `--tags <csv>`         | Set tags (comma-separated)                      |
+| `--public`             | Make channel public                             |
+| `--private`            | Make channel private                            |
+| `--strict`             | Set `config.strict_types: true`                 |
+| `--no-strict`          | Set `config.strict_types: false`                |
+| `--config <file>`      | Path to channel config JSON file                |
+| `--schema <file>`      | Path to JSON schema file (shorthand for config) |
 
 ### Examples
 

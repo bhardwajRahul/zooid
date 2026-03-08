@@ -14,7 +14,12 @@ import {
   UpdateChannel,
   DeleteChannel,
 } from './routes/channels';
-import { PublishEvents, PollEvents } from './routes/events';
+import {
+  PublishEvents,
+  PollEvents,
+  GetEventById,
+  DeleteEventById,
+} from './routes/events';
 import { RegisterWebhook, DeleteWebhook } from './routes/webhooks';
 import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
 import { GetTokenClaims, MintToken } from './routes/tokens';
@@ -39,6 +44,7 @@ const openapi = fromHono(api, {
   redoc_url: null,
   openapi_url: '/openapi.json',
   schema: {
+    openapi: '3.1.0',
     info: {
       title: 'Zooid',
       version: '0.1.0',
@@ -83,6 +89,12 @@ openapi.post('/channels/:channelId/events', requireAuth(), requireScope('publish
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.get('/channels/:channelId/events', requireSubscribeIfPrivate('channelId'), PollEvents);
+// prettier-ignore
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.get('/channels/:channelId/events/:eventId', requireSubscribeIfPrivate('channelId'), GetEventById);
+// prettier-ignore
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.delete('/channels/:channelId/events/:eventId', requireAuth(), requireScope('publish', { channelParam: 'channelId' }), DeleteEventById);
 
 // Directory claim route
 // prettier-ignore

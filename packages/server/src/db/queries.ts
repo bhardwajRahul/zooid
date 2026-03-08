@@ -18,17 +18,15 @@ export async function createChannel(
     tags?: string[];
     is_public?: boolean;
     config?: Record<string, unknown>;
-    strict?: boolean;
   },
 ): Promise<Channel> {
   const isPublic = channel.is_public === false ? 0 : 1;
-  const strict = channel.strict ? 1 : 0;
   const config = channel.config ? JSON.stringify(channel.config) : null;
   const tags = channel.tags ? JSON.stringify(channel.tags) : null;
 
   await db
     .prepare(
-      `INSERT INTO channels (id, name, description, tags, is_public, config, strict) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO channels (id, name, description, tags, is_public, config) VALUES (?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       channel.id,
@@ -37,7 +35,6 @@ export async function createChannel(
       tags,
       isPublic,
       config,
-      strict,
     )
     .run();
 
@@ -58,7 +55,6 @@ export async function updateChannel(
     tags?: string[] | null;
     is_public?: boolean;
     config?: Record<string, unknown> | null;
-    strict?: boolean;
   },
 ): Promise<Channel | null> {
   const existing = await db
@@ -91,11 +87,6 @@ export async function updateChannel(
     setClauses.push('config = ?');
     binds.push(fields.config ? JSON.stringify(fields.config) : null);
   }
-  if (fields.strict !== undefined) {
-    setClauses.push('strict = ?');
-    binds.push(fields.strict ? 1 : 0);
-  }
-
   if (setClauses.length > 0) {
     await db
       .prepare(`UPDATE channels SET ${setClauses.join(', ')} WHERE id = ?`)
@@ -131,7 +122,6 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
         c.tags,
         c.is_public,
         c.config,
-        c.strict,
         COALESCE(e.event_count, 0) as event_count,
         e.last_event_at
       FROM channels c
@@ -152,7 +142,6 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
       tags: string | null;
       is_public: number;
       config: string | null;
-      strict: number;
       event_count: number;
       last_event_at: string | null;
     }>();
@@ -164,7 +153,6 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
     tags: row.tags ? JSON.parse(row.tags) : [],
     is_public: row.is_public === 1,
     config: row.config ? JSON.parse(row.config) : null,
-    strict: row.strict === 1,
     event_count: row.event_count,
     last_event_at: row.last_event_at,
   }));
@@ -266,6 +254,29 @@ export async function createEvents(
   return results;
 }
 
+export async function getEvent(
+  db: D1Database,
+  channelId: string,
+  eventId: string,
+): Promise<ZooidEvent | null> {
+  return db
+    .prepare(`SELECT * FROM events WHERE id = ? AND channel_id = ?`)
+    .bind(eventId, channelId)
+    .first<ZooidEvent>();
+}
+
+export async function deleteEvent(
+  db: D1Database,
+  channelId: string,
+  eventId: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare(`DELETE FROM events WHERE id = ? AND channel_id = ?`)
+    .bind(eventId, channelId)
+    .run();
+  return (result.meta.changes ?? 0) > 0;
+}
+
 export async function pollEvents(
   db: D1Database,
   channelId: string,
@@ -291,8 +302,17 @@ export async function pollEvents(
   }
 
   if (options.type) {
-    conditions.push('type = ?');
-    bindings.push(options.type);
+    const types = options.type
+      .split(',')
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (types.length === 1) {
+      conditions.push('type = ?');
+      bindings.push(types[0]);
+    } else if (types.length > 1) {
+      conditions.push(`type IN (${types.map(() => '?').join(', ')})`);
+      bindings.push(...types);
+    }
   }
 
   // When no cursor/since anchor, fetch the most recent events (DESC) and reverse
@@ -324,15 +344,38 @@ export async function pollEvents(
 export async function cleanupExpiredEvents(
   db: D1Database,
   channelId: string,
+  retentionDays: number,
 ): Promise<number> {
+  const days = Math.max(1, Math.floor(retentionDays));
   const result = await db
     .prepare(
-      `DELETE FROM events WHERE channel_id = ? AND created_at < datetime('now', '-7 days')`,
+      `DELETE FROM events WHERE channel_id = ? AND created_at < datetime('now', '-' || ? || ' days')`,
     )
-    .bind(channelId)
+    .bind(channelId, days)
     .run();
 
   return result.meta.changes ?? 0;
+}
+
+export function getRetentionDays(channel: Channel): number {
+  if (!channel.config) return 7;
+  try {
+    const config = JSON.parse(channel.config);
+    const days = config?.storage?.retention_days;
+    return typeof days === 'number' && days >= 1 ? Math.floor(days) : 7;
+  } catch {
+    return 7;
+  }
+}
+
+export function isStrictTypes(channel: Channel): boolean {
+  if (!channel.config) return false;
+  try {
+    const config = JSON.parse(channel.config);
+    return config?.strict_types === true;
+  } catch {
+    return false;
+  }
 }
 
 // --- Webhook queries ---

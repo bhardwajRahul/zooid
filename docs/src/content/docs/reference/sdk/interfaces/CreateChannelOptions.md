@@ -5,7 +5,7 @@ prev: false
 title: 'CreateChannelOptions'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:41](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L41)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:41](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L41)
 
 Options for creating a new channel via `POST /api/v1/channels`.
 
@@ -15,9 +15,9 @@ Options for creating a new channel via `POST /api/v1/channels`.
 
 > `optional` **config**: `Record`\<`string`, `unknown`\>
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:51](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L51)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:51](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L51)
 
-Optional channel config (types, actions, components, display).
+Optional channel config (types, storage, strict_types).
 
 ---
 
@@ -25,7 +25,7 @@ Optional channel config (types, actions, components, display).
 
 > `optional` **description**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:47](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L47)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:47](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L47)
 
 Optional channel description.
 
@@ -35,7 +35,7 @@ Optional channel description.
 
 > **id**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:43](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L43)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:43](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L43)
 
 URL-safe slug identifier (lowercase + hyphens, 3-64 chars).
 
@@ -45,7 +45,7 @@ URL-safe slug identifier (lowercase + hyphens, 3-64 chars).
 
 > `optional` **is_public**: `boolean`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:49](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L49)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:49](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L49)
 
 Whether the channel is publicly accessible. Defaults to `true`.
 
@@ -55,16 +55,6 @@ Whether the channel is publicly accessible. Defaults to `true`.
 
 > **name**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:45](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L45)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:45](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L45)
 
 Human-readable display name.
-
----
-
-### strict?
-
-> `optional` **strict**: `boolean`
-
-Defined in: [Code/zooid/packages/sdk/src/types.ts:53](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L53)
-
-When `true`, events are rejected if they don't match `schema`.

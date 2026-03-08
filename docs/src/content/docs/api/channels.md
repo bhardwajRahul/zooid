@@ -48,15 +48,14 @@ Admin token required.
 
 ### Request body
 
-| Field         | Type     | Required | Description                                                                                         |
-| ------------- | -------- | -------- | --------------------------------------------------------------------------------------------------- |
-| `id`          | string   | Yes      | Channel ID. 3-64 chars, lowercase alphanumeric + hyphens.                                           |
-| `name`        | string   | Yes      | Human-readable display name.                                                                        |
-| `description` | string   | No       | Channel description.                                                                                |
-| `tags`        | string[] | No       | Tags for categorization.                                                                            |
-| `is_public`   | boolean  | No       | Whether the channel is publicly readable. Defaults to `true`.                                       |
-| `config`      | object   | No       | Channel configuration including type schemas.                                                       |
-| `strict`      | boolean  | No       | If `true`, published events are validated against schemas in `config`. Requires `config` to be set. |
+| Field         | Type     | Required | Description                                                                                                                |
+| ------------- | -------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `id`          | string   | Yes      | Channel ID. 3-64 chars, lowercase alphanumeric + hyphens.                                                                  |
+| `name`        | string   | Yes      | Human-readable display name.                                                                                               |
+| `description` | string   | No       | Channel description.                                                                                                       |
+| `tags`        | string[] | No       | Tags for categorization.                                                                                                   |
+| `is_public`   | boolean  | No       | Whether the channel is publicly readable. Defaults to `true`.                                                              |
+| `config`      | object   | No       | Channel configuration. Set `config.strict_types: true` to enforce schema validation, and define schemas in `config.types`. |
 
 ### Response
 
@@ -71,11 +70,11 @@ Admin token required.
 
 ### Errors
 
-| Status | Condition                            |
-| ------ | ------------------------------------ |
-| 400    | Invalid channel ID format.           |
-| 400    | `strict: true` without `config`.     |
-| 409    | Channel with this ID already exists. |
+| Status | Condition                                           |
+| ------ | --------------------------------------------------- |
+| 400    | Invalid channel ID format.                          |
+| 400    | `config.strict_types: true` without `config.types`. |
+| 409    | Channel with this ID already exists.                |
 
 ## Update channel
 
@@ -99,14 +98,13 @@ Admin token required.
 
 All fields are optional. Only include the fields you want to change.
 
-| Field         | Type     | Description               |
-| ------------- | -------- | ------------------------- |
-| `name`        | string   | Display name.             |
-| `description` | string   | Channel description.      |
-| `tags`        | string[] | Tags for categorization.  |
-| `is_public`   | boolean  | Public visibility.        |
-| `config`      | object   | Channel configuration.    |
-| `strict`      | boolean  | Schema validation toggle. |
+| Field         | Type     | Description                                                          |
+| ------------- | -------- | -------------------------------------------------------------------- |
+| `name`        | string   | Display name.                                                        |
+| `description` | string   | Channel description.                                                 |
+| `tags`        | string[] | Tags for categorization.                                             |
+| `is_public`   | boolean  | Public visibility.                                                   |
+| `config`      | object   | Channel configuration (includes `strict_types`, `types`, `storage`). |
 
 ### Response
 
@@ -119,8 +117,7 @@ All fields are optional. Only include the fields you want to change.
   "description": "Real-time trading signals from multiple sources",
   "tags": ["finance", "trading", "crypto"],
   "is_public": true,
-  "config": null,
-  "strict": false
+  "config": null
 }
 ```
 

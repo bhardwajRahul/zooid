@@ -96,8 +96,8 @@ The `--token` flag provides a publish token for the remote server.
 
 Event payloads are limited to 64KB. The server returns `413 Payload Too Large` if the limit is exceeded. This applies to the serialized JSON of the `data` field.
 
-## Strict Mode
+## Strict Types
 
-Channels with `strict=true` validate event data against the channel's JSON Schema before accepting the event. If validation fails, the server returns `422 Unprocessable Entity` with details about the schema violation.
+Channels with `config.strict_types: true` validate event data against the channel's JSON Schema before accepting the event. If validation fails, the server returns `422 Unprocessable Entity` with details about the schema violation.
 
 See [Schema Validation](/docs/guides/schema-validation) for details on defining schemas.

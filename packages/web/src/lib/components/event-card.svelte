@@ -2,6 +2,7 @@
   import type { ZooidEvent } from '../api';
   import { parsePretty, renderMarkdown, type PrettyNode } from '../pretty-json';
   import { formatRelative } from '../time';
+  import Avatar from './avatar.svelte';
 
   let { event, viewMode = 'pretty' }: { event: ZooidEvent; viewMode?: 'pretty' | 'raw' } = $props();
 
@@ -9,12 +10,30 @@
   let prettyEntries = $derived(parsePretty(event.data));
   let relativeTime = $derived(formatRelative(event.created_at));
   let publisherLabel = $derived(formatPublisher(event));
+  let inReplyTo = $derived(extractReplyTo(event.data));
 
   function formatRaw(raw: string): string {
     try {
       return JSON.stringify(JSON.parse(raw), null, 2);
     } catch {
       return raw;
+    }
+  }
+
+  function extractReplyTo(raw: string): string | null {
+    try {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed.in_reply_to === 'string') return parsed.in_reply_to;
+    } catch {}
+    return null;
+  }
+
+  function scrollToEvent(id: string) {
+    const el = document.getElementById(`event-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('bg-primary/10');
+      setTimeout(() => el.classList.remove('bg-primary/10'), 1500);
     }
   }
 
@@ -72,12 +91,20 @@
 
 <div class="group py-2 px-2 hover:bg-secondary/30 rounded transition-colors">
   <!-- Header: publisher + type + time -->
-  <div class="flex items-baseline gap-2 mb-0.5">
+  <div class="flex items-center gap-2 mb-0.5">
+    <Avatar {event} size={20} />
     <span class="font-semibold text-sm text-foreground">
       {publisherLabel ?? 'anonymous'}
     </span>
     {#if event.type}
       <span class="text-[10px] font-mono text-muted-foreground/60 bg-secondary/60 px-1.5 py-0 rounded">{event.type}</span>
+    {/if}
+    {#if inReplyTo}
+      <button
+        class="text-[10px] font-mono text-primary/60 hover:text-primary bg-primary/10 hover:bg-primary/20 px-1.5 py-0 rounded cursor-pointer transition-colors"
+        onclick={() => scrollToEvent(inReplyTo!)}
+        title="Scroll to parent event"
+      >&#8593; reply</button>
     {/if}
     <span class="text-[10px] text-muted-foreground/40 ml-auto shrink-0">{relativeTime}</span>
   </div>

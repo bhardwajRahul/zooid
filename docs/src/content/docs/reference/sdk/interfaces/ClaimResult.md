@@ -5,7 +5,7 @@ prev: false
 title: 'ClaimResult'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:159](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L159)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:155](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L155)
 
 Result of generating a signed directory claim.
 
@@ -15,7 +15,7 @@ Result of generating a signed directory claim.
 
 > **claim**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:161](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L161)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:157](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L157)
 
 Base64url-encoded JSON claim payload.
 
@@ -25,6 +25,6 @@ Base64url-encoded JSON claim payload.
 
 > **signature**: `string`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:163](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L163)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:159](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L159)
 
 Base64url-encoded Ed25519 signature of the claim.

@@ -255,13 +255,21 @@ channelCmd
   .option('--private', 'Make channel private')
   .option('--strict', 'Enable strict schema validation on publish')
   .option(
+    '--config <file>',
+    'Path to channel config JSON file (display, types, storage)',
+  )
+  .option(
     '--schema <file>',
     'Path to JSON schema file (map of event types to JSON schemas)',
   )
   .action(async (id, opts) => {
     try {
       let config: Record<string, unknown> | undefined;
-      if (opts.schema) {
+      if (opts.config) {
+        const fs = await import('node:fs');
+        const raw = fs.readFileSync(opts.config, 'utf-8');
+        config = JSON.parse(raw) as Record<string, unknown>;
+      } else if (opts.schema) {
         const fs = await import('node:fs');
         const raw = fs.readFileSync(opts.schema, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -296,6 +304,10 @@ channelCmd
   .option('--strict', 'Enable strict schema validation on publish')
   .option('--no-strict', 'Disable strict schema validation')
   .option(
+    '--config <file>',
+    'Path to channel config JSON file (display, types, storage)',
+  )
+  .option(
     '--schema <file>',
     'Path to JSON schema file (map of event types to JSON schemas)',
   )
@@ -308,7 +320,11 @@ channelCmd
         fields.tags = opts.tags.split(',').map((t: string) => t.trim());
       if (opts.public) fields.is_public = true;
       if (opts.private) fields.is_public = false;
-      if (opts.schema) {
+      if (opts.config) {
+        const fs = await import('node:fs');
+        const raw = fs.readFileSync(opts.config, 'utf-8');
+        fields.config = JSON.parse(raw) as Record<string, unknown>;
+      } else if (opts.schema) {
         const fs = await import('node:fs');
         const raw = fs.readFileSync(opts.schema, 'utf-8');
         const parsed = JSON.parse(raw) as Record<string, unknown>;
@@ -318,11 +334,14 @@ channelCmd
         }
         fields.config = { types };
       }
-      if (opts.strict !== undefined) fields.strict = opts.strict;
+      if (opts.strict !== undefined) {
+        const existing = (fields.config as Record<string, unknown>) ?? {};
+        fields.config = { ...existing, strict_types: opts.strict };
+      }
 
       if (Object.keys(fields).length === 0) {
         throw new Error(
-          'No fields specified. Use --name, --description, --tags, --public, --private, --schema, or --strict.',
+          'No fields specified. Use --name, --description, --tags, --public, --private, --config, --schema, or --strict.',
         );
       }
 
@@ -413,6 +432,42 @@ program
       printSuccess(`Published event: ${event.id}`);
     } catch (err) {
       handleError('publish', err);
+    }
+  });
+
+// --- delete-event ---
+program
+  .command('delete-event <channel> <event-id>')
+  .description('Delete a single event by ID')
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .action(async (channel, eventId, opts) => {
+    try {
+      const { client, channelId } = resolveChannel(channel, {
+        tokenType: 'publish',
+      });
+
+      if (!opts.yes) {
+        const readline = await import('node:readline');
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(
+            `Delete event "${eventId}" from channel "${channelId}"? [y/N] `,
+            resolve,
+          );
+        });
+        rl.close();
+        if (answer.toLowerCase() !== 'y') {
+          console.log('Aborted.');
+          return;
+        }
+      }
+      await client.deleteEvent(channelId, eventId);
+      printSuccess(`Deleted event: ${eventId}`);
+    } catch (err) {
+      handleError('delete-event', err);
     }
   });
 

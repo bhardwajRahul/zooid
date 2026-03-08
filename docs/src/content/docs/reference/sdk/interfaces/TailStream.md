@@ -5,7 +5,7 @@ prev: false
 title: 'TailStream'
 ---
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:153](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L153)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:149](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L149)
 
 An async iterable stream of events returned by `tail({ follow: true })`.
 Call `close()` to stop the underlying subscription and end the stream.
@@ -36,7 +36,7 @@ Defined in: Code/zooid/node_modules/.pnpm/typescript@5.9.3/node_modules/typescri
 
 > **close**(): `void`
 
-Defined in: [Code/zooid/packages/sdk/src/types.ts:155](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/sdk/src/types.ts#L155)
+Defined in: [Code/zooid/packages/sdk/src/types.ts:151](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/sdk/src/types.ts#L151)
 
 Stop the subscription and end the stream.
 

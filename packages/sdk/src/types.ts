@@ -47,10 +47,8 @@ export interface CreateChannelOptions {
   description?: string;
   /** Whether the channel is publicly accessible. Defaults to `true`. */
   is_public?: boolean;
-  /** Optional channel config (types, actions, components, display). */
+  /** Optional channel config (types, storage, strict_types). */
   config?: Record<string, unknown>;
-  /** When `true`, events are rejected if they don't match `schema`. */
-  strict?: boolean;
 }
 
 /** Options for updating an existing channel via `PATCH /api/v1/channels/:id`. */
@@ -65,8 +63,6 @@ export interface UpdateChannelOptions {
   is_public?: boolean;
   /** Channel config (set to `null` to clear). */
   config?: Record<string, unknown> | null;
-  /** When `true`, events are rejected if they don't match `schema`. */
-  strict?: boolean;
 }
 
 /** Result of creating a new channel. */

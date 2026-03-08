@@ -31,7 +31,9 @@
         {#if i > 0}
           <div class="border-t border-border/30 mx-2"></div>
         {/if}
-        <EventCard {event} {viewMode} />
+        <div id="event-{event.id}">
+          <EventCard {event} {viewMode} />
+        </div>
       {/each}
     </div>
   {/if}

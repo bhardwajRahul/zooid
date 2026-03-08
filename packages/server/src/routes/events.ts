@@ -6,10 +6,15 @@ import {
   getChannel,
   createEvent,
   createEvents,
+  getEvent,
+  deleteEvent,
   pollEvents,
   cleanupExpiredEvents,
+  getRetentionDays,
+  isStrictTypes,
   getWebhooksForChannel,
 } from '../db/queries';
+import { normalizeScopes, isAdmin } from '../lib/jwt';
 import { importPrivateKey, signPayload } from '../lib/signing';
 import { validateEvent } from '../lib/schema-validator';
 
@@ -133,7 +138,7 @@ export class PublishEvents extends OpenAPIRoute {
       { required?: string[]; properties?: Record<string, unknown> }
     > | null = null;
 
-    if (channel.strict && channel.config) {
+    if (isStrictTypes(channel) && channel.config) {
       const parsed = JSON.parse(channel.config) as {
         types?: Record<string, { schema?: Record<string, unknown> }>;
       };
@@ -283,7 +288,10 @@ export class PollEvents extends OpenAPIRoute {
     const { channelId } = data.params;
     const db = c.env.DB;
 
-    await cleanupExpiredEvents(db, channelId);
+    const channel = await getChannel(db, channelId);
+    if (channel) {
+      await cleanupExpiredEvents(db, channelId, getRetentionDays(channel));
+    }
 
     const { since, cursor, type, limit } = data.query;
 
@@ -300,6 +308,121 @@ export class PollEvents extends OpenAPIRoute {
     }
 
     return c.json(result);
+  }
+}
+
+export class GetEventById extends OpenAPIRoute {
+  schema = {
+    summary: 'Get a single event by ID',
+    tags: ['Events'],
+    request: {
+      params: z.object({
+        channelId: z.string(),
+        eventId: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        description: 'Event found',
+        content: {
+          'application/json': {
+            schema: z.object({
+              id: z.string(),
+              channel_id: z.string(),
+              type: z.string().nullable(),
+              data: z.string(),
+              publisher_id: z.string().nullable(),
+              publisher_name: z.string().nullable(),
+              created_at: z.string(),
+            }),
+          },
+        },
+      },
+      404: {
+        description: 'Event not found',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+    },
+  };
+
+  async handle(c: Context<Env>) {
+    const data = await this.getValidatedData<typeof this.schema>();
+    const { channelId, eventId } = data.params;
+    const db = c.env.DB;
+
+    const event = await getEvent(db, channelId, eventId);
+    if (!event) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+
+    return c.json(event);
+  }
+}
+
+export class DeleteEventById extends OpenAPIRoute {
+  schema = {
+    summary: 'Delete a single event by ID',
+    tags: ['Events'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({
+        channelId: z.string(),
+        eventId: z.string(),
+      }),
+    },
+    responses: {
+      204: {
+        description: 'Event deleted',
+      },
+      403: {
+        description: 'Insufficient permissions',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      404: {
+        description: 'Event not found',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+    },
+  };
+
+  async handle(c: Context<Env>) {
+    const data = await this.getValidatedData<typeof this.schema>();
+    const { channelId, eventId } = data.params;
+    const db = c.env.DB;
+
+    const event = await getEvent(db, channelId, eventId);
+    if (!event) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+
+    // Must be admin or the original publisher
+    const jwt = c.get('jwtPayload');
+    const scopes = normalizeScopes(jwt);
+
+    if (!isAdmin(scopes)) {
+      const jwtIssuer = c.get('jwtIssuer');
+      const rawSub = jwt.sub ?? null;
+      const callerId = jwtIssuer && rawSub ? `${jwtIssuer}:${rawSub}` : rawSub;
+
+      if (!callerId || callerId !== event.publisher_id) {
+        return c.json({ error: 'Insufficient permissions' }, 403);
+      }
+    }
+
+    await deleteEvent(db, channelId, eventId);
+    return c.body(null, 204);
   }
 }
 

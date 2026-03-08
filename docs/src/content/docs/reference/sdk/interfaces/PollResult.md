@@ -5,7 +5,7 @@ prev: false
 title: 'PollResult'
 ---
 
-Defined in: [Code/zooid/packages/types/src/index.ts:30](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L30)
+Defined in: [Code/zooid/packages/types/src/index.ts:30](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L30)
 
 Cursor-paginated poll response.
 
@@ -18,7 +18,7 @@ requests to fetch the next page.
 
 > **cursor**: `string` \| `null`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:34](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L34)
+Defined in: [Code/zooid/packages/types/src/index.ts:34](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L34)
 
 Opaque cursor for the next page, or `null` if no more events.
 
@@ -28,7 +28,7 @@ Opaque cursor for the next page, or `null` if no more events.
 
 > **events**: [`ZooidEvent`](/docs/reference/sdk/interfaces/zooidevent/)[]
 
-Defined in: [Code/zooid/packages/types/src/index.ts:32](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L32)
+Defined in: [Code/zooid/packages/types/src/index.ts:32](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L32)
 
 Array of events in this page, ordered by ID ascending.
 
@@ -38,6 +38,6 @@ Array of events in this page, ordered by ID ascending.
 
 > **has_more**: `boolean`
 
-Defined in: [Code/zooid/packages/types/src/index.ts:36](https://github.com/zooid-ai/zooid/blob/41e04e2ff03cf0c0c0d900265ced0b1f529c667f/packages/types/src/index.ts#L36)
+Defined in: [Code/zooid/packages/types/src/index.ts:36](https://github.com/zooid-ai/zooid/blob/1eb33917f522d63b9b5629ec8298fdcb12ee1acf/packages/types/src/index.ts#L36)
 
 `true` if there are additional events beyond this page.

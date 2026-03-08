@@ -53,10 +53,8 @@ export interface ChannelListItem {
   tags: string[];
   /** Whether the channel is publicly accessible without a token. */
   is_public: boolean;
-  /** Optional channel config (types, actions, components, display). */
+  /** Optional channel config (types, storage, strict_types). */
   config: Record<string, unknown> | null;
-  /** When `true`, events are rejected if they don't match `schema`. */
-  strict: boolean;
   /** Total number of events currently stored in this channel. */
   event_count: number;
   /** ISO 8601 timestamp of the most recent event, or `null` if empty. */

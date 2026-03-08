@@ -5,7 +5,6 @@ CREATE TABLE IF NOT EXISTS channels (
   tags TEXT,
   is_public INTEGER NOT NULL DEFAULT 1,
   config TEXT,
-  strict INTEGER NOT NULL DEFAULT 0,
   max_subscribers INTEGER DEFAULT 100,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

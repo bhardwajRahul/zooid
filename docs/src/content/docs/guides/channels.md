@@ -24,7 +24,7 @@ npx zooid channel create market-signals --public --description "Real-time market
 # Private channel
 npx zooid channel create internal-alerts --private --description "Internal monitoring"
 
-# With JSON Schema validation
+# With JSON Schema validation (strict enforcement)
 npx zooid channel create market-signals --public --schema ./schema.json --strict
 ```
 
@@ -126,13 +126,82 @@ Tags appear in channel listings and in the Zooid Directory if the channel is sha
 
 ## Channel Configuration
 
-Channels can carry optional configuration in their `config` field:
+Channels can carry optional configuration in their `config` field — a single JSON object that controls schema validation, event retention, and more.
 
-- **Event type schemas**: JSON Schema definitions for validating event data (see [Schema Validation](/docs/guides/schema-validation))
-- **Display settings**: name, description, and tags for the web dashboard and directory
+```json
+{
+  "strict_types": true,
+  "types": {
+    "alert": {
+      "schema": {
+        "type": "object",
+        "required": ["level", "message"],
+        "properties": {
+          "level": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  },
+  "storage": {
+    "retention_days": 30
+  }
+}
+```
 
-Configuration is set at creation time or updated later:
+### Passing config via CLI
+
+Use `--config` to pass the full config file, or `--schema` as a shorthand for schema-only configs:
 
 ```bash
-npx zooid channel update my-channel --schema ./schema.json --strict
+# Full config file
+npx zooid channel create my-channel --config ./channel.json
+
+# Schema-only shorthand with strict enforcement
+npx zooid channel create my-channel --schema ./schema.json --strict
+
+# Update config on an existing channel
+npx zooid channel update my-channel --config ./channel.json
+```
+
+When `--config` is provided, `--schema` is ignored.
+
+### `strict_types`
+
+When `true`, published events are validated against the schemas defined in `types`. Events that don't match are rejected. Requires `types` to be set. The `--strict` CLI flag sets this. See [Schema Validation](/docs/guides/schema-validation).
+
+### `types`
+
+Defines event type schemas. Each key is an event type name, with a `schema` property containing a JSON Schema object.
+
+### `storage`
+
+Controls how events are stored and retained.
+
+| Field            | Type   | Default | Description                                    |
+| ---------------- | ------ | ------- | ---------------------------------------------- |
+| `retention_days` | number | 7       | Number of days to retain events before cleanup |
+
+Events older than `retention_days` are purged lazily on read (poll, feed, or RSS). Minimum value is 1.
+
+```bash
+# Create a channel that keeps events for 90 days
+npx zooid channel create audit-log --config '{"storage": {"retention_days": 90}}'
+```
+
+### REST
+
+Pass `config` as part of the channel body when creating or updating via the API:
+
+```bash
+curl -X POST https://your-server.workers.dev/api/v1/channels \
+  -H "Authorization: Bearer <admin-token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id": "audit-log",
+    "name": "Audit Log",
+    "config": {
+      "storage": { "retention_days": 90 }
+    }
+  }'
 ```

@@ -38,7 +38,6 @@ export class ListChannels extends OpenAPIRoute {
                   tags: z.array(z.string()),
                   is_public: z.boolean(),
                   config: z.record(z.string(), z.unknown()).nullable(),
-                  strict: z.boolean(),
                   event_count: z.number(),
                   last_event_at: z.string().nullable(),
                 }),
@@ -92,7 +91,6 @@ export class CreateChannel extends OpenAPIRoute {
               tags: z.array(z.string()).optional(),
               is_public: z.boolean().optional(),
               config: z.record(z.string(), z.unknown()).optional(),
-              strict: z.boolean().optional(),
             }),
           },
         },
@@ -159,8 +157,8 @@ export class CreateChannel extends OpenAPIRoute {
       );
     }
 
-    if (body.strict && !body.config) {
-      return c.json({ error: 'strict channels require a config' }, 400);
+    if (body.config?.strict_types && !body.config?.types) {
+      return c.json({ error: 'strict_types requires types in config' }, 400);
     }
 
     const existing = await getChannel(c.env.DB, body.id);
@@ -203,7 +201,6 @@ export class UpdateChannel extends OpenAPIRoute {
               tags: z.array(z.string()).nullable().optional(),
               is_public: z.boolean().optional(),
               config: z.record(z.string(), z.unknown()).nullable().optional(),
-              strict: z.boolean().optional(),
             }),
           },
         },
@@ -221,7 +218,6 @@ export class UpdateChannel extends OpenAPIRoute {
               tags: z.array(z.string()),
               is_public: z.boolean(),
               config: z.record(z.string(), z.unknown()).nullable(),
-              strict: z.boolean(),
             }),
           },
         },
@@ -266,10 +262,14 @@ export class UpdateChannel extends OpenAPIRoute {
     const { channelId } = data.params;
     const body = data.body;
 
-    if (body.strict && !body.config) {
+    // Validate strict_types requires types — check incoming config or existing
+    if (body.config?.strict_types && !body.config?.types) {
       const existing = await getChannel(c.env.DB, channelId);
-      if (existing && !existing.config) {
-        return c.json({ error: 'strict channels require a config' }, 400);
+      const existingConfig = existing?.config
+        ? JSON.parse(existing.config)
+        : null;
+      if (!existingConfig?.types) {
+        return c.json({ error: 'strict_types requires types in config' }, 400);
       }
     }
 
@@ -285,7 +285,6 @@ export class UpdateChannel extends OpenAPIRoute {
       tags: channel.tags ? JSON.parse(channel.tags as string) : [],
       is_public: (channel.is_public as unknown as number) === 1,
       config: channel.config ? JSON.parse(channel.config as string) : null,
-      strict: (channel.strict as unknown as number) === 1,
     });
   }
 }

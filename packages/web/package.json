@@ -21,6 +21,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.4.0",
+    "@dicebear/core": "^9.4.0",
     "@zooid/types": "workspace:^",
     "@zooid/ui": "workspace:^",
     "marked": "^15.0.0",

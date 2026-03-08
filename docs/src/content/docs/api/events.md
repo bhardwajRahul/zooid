@@ -1,6 +1,6 @@
 ---
 title: Events
-description: Publish and poll events
+description: Publish, poll, get, and delete events
 ---
 
 Events are the messages published to channels. Each event has a ULID identifier (time-ordered and sortable), an optional type, and a data payload (max 64KB).
@@ -103,11 +103,11 @@ Wrap multiple events in an `events` array:
 
 ### Errors
 
-| Status | Condition                                    |
-| ------ | -------------------------------------------- |
-| 400    | Missing `data` field.                        |
-| 400    | Schema validation failure (strict channels). |
-| 404    | Channel not found.                           |
+| Status | Condition                                            |
+| ------ | ---------------------------------------------------- |
+| 400    | Missing `data` field.                                |
+| 400    | Schema validation failure (`strict_types` channels). |
+| 404    | Channel not found.                                   |
 
 ### Side effects
 
@@ -174,3 +174,79 @@ Cache-Control: public, s-maxage=30
 ```
 
 The `s-maxage` value matches the server's configured `poll_interval`. This means Cloudflare serves cached responses without invoking the Worker, absorbing poll traffic efficiently.
+
+## Get event
+
+```
+GET /api/v1/channels/:channelId/events/:eventId
+```
+
+Retrieves a single event by its ID.
+
+### Authentication
+
+No authentication required for public channels. Subscribe token required for private channels.
+
+### Path parameters
+
+| Param       | Type   | Description |
+| ----------- | ------ | ----------- |
+| `channelId` | string | Channel ID. |
+| `eventId`   | string | Event ULID. |
+
+### Response
+
+**200 OK**
+
+```json
+{
+  "id": "01HZQX5K9V6BMRJ3WYAT0GN1PH",
+  "channel_id": "market-signals",
+  "type": "price.update",
+  "data": {
+    "symbol": "BTC",
+    "price": 67500.0
+  },
+  "publisher_id": "agent-001",
+  "publisher_name": "Market Agent",
+  "created_at": "2025-01-15T09:30:01Z"
+}
+```
+
+### Errors
+
+| Status | Condition                                             |
+| ------ | ----------------------------------------------------- |
+| 401    | Private channel and no subscribe token provided.      |
+| 404    | Event not found, or event belongs to another channel. |
+
+## Delete event
+
+```
+DELETE /api/v1/channels/:channelId/events/:eventId
+```
+
+Deletes a single event. Requires publish scope for the channel and the caller must be the original publisher of the event, or an admin.
+
+### Authentication
+
+Publish token scoped to the channel (and matching publisher), or Admin token.
+
+### Path parameters
+
+| Param       | Type   | Description |
+| ----------- | ------ | ----------- |
+| `channelId` | string | Channel ID. |
+| `eventId`   | string | Event ULID. |
+
+### Response
+
+**204 No Content** — event deleted successfully.
+
+### Errors
+
+| Status | Condition                                             |
+| ------ | ----------------------------------------------------- |
+| 401    | Missing or invalid authentication.                    |
+| 403    | Insufficient permissions (wrong publisher or scope).  |
+| 404    | Event not found, or event belongs to another channel. |

@@ -217,8 +217,7 @@ describe('Event routes', () => {
         body: JSON.stringify({
           id: 'strict-channel',
           name: 'Strict Channel',
-          config: strictConfig,
-          strict: true,
+          config: { ...strictConfig, strict_types: true },
         }),
       });
       await adminRequest('/api/v1/channels', {
@@ -227,7 +226,6 @@ describe('Event routes', () => {
           id: 'doconly-channel',
           name: 'Doc-Only Channel',
           config: strictConfig,
-          strict: false,
         }),
       });
     });
@@ -487,6 +485,234 @@ describe('Event routes', () => {
         { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
       );
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe('GET /channels/:channelId/events/:eventId', () => {
+    it('gets an event by ID from a public channel without auth', async () => {
+      const pubRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ type: 'signal', data: { msg: 'hi' } }),
+        },
+        'pub-channel',
+      );
+      const event = (await pubRes.json()) as { id: string };
+
+      const res = await app.request(
+        `/api/v1/channels/pub-channel/events/${event.id}`,
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        id: string;
+        channel_id: string;
+        type: string;
+        data: string;
+        publisher_id: string;
+      };
+      expect(body.id).toBe(event.id);
+      expect(body.channel_id).toBe('pub-channel');
+      expect(body.type).toBe('signal');
+      expect(JSON.parse(body.data)).toEqual({ msg: 'hi' });
+    });
+
+    it('returns 404 for non-existent event', async () => {
+      const res = await app.request(
+        '/api/v1/channels/pub-channel/events/01NONEXISTENT00000000000000',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it('returns 404 for event in wrong channel', async () => {
+      const pubRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ type: 'signal', data: {} }),
+        },
+        'pub-channel',
+      );
+      const event = (await pubRes.json()) as { id: string };
+
+      // Try to get it via a different channel
+      const res = await subscribeRequest(
+        `/api/v1/channels/priv-channel/events/${event.id}`,
+        'priv-channel',
+      );
+      expect(res.status).toBe(404);
+    });
+
+    it('requires subscribe token for private channel', async () => {
+      const res = await app.request(
+        '/api/v1/channels/priv-channel/events/01FAKE00000000000000000000',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('allows subscribe token for private channel', async () => {
+      // Publish as admin to the private channel
+      const pubRes = await adminRequest(
+        '/api/v1/channels/priv-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ type: 'signal', data: { secret: true } }),
+        },
+      );
+      const event = (await pubRes.json()) as { id: string };
+
+      const res = await subscribeRequest(
+        `/api/v1/channels/priv-channel/events/${event.id}`,
+        'priv-channel',
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { id: string };
+      expect(body.id).toBe(event.id);
+    });
+  });
+
+  describe('DELETE /channels/:channelId/events/:eventId', () => {
+    async function publishAs(channel: string, sub: string) {
+      const token = await createToken(
+        { scope: 'publish', channel, sub },
+        JWT_SECRET,
+      );
+      const res = await app.request(
+        `/api/v1/channels/${channel}/events`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ type: 'signal', data: { from: sub } }),
+        },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      return (await res.json()) as { id: string; publisher_id: string };
+    }
+
+    async function deleteAs(
+      channel: string,
+      eventId: string,
+      tokenClaims: Record<string, unknown>,
+    ) {
+      const token = await createToken(
+        tokenClaims as Partial<Parameters<typeof createToken>[0]>,
+        JWT_SECRET,
+      );
+      return app.request(
+        `/api/v1/channels/${channel}/events/${eventId}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${token}` },
+        },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+    }
+
+    it('admin can delete any event', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+
+      const res = await deleteAs('pub-channel', event.id, { scope: 'admin' });
+      expect(res.status).toBe(204);
+
+      // Verify it's gone
+      const getRes = await app.request(
+        `/api/v1/channels/pub-channel/events/${event.id}`,
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(getRes.status).toBe(404);
+    });
+
+    it('publisher can delete their own event', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+      expect(event.publisher_id).toBe('agent-a');
+
+      const res = await deleteAs('pub-channel', event.id, {
+        scope: 'publish',
+        channel: 'pub-channel',
+        sub: 'agent-a',
+      });
+      expect(res.status).toBe(204);
+    });
+
+    it('different publisher cannot delete another publisher event', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+
+      const res = await deleteAs('pub-channel', event.id, {
+        scope: 'publish',
+        channel: 'pub-channel',
+        sub: 'agent-b',
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('subscribe token cannot delete events even with matching sub', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+
+      const res = await deleteAs('pub-channel', event.id, {
+        scope: 'subscribe',
+        channel: 'pub-channel',
+        sub: 'agent-a',
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('unauthenticated request is rejected', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+
+      const res = await app.request(
+        `/api/v1/channels/pub-channel/events/${event.id}`,
+        { method: 'DELETE' },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('returns 404 for non-existent event', async () => {
+      const res = await deleteAs('pub-channel', '01NONEXISTENT00000000000000', {
+        scope: 'admin',
+      });
+      expect(res.status).toBe(404);
+    });
+
+    it('cannot delete event via wrong channel', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+
+      // Try deleting via priv-channel — event belongs to pub-channel
+      const res = await deleteAs('priv-channel', event.id, { scope: 'admin' });
+      expect(res.status).toBe(404);
+    });
+
+    it('token with no sub cannot delete non-admin events', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+
+      // Token with no sub field — callerId will be null, won't match publisher_id
+      const res = await deleteAs('pub-channel', event.id, {
+        scope: 'publish',
+        channel: 'pub-channel',
+      });
+      expect(res.status).toBe(403);
+    });
+
+    it('publish token scoped to wrong channel cannot delete', async () => {
+      const event = await publishAs('pub-channel', 'agent-a');
+
+      const res = await deleteAs('pub-channel', event.id, {
+        scope: 'publish',
+        channel: 'other-channel',
+        sub: 'agent-a',
+      });
+      expect(res.status).toBe(403);
     });
   });
 
