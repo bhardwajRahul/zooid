@@ -118,7 +118,7 @@
   gap: 0.5rem;
 }
 
-.hero .actions a[class*="minimal"] {
+.hero .actions a[class*='minimal'] {
   padding: 0.25rem 0.5rem;
   font-size: var(--sl-text-sm);
   border: none;

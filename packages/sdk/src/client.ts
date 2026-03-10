@@ -168,7 +168,10 @@ export class ZooidClient {
 
   /** List trusted signing keys. Requires admin token. */
   async listKeys(): Promise<TrustedKey[]> {
-    const res = await this.request<{ keys: TrustedKey[] }>('GET', '/api/v1/keys');
+    const res = await this.request<{ keys: TrustedKey[] }>(
+      'GET',
+      '/api/v1/keys',
+    );
     return res.keys;
   }
 
@@ -179,7 +182,10 @@ export class ZooidClient {
 
   /** Revoke a trusted signing key. Requires admin token. */
   async revokeKey(kid: string): Promise<void> {
-    await this.request<{ ok: boolean }>('DELETE', `/api/v1/keys/${encodeURIComponent(kid)}`);
+    await this.request<{ ok: boolean }>(
+      'DELETE',
+      `/api/v1/keys/${encodeURIComponent(kid)}`,
+    );
   }
 
   /** Delete a channel and all its data. Requires admin token. */

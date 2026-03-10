@@ -10,32 +10,20 @@ import {
 const readme = readFileSync('../../README.md', 'utf-8');
 
 // Strip the centered HTML hero header (everything up to the first ---)
-let content = readme.replace(
-  /^<p align="center">[\s\S]*?<\/p>\n+---\n+/,
-  '',
-);
+let content = readme.replace(/^<p align="center">[\s\S]*?<\/p>\n+---\n+/, '');
 
 // Strip the centered HTML footer
-content = content.replace(
-  /\n---\n+<p align="center">[\s\S]*?<\/p>\s*$/,
-  '',
-);
+content = content.replace(/\n---\n+<p align="center">[\s\S]*?<\/p>\s*$/, '');
 
 // Transform links
 content = content
   .replace('[docs](https://zooid.dev/docs)', '[docs](/docs/)')
-  .replace(
-    'https://zooid.dev/docs',
-    '/docs/',
-  )
+  .replace('https://zooid.dev/docs', '/docs/')
   .replace(
     '[CONTRIBUTING.md](./CONTRIBUTING.md)',
     '[CONTRIBUTING.md](https://github.com/zooid-ai/zooid/blob/main/CONTRIBUTING.md)',
   )
-  .replace(
-    '[Build a skill](./.claude/skills)',
-    '[Build a skill](/SKILL.md)',
-  );
+  .replace('[Build a skill](./.claude/skills)', '[Build a skill](/SKILL.md)');
 
 const frontmatter = `---
 title: "🪸 Zooid"

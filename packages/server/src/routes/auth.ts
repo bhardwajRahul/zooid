@@ -253,7 +253,9 @@ auth.get('/auth/callback', async (c) => {
     email: userInfo.email as string | undefined,
     preferred_username: userInfo.preferred_username as string | undefined,
     groups: userInfo.groups as string[] | undefined,
-    'https://zooid.dev/scopes': userInfo['https://zooid.dev/scopes'] as string[] | undefined,
+    'https://zooid.dev/scopes': userInfo['https://zooid.dev/scopes'] as
+      | string[]
+      | undefined,
   };
 
   // Map OIDC claims to Zooid scopes
@@ -354,7 +356,9 @@ auth.post('/auth/refresh', async (c) => {
     email: userInfo.email as string | undefined,
     preferred_username: userInfo.preferred_username as string | undefined,
     groups: userInfo.groups as string[] | undefined,
-    'https://zooid.dev/scopes': userInfo['https://zooid.dev/scopes'] as string[] | undefined,
+    'https://zooid.dev/scopes': userInfo['https://zooid.dev/scopes'] as
+      | string[]
+      | undefined,
   };
 
   const resolved = resolveScopes(oidcClaims, c.env);

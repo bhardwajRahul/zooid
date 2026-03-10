@@ -771,9 +771,7 @@ describe('ZooidClient', () => {
         server: 'https://example.com',
         token: 'admin-token',
       });
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({ token: 'new-jwt' }),
-      );
+      mockFetch.mockResolvedValueOnce(jsonResponse({ token: 'new-jwt' }));
 
       const result = await client.mintToken({
         scopes: ['pub:signals', 'sub:signals'],
@@ -799,9 +797,7 @@ describe('ZooidClient', () => {
         server: 'https://example.com',
         token: 'admin-token',
       });
-      mockFetch.mockResolvedValueOnce(
-        jsonResponse({ token: 'jwt-2' }),
-      );
+      mockFetch.mockResolvedValueOnce(jsonResponse({ token: 'jwt-2' }));
 
       await client.mintToken({ scopes: ['admin'] });
 
@@ -821,9 +817,9 @@ describe('ZooidClient', () => {
         jsonResponse({ error: 'Invalid scope "bad"' }, 400),
       );
 
-      await expect(
-        client.mintToken({ scopes: ['bad'] }),
-      ).rejects.toThrow('Invalid scope');
+      await expect(client.mintToken({ scopes: ['bad'] })).rejects.toThrow(
+        'Invalid scope',
+      );
     });
   });
 
@@ -961,9 +957,9 @@ describe('ZooidClient', () => {
         jsonResponse({ error: 'Key "dup" already exists' }, 409),
       );
 
-      await expect(
-        client.addKey({ kid: 'dup', x: 'abc' }),
-      ).rejects.toThrow('already exists');
+      await expect(client.addKey({ kid: 'dup', x: 'abc' })).rejects.toThrow(
+        'already exists',
+      );
     });
   });
 
@@ -993,9 +989,7 @@ describe('ZooidClient', () => {
       await client.revokeKey('key/with:special');
 
       const url = mockFetch.mock.calls[0][0];
-      expect(url).toBe(
-        'https://example.com/api/v1/keys/key%2Fwith%3Aspecial',
-      );
+      expect(url).toBe('https://example.com/api/v1/keys/key%2Fwith%3Aspecial');
     });
 
     it('throws on 404 response', async () => {

@@ -37,7 +37,9 @@ describe('Channel ID validation', () => {
 describe('Webhook URL validation', () => {
   it('allows public HTTPS URLs', () => {
     expect(isAllowedWebhookUrl('https://example.com/webhook')).toBe(true);
-    expect(isAllowedWebhookUrl('https://hooks.slack.com/services/T00/B00/xxx')).toBe(true);
+    expect(
+      isAllowedWebhookUrl('https://hooks.slack.com/services/T00/B00/xxx'),
+    ).toBe(true);
     expect(isAllowedWebhookUrl('http://example.com/webhook')).toBe(true);
   });
 
@@ -61,8 +63,12 @@ describe('Webhook URL validation', () => {
   });
 
   it('blocks cloud metadata endpoints', () => {
-    expect(isAllowedWebhookUrl('http://169.254.169.254/latest/meta-data')).toBe(false);
-    expect(isAllowedWebhookUrl('http://metadata.google.internal/computeMetadata')).toBe(false);
+    expect(isAllowedWebhookUrl('http://169.254.169.254/latest/meta-data')).toBe(
+      false,
+    );
+    expect(
+      isAllowedWebhookUrl('http://metadata.google.internal/computeMetadata'),
+    ).toBe(false);
   });
 
   it('blocks link-local addresses', () => {

@@ -100,7 +100,9 @@ function capScopes(scopes: string[], ceiling: string[]): string[] {
     }
 
     // Scope is directly allowed by a ceiling pattern
-    if (ceilingPatterns.some((pattern) => scopeMatchesPattern(scope, pattern))) {
+    if (
+      ceilingPatterns.some((pattern) => scopeMatchesPattern(scope, pattern))
+    ) {
       result.add(scope);
       continue;
     }
