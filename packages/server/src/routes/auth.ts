@@ -28,7 +28,17 @@ function getServerUrl(c: { env: Bindings; req: { url: string } }): string {
 }
 
 /**
- * Encrypt/decrypt OIDC refresh token using AES-GCM with ZOOID_JWT_SECRET.
+ * Get the secret used for cookie encryption.
+ * Prefers ZOOID_SIGNING_KEY (EdDSA deploys), falls back to ZOOID_JWT_SECRET (legacy).
+ */
+function getCookieSecret(env: Bindings): string {
+  const secret = env.ZOOID_SIGNING_KEY || env.ZOOID_JWT_SECRET;
+  if (!secret) throw new Error('No signing key or JWT secret configured');
+  return secret;
+}
+
+/**
+ * Encrypt/decrypt OIDC refresh token using AES-GCM.
  * This keeps the refresh token opaque in the cookie.
  */
 async function deriveKey(secret: string): Promise<CryptoKey> {
@@ -134,7 +144,7 @@ auth.get('/auth/login', async (c) => {
   const stateData = JSON.stringify({ v: codeVerifier, s: state });
   const encrypted = await encryptRefreshToken(
     stateData,
-    c.env.ZOOID_JWT_SECRET,
+    getCookieSecret(c.env),
   );
 
   const authUrl = new URL(config.authorization_endpoint);
@@ -197,7 +207,7 @@ auth.get('/auth/callback', async (c) => {
   try {
     const decrypted = await decryptRefreshToken(
       stateCookie,
-      c.env.ZOOID_JWT_SECRET,
+      getCookieSecret(c.env),
     );
     stateData = JSON.parse(decrypted);
   } catch {
@@ -242,8 +252,8 @@ auth.get('/auth/callback', async (c) => {
     name: userInfo.name as string | undefined,
     email: userInfo.email as string | undefined,
     preferred_username: userInfo.preferred_username as string | undefined,
-    roles: userInfo.roles as string[] | undefined,
-    'zooid:scopes': userInfo['zooid:scopes'] as string[] | undefined,
+    groups: userInfo.groups as string[] | undefined,
+    'https://zooid.dev/scopes': userInfo['https://zooid.dev/scopes'] as string[] | undefined,
   };
 
   // Map OIDC claims to Zooid scopes
@@ -271,7 +281,7 @@ auth.get('/auth/callback', async (c) => {
   if (tokens.refresh_token) {
     const encryptedRefresh = await encryptRefreshToken(
       tokens.refresh_token,
-      c.env.ZOOID_JWT_SECRET,
+      getCookieSecret(c.env),
     );
     c.header(
       'Set-Cookie',
@@ -306,7 +316,7 @@ auth.post('/auth/refresh', async (c) => {
   try {
     refreshToken = await decryptRefreshToken(
       refreshCookie,
-      c.env.ZOOID_JWT_SECRET,
+      getCookieSecret(c.env),
     );
   } catch {
     return c.json({ error: 'Invalid refresh token' }, 401);
@@ -343,8 +353,8 @@ auth.post('/auth/refresh', async (c) => {
     name: userInfo.name as string | undefined,
     email: userInfo.email as string | undefined,
     preferred_username: userInfo.preferred_username as string | undefined,
-    roles: userInfo.roles as string[] | undefined,
-    'zooid:scopes': userInfo['zooid:scopes'] as string[] | undefined,
+    groups: userInfo.groups as string[] | undefined,
+    'https://zooid.dev/scopes': userInfo['https://zooid.dev/scopes'] as string[] | undefined,
   };
 
   const resolved = resolveScopes(oidcClaims, c.env);
@@ -363,7 +373,7 @@ auth.post('/auth/refresh', async (c) => {
   if (tokens.refresh_token) {
     const encryptedRefresh = await encryptRefreshToken(
       tokens.refresh_token,
-      c.env.ZOOID_JWT_SECRET,
+      getCookieSecret(c.env),
     );
     c.header(
       'Set-Cookie',
@@ -405,10 +415,21 @@ function parseCookies(header: string): Record<string, string> {
   return cookies;
 }
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function errorPage(title: string, message: string): string {
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message);
   return `<!DOCTYPE html>
 <html>
-<head><title>${title}</title><style>
+<head><title>${safeTitle}</title><style>
 body { font-family: system-ui; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #0a0a0a; color: #fafafa; }
 .card { text-align: center; max-width: 400px; padding: 2rem; }
 h1 { font-size: 1.25rem; margin-bottom: 0.5rem; }
@@ -416,8 +437,8 @@ p { color: #888; font-size: 0.875rem; }
 a { color: #3b82f6; text-decoration: none; }
 </style></head>
 <body><div class="card">
-<h1>${title}</h1>
-<p>${message}</p>
+<h1>${safeTitle}</h1>
+<p>${safeMessage}</p>
 <p style="margin-top: 1rem;"><a href="/">Back to dashboard</a></p>
 </div></body></html>`;
 }

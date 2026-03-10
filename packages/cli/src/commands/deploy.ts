@@ -653,6 +653,21 @@ export async function runDeploy(): Promise<void> {
     );
     console.log('');
   }
+
+  // Open browser to the deployed server
+  if (canonicalUrl) {
+    try {
+      const openCmd =
+        process.platform === 'darwin'
+          ? 'open'
+          : process.platform === 'win32'
+            ? 'start'
+            : 'xdg-open';
+      execSync(`${openCmd} ${canonicalUrl}`, { stdio: 'ignore' });
+    } catch {
+      // Non-fatal — user can open manually
+    }
+  }
 }
 
 function cleanup(dir: string): void {

@@ -145,13 +145,19 @@ importers:
 
   packages/homepage:
     dependencies:
+      '@astrojs/starlight':
+        specifier: ^0.37.7
+        version: 0.37.7(astro@5.18.0(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
       '@zooid/docs':
         specifier: workspace:*
         version: link:../../docs
+      astro:
+        specifier: ^5.6.1
+        version: 5.18.0(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      sharp:
+        specifier: ^0.34.2
+        version: 0.34.5
     devDependencies:
-      marked:
-        specifier: ^15.0.0
-        version: 15.0.12
       tsx:
         specifier: ^4.19.0
         version: 4.21.0
@@ -246,6 +252,9 @@ importers:
       '@dicebear/core':
         specifier: ^9.4.0
         version: 9.4.0
+      '@zooid/sdk':
+        specifier: workspace:^
+        version: link:../sdk
       '@zooid/types':
         specifier: workspace:^
         version: link:../types
@@ -328,6 +337,11 @@ packages:
 
   '@astrojs/starlight@0.34.8':
     resolution: {integrity: sha512-XuYz0TfCZhje2u1Q9FNtmTdm7/B9QP91RDI1VkPgYvDhSYlME3k8gwgcBMHnR9ASDo2p9gskrqe7t1Pub/qryg==}
+    peerDependencies:
+      astro: ^5.5.0
+
+  '@astrojs/starlight@0.37.7':
+    resolution: {integrity: sha512-KyBnou8aKIlPJUSNx6a1SN7XyH22oj/VAvTGC+Edld4Bnei1A//pmCRTBvSrSeoGrdUjK0ErFUfaEhhO1bPfDg==}
     peerDependencies:
       astro: ^5.5.0
 
@@ -5478,6 +5492,40 @@ snapshots:
       i18next: 23.16.8
       js-yaml: 4.1.1
       klona: 2.0.6
+      mdast-util-directive: 3.1.0
+      mdast-util-to-markdown: 2.1.2
+      mdast-util-to-string: 4.0.0
+      pagefind: 1.4.0
+      rehype: 13.0.2
+      rehype-format: 5.0.1
+      remark-directive: 3.0.1
+      ultrahtml: 1.6.0
+      unified: 11.0.5
+      unist-util-visit: 5.1.0
+      vfile: 6.0.3
+    transitivePeerDependencies:
+      - supports-color
+
+  '@astrojs/starlight@0.37.7(astro@5.18.0(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))':
+    dependencies:
+      '@astrojs/markdown-remark': 6.3.10
+      '@astrojs/mdx': 4.3.13(astro@5.18.0(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      '@astrojs/sitemap': 3.7.0
+      '@pagefind/default-ui': 1.4.0
+      '@types/hast': 3.0.4
+      '@types/js-yaml': 4.0.9
+      '@types/mdast': 4.0.4
+      astro: 5.18.0(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2)
+      astro-expressive-code: 0.41.7(astro@5.18.0(jiti@2.6.1)(lightningcss@1.30.2)(rollup@4.57.1)(sass@1.97.3)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.2))
+      bcp-47: 2.1.0
+      hast-util-from-html: 2.0.3
+      hast-util-select: 6.0.4
+      hast-util-to-string: 3.0.1
+      hastscript: 9.0.1
+      i18next: 23.16.8
+      js-yaml: 4.1.1
+      klona: 2.0.6
+      magic-string: 0.30.21
       mdast-util-directive: 3.1.0
       mdast-util-to-markdown: 2.1.2
       mdast-util-to-string: 4.0.0

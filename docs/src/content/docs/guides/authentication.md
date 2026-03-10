@@ -128,22 +128,22 @@ https://your-zooid-server.com/api/v1/auth/callback
 
 When a user authenticates via OIDC, Zooid resolves their Zooid scopes using a three-tier system:
 
-**Tier 1: `zooid:scopes` custom claim.** If the OIDC provider includes a `zooid:scopes` claim in the userinfo response (many providers support custom claims), those scopes are used directly:
+**Tier 1: `https://zooid.dev/scopes` custom claim.** If the OIDC provider includes a `https://zooid.dev/scopes` claim in the userinfo response (many providers support custom claims), those scopes are used directly:
 
 ```json
 {
   "sub": "user-123",
-  "zooid:scopes": ["admin"]
+  "https://zooid.dev/scopes": ["admin"]
 }
 ```
 
-**Tier 2: Role mapping.** Map OIDC roles to Zooid scopes using the `ZOOID_SCOPE_MAPPING` environment variable:
+**Tier 2: Group mapping.** Map OIDC groups to Zooid scopes using the `ZOOID_SCOPE_MAPPING` environment variable:
 
 ```bash
 ZOOID_SCOPE_MAPPING='{"editor":["pub:*","sub:*"],"viewer":["sub:*"],"admin":["admin"]}'
 ```
 
-The user's `roles` claim from the OIDC provider is matched against this mapping.
+The user's `groups` claim from the OIDC provider is matched against this mapping.
 
 **Tier 3: Default.** If neither custom claims nor role mapping applies, authenticated users get `["pub:*", "sub:*"]` — publish and subscribe to all channels.
 

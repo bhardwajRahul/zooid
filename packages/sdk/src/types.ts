@@ -159,6 +159,38 @@ export interface ClaimResult {
   signature: string;
 }
 
+/** A trusted signing key registered on the server. */
+export interface TrustedKey {
+  kid: string;
+  kty: string;
+  crv: string;
+  x: string;
+  max_scopes: string[] | null;
+  issuer: string | null;
+  jwks_url: string | null;
+  created_at: string;
+}
+
+/** Options for adding a trusted key. */
+export interface AddKeyOptions {
+  kid: string;
+  x?: string;
+  max_scopes?: string[];
+  issuer?: string;
+  jwks_url?: string;
+  kty?: string;
+  crv?: string;
+}
+
+/** Token claims as returned by `GET /api/v1/tokens/claims`. */
+export interface TokenClaims {
+  scopes: string[];
+  sub?: string;
+  name?: string;
+  iat: number;
+  exp?: number;
+}
+
 /** Options for updating server identity metadata. */
 export interface UpdateServerMetaOptions {
   /** Server display name. */

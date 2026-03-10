@@ -11,14 +11,14 @@ function resolve(
 describe('resolveScopes', () => {
   // --- Tier resolution ---
 
-  it('uses zooid:scopes claim when present (tier 1)', () => {
-    const result = resolve({ 'zooid:scopes': ['admin'] });
+  it('uses https://zooid.dev/scopes claim when present (tier 1)', () => {
+    const result = resolve({ 'https://zooid.dev/scopes': ['admin'] });
     expect(result.scopes).toEqual(['admin']);
   });
 
   it('uses role mapping when configured (tier 2)', () => {
     const result = resolve(
-      { roles: ['editor'] },
+      { groups: ['editor'] },
       {
         ZOOID_SCOPE_MAPPING: '{"editor":["pub:*","sub:*"],"viewer":["sub:*"]}',
       },
@@ -26,9 +26,9 @@ describe('resolveScopes', () => {
     expect(result.scopes).toEqual(['pub:*', 'sub:*']);
   });
 
-  it('combines scopes from multiple roles (tier 2)', () => {
+  it('combines scopes from multiple groups (tier 2)', () => {
     const result = resolve(
-      { roles: ['viewer', 'editor'] },
+      { groups: ['viewer', 'editor'] },
       { ZOOID_SCOPE_MAPPING: '{"editor":["pub:news"],"viewer":["sub:*"]}' },
     );
     expect(result.scopes).toContain('pub:news');
@@ -45,7 +45,7 @@ describe('resolveScopes', () => {
   describe('ZOOID_AUTH_MAX_SCOPES intersection', () => {
     it('exact match passes through', () => {
       const result = resolve(
-        { 'zooid:scopes': ['pub:news', 'sub:news'] },
+        { 'https://zooid.dev/scopes': ['pub:news', 'sub:news'] },
         { ZOOID_AUTH_MAX_SCOPES: '["pub:news","sub:news"]' },
       );
       expect(result.scopes).toEqual(['pub:news', 'sub:news']);
@@ -69,7 +69,7 @@ describe('resolveScopes', () => {
 
     it('scope not in ceiling is dropped', () => {
       const result = resolve(
-        { 'zooid:scopes': ['pub:secret', 'sub:news'] },
+        { 'https://zooid.dev/scopes': ['pub:secret', 'sub:news'] },
         { ZOOID_AUTH_MAX_SCOPES: '["sub:news"]' },
       );
       expect(result.scopes).toEqual(['sub:news']);
@@ -77,7 +77,7 @@ describe('resolveScopes', () => {
 
     it('admin in ceiling allows admin scope', () => {
       const result = resolve(
-        { 'zooid:scopes': ['admin'] },
+        { 'https://zooid.dev/scopes': ['admin'] },
         { ZOOID_AUTH_MAX_SCOPES: '["admin"]' },
       );
       expect(result.scopes).toEqual(['admin']);
@@ -85,9 +85,25 @@ describe('resolveScopes', () => {
 
     it('admin scope blocked when not in ceiling', () => {
       const result = resolve(
-        { 'zooid:scopes': ['admin'] },
+        { 'https://zooid.dev/scopes': ['admin'] },
         { ZOOID_AUTH_MAX_SCOPES: '["pub:*","sub:*"]' },
       );
+      expect(result.scopes).not.toContain('admin');
+    });
+
+    it('admin in ceiling does not bypass narrowing of other scopes', () => {
+      const result = resolve(
+        {},
+        {
+          ZOOID_AUTH_MAX_SCOPES:
+            '["admin","pub:public-chatter","sub:reddit-scout","sub:ai-news"]',
+        },
+      );
+      expect(result.scopes).toContain('pub:public-chatter');
+      expect(result.scopes).toContain('sub:reddit-scout');
+      expect(result.scopes).toContain('sub:ai-news');
+      expect(result.scopes).not.toContain('pub:*');
+      expect(result.scopes).not.toContain('sub:*');
       expect(result.scopes).not.toContain('admin');
     });
 
@@ -103,7 +119,7 @@ describe('resolveScopes', () => {
 
     it('prefix wildcard scope narrowed by specific ceiling', () => {
       const result = resolve(
-        { 'zooid:scopes': ['pub:product-*', 'sub:*'] },
+        { 'https://zooid.dev/scopes': ['pub:product-*', 'sub:*'] },
         {
           ZOOID_AUTH_MAX_SCOPES:
             '["pub:product-signals","pub:product-updates","sub:news"]',
@@ -118,7 +134,7 @@ describe('resolveScopes', () => {
 
     it('no duplicates when scope and ceiling overlap', () => {
       const result = resolve(
-        { 'zooid:scopes': ['pub:news', 'pub:*'] },
+        { 'https://zooid.dev/scopes': ['pub:news', 'pub:*'] },
         { ZOOID_AUTH_MAX_SCOPES: '["pub:news"]' },
       );
       expect(result.scopes).toEqual(['pub:news']);

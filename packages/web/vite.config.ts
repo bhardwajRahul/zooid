@@ -3,6 +3,8 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 
+const target = process.env.ZOOID_PROXY ?? 'http://localhost:8787';
+
 export default defineConfig({
   plugins: [tailwindcss(), svelte()],
   resolve: {
@@ -16,8 +18,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': { target: 'http://localhost:8787', ws: true },
-      '/.well-known': 'http://localhost:8787',
+      '/api': { target, changeOrigin: true, ws: true },
+      '/.well-known': { target, changeOrigin: true },
     },
   },
 });

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
 import { createWebhook, deleteWebhook } from '../db/queries';
+import { isAllowedWebhookUrl } from '../lib/validation';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -58,6 +59,13 @@ export class RegisterWebhook extends OpenAPIRoute {
     const { channelId } = data.params;
     const body = data.body;
     const db = c.env.DB;
+
+    if (!isAllowedWebhookUrl(body.url)) {
+      return c.json(
+        { error: 'Webhook URL must be a public HTTP(S) endpoint' },
+        400,
+      );
+    }
 
     const webhook = await createWebhook(db, {
       channelId,

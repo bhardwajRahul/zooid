@@ -4,13 +4,13 @@
   import EventFeed from './lib/components/event-feed.svelte';
   import MessageBar from './lib/components/message-bar.svelte';
   import AuthModal from './lib/components/auth-modal.svelte';
+  import ServerConfigPage from './lib/components/server-config-page.svelte';
+  import KeysAndTokensPage from './lib/components/keys-and-tokens-page.svelte';
+  import CreateChannelModal from './lib/components/create-channel-modal.svelte';
+  import EditChannelModal from './lib/components/edit-channel-modal.svelte';
   import {
     fetchServerMeta,
-    getChannel,
-    listChannels,
-    pollEvents,
-    publishEvent,
-    getTokenClaims,
+    createClient,
     refreshAuth,
     authLogout,
     type ChannelInfo,
@@ -26,6 +26,12 @@
   let token = $state(localStorage.getItem('zooid_token') ?? '');
   let claims = $state<TokenClaims | null>(null);
   let authModalOpen = $state(false);
+
+  // Reactive SDK client
+  let client = $derived(createClient(token || undefined));
+
+  // Admin check
+  let isAdmin = $derived(claims?.scopes?.includes('admin') ?? false);
 
   // --- Channel state ---
   let channels = $state<ChannelInfo[]>([]);
@@ -47,6 +53,13 @@
 
   // Mobile sidebar
   let sidebarOpen = $state(false);
+
+  // Modals
+  let createChannelOpen = $state(false);
+  let editChannelOpen = $state(false);
+
+  // Settings page routing
+  let currentView = $state<'channel' | 'keys-and-tokens' | 'server'>('channel');
 
   const seenIds = new Set<string>();
 
@@ -80,8 +93,16 @@
 
   // Parse initial route
   const path = window.location.pathname;
-  const routeMatch = path.match(/^\/([a-z0-9][a-z0-9-]{1,62}[a-z0-9])$/);
-  if (routeMatch) selectedId = routeMatch[1];
+  if (path === '/_settings/keys-and-tokens') {
+    currentView = 'keys-and-tokens';
+    document.title = 'Keys & Tokens — Zooid';
+  } else if (path === '/_settings/server') {
+    currentView = 'server';
+    document.title = 'Server Config — Zooid';
+  } else {
+    const routeMatch = path.match(/^\/([a-z0-9][a-z0-9-]{1,62}[a-z0-9])$/);
+    if (routeMatch) selectedId = routeMatch[1];
+  }
 
   async function init() {
     // Check if we just came back from an OIDC callback (token set in localStorage by callback page)
@@ -110,14 +131,20 @@
   }
 
   async function refreshChannels() {
-    channels = await listChannels(baseUrl, token || undefined);
+    try {
+      channels = await client.listChannels();
+    } catch {
+      channels = [];
+    }
   }
 
   async function validateToken() {
     if (!token) { claims = null; return; }
-    claims = await getTokenClaims(baseUrl, token);
-    if (!claims) {
+    try {
+      claims = await client.getTokenClaims();
+    } catch {
       // Invalid token — clear it
+      claims = null;
       token = '';
       localStorage.removeItem('zooid_token');
     }
@@ -127,6 +154,7 @@
 
   function selectChannel(id: string) {
     if (selectedId === id && channel) return;
+    currentView = 'channel';
     selectedId = id;
     sidebarOpen = false;
 
@@ -135,6 +163,17 @@
     document.title = `${id} — Zooid`;
 
     loadChannel();
+  }
+
+  function navigateSettings(page: string, title: string) {
+    currentView = page as typeof currentView;
+    selectedId = null;
+    channel = null;
+    cleanup();
+    status = 'idle';
+    sidebarOpen = false;
+    window.history.pushState({}, '', `/_settings/${page}`);
+    document.title = `${title} — Zooid`;
   }
 
   function cleanup() {
@@ -153,15 +192,21 @@
     cleanup();
     status = 'loading';
 
-    const ch = await getChannel(baseUrl, selectedId, token || undefined);
-    if (!ch) {
+    try {
+      const list = await client.listChannels();
+      const ch = list.find((c) => c.id === selectedId) ?? null;
+      if (!ch) {
+        channel = null;
+        status = 'idle';
+        return;
+      }
+      channel = ch;
+    } catch {
       channel = null;
       status = 'idle';
       return;
     }
-
-    channel = ch;
-    document.title = `${ch.name} — Zooid`;
+    document.title = `${channel!.name} — Zooid`;
 
     // Update RSS link
     updateRssLink(selectedId, token || undefined);
@@ -184,9 +229,8 @@
   async function fetchEvents() {
     if (!selectedId) return;
     try {
-      const result = await pollEvents(baseUrl, selectedId, {
+      const result = await client.poll(selectedId, {
         cursor: cursor ?? undefined,
-        token: token || undefined,
         limit: 50,
       });
 
@@ -214,8 +258,11 @@
     status = 'polling';
     pollTimer = setInterval(async () => {
       if (selectedId) {
-        const ch = await getChannel(baseUrl, selectedId, token || undefined);
-        if (ch) channel = ch;
+        try {
+          const list = await client.listChannels();
+          const ch = list.find((c) => c.id === selectedId);
+          if (ch) channel = ch;
+        } catch { /* keep going */ }
       }
       await fetchEvents();
       status = 'polling';
@@ -260,6 +307,7 @@
   }
 
   function scheduleReconnect() {
+    if (!selectedId) return;
     if (reconnectAttempt >= RECONNECT_DELAYS.length) {
       startPolling();
       return;
@@ -361,24 +409,69 @@
 
   async function handlePublish(payload: { type?: string; data: unknown }) {
     if (!selectedId || !token) return;
-    const ok = await publishEvent(baseUrl, selectedId, payload, token);
-    if (ok) {
-      // Event will appear via WS or next poll
+    try {
+      await client.publish(selectedId, payload);
       await fetchEvents();
+    } catch {
+      // publish failed
     }
+  }
+
+  // --- Admin ---
+
+  function handleServerConfigSaved() {
+    // Refresh server name from discovery
+    fetchServerMeta(baseUrl).then((meta) => {
+      serverName = meta.server_name;
+    });
+  }
+
+  function handleChannelCreated(id: string) {
+    refreshChannels().then(() => {
+      selectChannel(id);
+    });
+  }
+
+  function handleChannelEdited() {
+    refreshChannels();
+    if (selectedId) loadChannel();
+  }
+
+  function handleChannelDeleted() {
+    selectedId = null;
+    channel = null;
+    cleanup();
+    window.history.pushState({}, '', '/');
+    refreshChannels();
   }
 
   // --- Browser navigation ---
 
   window.addEventListener('popstate', () => {
-    const m = window.location.pathname.match(/^\/([a-z0-9][a-z0-9-]{1,62}[a-z0-9])$/);
-    if (m) {
-      selectedId = m[1];
-      loadChannel();
-    } else {
+    const p = window.location.pathname;
+    if (p === '/_settings/keys-and-tokens') {
+      currentView = 'keys-and-tokens';
       selectedId = null;
       channel = null;
       cleanup();
+      document.title = 'Keys & Tokens — Zooid';
+    } else if (p === '/_settings/server') {
+      currentView = 'server';
+      selectedId = null;
+      channel = null;
+      cleanup();
+      document.title = 'Server Config — Zooid';
+    } else {
+      currentView = 'channel';
+      const m = p.match(/^\/([a-z0-9][a-z0-9-]{1,62}[a-z0-9])$/);
+      if (m) {
+        selectedId = m[1];
+        loadChannel();
+      } else {
+        selectedId = null;
+        channel = null;
+        cleanup();
+      }
     }
   });
 
@@ -393,10 +486,14 @@
       {selectedId}
       {serverName}
       hasAuth={!!claims}
+      {isAdmin}
       {status}
       {pollInterval}
       onSelect={selectChannel}
       onAuthClick={handleAuthClick}
+      onServerConfig={() => navigateSettings('server', 'Server Config')}
+      onKeysAndTokens={() => navigateSettings('keys-and-tokens', 'Keys & Tokens')}
+      onCreateChannel={() => createChannelOpen = true}
     />
   </div>
 
@@ -409,19 +506,28 @@
         {selectedId}
         {serverName}
         hasAuth={!!claims}
+        {isAdmin}
         {status}
         {pollInterval}
         onSelect={selectChannel}
         onAuthClick={() => { sidebarOpen = false; handleAuthClick(); }}
         onClose={() => sidebarOpen = false}
+        onServerConfig={() => navigateSettings('server', 'Server Config')}
+        onKeysAndTokens={() => navigateSettings('keys-and-tokens', 'Keys & Tokens')}
+        onCreateChannel={() => { sidebarOpen = false; createChannelOpen = true; }}
       />
     </div>
   {/if}
 
   <!-- Main content -->
+  {#if currentView === 'keys-and-tokens'}
+    <KeysAndTokensPage {client} onMenuClick={() => sidebarOpen = true} />
+  {:else if currentView === 'server'}
+    <ServerConfigPage {client} onMenuClick={() => sidebarOpen = true} onSaved={handleServerConfigSaved} />
+  {:else}
   <div class="flex-1 flex flex-col min-w-0">
     {#if channel}
-      <ChannelHeader {channel} bind:viewMode onMenuClick={() => sidebarOpen = true} />
+      <ChannelHeader {channel} bind:viewMode {isAdmin} onMenuClick={() => sidebarOpen = true} onEditChannel={() => editChannelOpen = true} />
       <EventFeed {events} {viewMode} {canReply} onReply={handleReply} />
       {#if canPublishToChannel}
         <MessageBar {channel} bind:replyTo onPublish={handlePublish} />
@@ -457,10 +563,18 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
         </button>
         <p class="text-sm">Select a channel</p>
-        <p class="text-xs text-muted-foreground/60 mt-1">or create one with <code class="text-foreground/80">npx zooid channel create</code></p>
+        {#if isAdmin}
+          <button
+            class="text-xs text-primary hover:text-primary/80 mt-1 transition-colors"
+            onclick={() => createChannelOpen = true}
+          >Create a channel</button>
+        {:else}
+          <p class="text-xs text-muted-foreground/60 mt-1">or create one with <code class="text-foreground/80">npx zooid channel create</code></p>
+        {/if}
       </div>
     {/if}
   </div>
+  {/if}
 </div>
 
 <AuthModal
@@ -470,4 +584,20 @@
   onSave={handleAuthSave}
   onLogout={handleAuthLogout}
   onClose={() => authModalOpen = false}
+/>
+
+<CreateChannelModal
+  open={createChannelOpen}
+  {client}
+  onClose={() => createChannelOpen = false}
+  onCreated={handleChannelCreated}
+/>
+
+<EditChannelModal
+  open={editChannelOpen}
+  {channel}
+  {client}
+  onClose={() => editChannelOpen = false}
+  onSaved={handleChannelEdited}
+  onDeleted={handleChannelDeleted}
 />

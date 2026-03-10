@@ -1,26 +1,35 @@
 <script lang="ts">
   import type { ChannelInfo } from '../api';
+  import AdminDropdown from './admin-dropdown.svelte';
 
   let {
     channels,
     selectedId,
     serverName,
     hasAuth,
+    isAdmin,
     status,
     pollInterval,
     onSelect,
     onAuthClick,
     onClose,
+    onServerConfig,
+    onKeysAndTokens,
+    onCreateChannel,
   }: {
     channels: ChannelInfo[];
     selectedId: string | null;
     serverName: string;
     hasAuth: boolean;
+    isAdmin: boolean;
     status: 'connected' | 'polling' | 'reconnecting' | 'error' | 'idle' | 'loading';
     pollInterval: number;
     onSelect: (id: string) => void;
     onAuthClick: () => void;
     onClose?: () => void;
+    onServerConfig: () => void;
+    onKeysAndTokens: () => void;
+    onCreateChannel: () => void;
   } = $props();
 
   const statusColor: Record<string, string> = {
@@ -45,7 +54,11 @@
 <div class="flex flex-col h-full w-full bg-[oklch(0.13_0_0)] border-r border-border">
   <!-- Server header -->
   <div class="flex items-center justify-between px-3 h-12 border-b border-border shrink-0">
-    <span class="font-semibold text-sm truncate">{serverName}</span>
+    {#if isAdmin}
+      <AdminDropdown {serverName} {onServerConfig} {onKeysAndTokens} />
+    {:else}
+      <span class="font-semibold text-sm truncate">{serverName}</span>
+    {/if}
     {#if onClose}
       <button
         onclick={onClose}
@@ -74,10 +87,20 @@
       </button>
     {/each}
 
-    {#if channels.length === 0}
+    {#if channels.length === 0 && !isAdmin}
       <div class="px-3 py-4 text-xs text-muted-foreground/60 text-center">
         No channels yet
       </div>
+    {/if}
+
+    {#if isAdmin}
+      <button
+        class="w-full text-left px-3 py-1.5 flex items-center gap-2 text-sm text-muted-foreground/50 hover:text-muted-foreground hover:bg-secondary/50 transition-colors"
+        onclick={onCreateChannel}
+      >
+        <span class="shrink-0">+</span>
+        <span>Create channel</span>
+      </button>
     {/if}
   </div>
 

@@ -22,6 +22,9 @@ export default defineConfig({
       editLink: {
         baseUrl: 'https://github.com/zooid-ai/zooid/edit/main/docs/',
       },
+      components: {
+        Head: './src/components/Head.astro',
+      },
       plugins: [
         starlightCopyButton(),
         starlightTypeDoc({

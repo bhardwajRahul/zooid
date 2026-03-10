@@ -706,6 +706,330 @@ describe('ZooidClient', () => {
     });
   });
 
+  describe('getTokenClaims()', () => {
+    it('fetches GET /api/v1/tokens/claims', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'my-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({
+          scopes: ['admin'],
+          sub: 'user-1',
+          name: 'Alice',
+          iat: 1700000000,
+          exp: 1700003600,
+        }),
+      );
+
+      const claims = await client.getTokenClaims();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v1/tokens/claims',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(claims.scopes).toEqual(['admin']);
+      expect(claims.sub).toBe('user-1');
+      expect(claims.name).toBe('Alice');
+      expect(claims.iat).toBe(1700000000);
+      expect(claims.exp).toBe(1700003600);
+    });
+
+    it('sends auth header', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'my-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ scopes: ['sub:*'], iat: 1700000000 }),
+      );
+
+      await client.getTokenClaims();
+
+      const headers = mockFetch.mock.calls[0][1].headers;
+      expect(headers.Authorization).toBe('Bearer my-token');
+    });
+
+    it('throws on 401 response', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'bad-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ error: 'Invalid or expired token' }, 401),
+      );
+
+      await expect(client.getTokenClaims()).rejects.toThrow(
+        'Invalid or expired token',
+      );
+    });
+  });
+
+  describe('mintToken()', () => {
+    it('sends POST /api/v1/tokens with scopes', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ token: 'new-jwt' }),
+      );
+
+      const result = await client.mintToken({
+        scopes: ['pub:signals', 'sub:signals'],
+        sub: 'bot-1',
+        name: 'My Bot',
+        expires_in: '7d',
+      });
+
+      const [url, opts] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://example.com/api/v1/tokens');
+      expect(opts.method).toBe('POST');
+      expect(opts.headers.Authorization).toBe('Bearer admin-token');
+      const body = JSON.parse(opts.body);
+      expect(body.scopes).toEqual(['pub:signals', 'sub:signals']);
+      expect(body.sub).toBe('bot-1');
+      expect(body.name).toBe('My Bot');
+      expect(body.expires_in).toBe('7d');
+      expect(result.token).toBe('new-jwt');
+    });
+
+    it('sends minimal body with only scopes', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ token: 'jwt-2' }),
+      );
+
+      await client.mintToken({ scopes: ['admin'] });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.scopes).toEqual(['admin']);
+      expect(body.sub).toBeUndefined();
+      expect(body.name).toBeUndefined();
+      expect(body.expires_in).toBeUndefined();
+    });
+
+    it('throws on 400 response', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ error: 'Invalid scope "bad"' }, 400),
+      );
+
+      await expect(
+        client.mintToken({ scopes: ['bad'] }),
+      ).rejects.toThrow('Invalid scope');
+    });
+  });
+
+  describe('listKeys()', () => {
+    it('fetches GET /api/v1/keys', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({
+          keys: [
+            {
+              kid: 'local-1',
+              kty: 'OKP',
+              crv: 'Ed25519',
+              x: 'abc123',
+              max_scopes: null,
+              issuer: 'local',
+              jwks_url: null,
+              created_at: '2026-01-01T00:00:00Z',
+            },
+          ],
+        }),
+      );
+
+      const keys = await client.listKeys();
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v1/keys',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(keys).toHaveLength(1);
+      expect(keys[0].kid).toBe('local-1');
+      expect(keys[0].crv).toBe('Ed25519');
+      expect(keys[0].issuer).toBe('local');
+    });
+
+    it('sends auth header', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(jsonResponse({ keys: [] }));
+
+      await client.listKeys();
+
+      const headers = mockFetch.mock.calls[0][1].headers;
+      expect(headers.Authorization).toBe('Bearer admin-token');
+    });
+  });
+
+  describe('addKey()', () => {
+    it('sends POST /api/v1/keys with key data', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse(
+          {
+            kid: 'remote-1',
+            kty: 'OKP',
+            crv: 'Ed25519',
+            x: 'xyz789',
+            max_scopes: ['pub:*'],
+            issuer: 'partner',
+            jwks_url: null,
+            created_at: '2026-02-01T00:00:00Z',
+          },
+          201,
+        ),
+      );
+
+      const key = await client.addKey({
+        kid: 'remote-1',
+        x: 'xyz789',
+        max_scopes: ['pub:*'],
+        issuer: 'partner',
+      });
+
+      const [url, opts] = mockFetch.mock.calls[0];
+      expect(url).toBe('https://example.com/api/v1/keys');
+      expect(opts.method).toBe('POST');
+      const body = JSON.parse(opts.body);
+      expect(body.kid).toBe('remote-1');
+      expect(body.x).toBe('xyz789');
+      expect(body.max_scopes).toEqual(['pub:*']);
+      expect(key.kid).toBe('remote-1');
+      expect(key.issuer).toBe('partner');
+    });
+
+    it('supports jwks_url instead of x', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse(
+          {
+            kid: 'jwks-1',
+            kty: 'OKP',
+            crv: 'Ed25519',
+            x: 'resolved-key',
+            max_scopes: null,
+            issuer: null,
+            jwks_url: 'https://keys.example.com/.well-known/jwks.json',
+            created_at: '2026-02-01T00:00:00Z',
+          },
+          201,
+        ),
+      );
+
+      const key = await client.addKey({
+        kid: 'jwks-1',
+        jwks_url: 'https://keys.example.com/.well-known/jwks.json',
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.jwks_url).toBe(
+        'https://keys.example.com/.well-known/jwks.json',
+      );
+      expect(body.x).toBeUndefined();
+      expect(key.jwks_url).toBe(
+        'https://keys.example.com/.well-known/jwks.json',
+      );
+    });
+
+    it('throws on 409 conflict', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ error: 'Key "dup" already exists' }, 409),
+      );
+
+      await expect(
+        client.addKey({ kid: 'dup', x: 'abc' }),
+      ).rejects.toThrow('already exists');
+    });
+  });
+
+  describe('revokeKey()', () => {
+    it('sends DELETE /api/v1/keys/:kid', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+      await client.revokeKey('remote-1');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v1/keys/remote-1',
+        expect.objectContaining({ method: 'DELETE' }),
+      );
+    });
+
+    it('URL-encodes kid with special characters', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true }));
+
+      await client.revokeKey('key/with:special');
+
+      const url = mockFetch.mock.calls[0][0];
+      expect(url).toBe(
+        'https://example.com/api/v1/keys/key%2Fwith%3Aspecial',
+      );
+    });
+
+    it('throws on 404 response', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ error: 'Key not found' }, 404),
+      );
+
+      await expect(client.revokeKey('nonexistent')).rejects.toThrow(
+        'Key not found',
+      );
+    });
+
+    it('throws on 403 self-revocation', async () => {
+      const client = new ZooidClient({
+        server: 'https://example.com',
+        token: 'admin-token',
+      });
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse(
+          { error: 'Cannot revoke the key that signed this request' },
+          403,
+        ),
+      );
+
+      await expect(client.revokeKey('local-1')).rejects.toThrow(
+        'Cannot revoke the key that signed this request',
+      );
+    });
+  });
+
   describe('error handling', () => {
     it('throws ZooidError with status and message on API error', async () => {
       const client = new ZooidClient({

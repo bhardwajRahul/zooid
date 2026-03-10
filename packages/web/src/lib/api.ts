@@ -1,9 +1,13 @@
-import type { ChannelListItem, ZooidEvent, PollResult } from '@zooid/types';
+import { ZooidClient } from '@zooid/sdk';
 
-export type { ChannelListItem, ZooidEvent, PollResult };
-
-// Alias for backward compat within the web app
-export type ChannelInfo = ChannelListItem;
+export type {
+  ChannelInfo,
+  ServerIdentity,
+  TrustedKey,
+  TokenClaims,
+  ZooidEvent,
+  PollResult,
+} from '@zooid/sdk';
 
 export interface ServerMeta {
   server_name: string;
@@ -11,47 +15,6 @@ export interface ServerMeta {
   poll_interval: number;
   delivery: string[];
   auth_url?: string;
-}
-
-export interface TokenClaims {
-  scopes: string[];
-  sub?: string;
-  name?: string;
-  iat: number;
-  exp?: number;
-}
-
-function headers(token?: string): HeadersInit {
-  const h: Record<string, string> = {};
-  if (token) {
-    h['Authorization'] = `Bearer ${token}`;
-  }
-  return h;
-}
-
-export async function listChannels(
-  baseUrl: string,
-  token?: string,
-): Promise<ChannelInfo[]> {
-  const res = await fetch(`${baseUrl}/api/v1/channels`, {
-    headers: headers(token),
-  });
-  if (!res.ok) return [];
-  const data: { channels: ChannelInfo[] } = await res.json();
-  return data.channels;
-}
-
-export async function getChannel(
-  baseUrl: string,
-  channelId: string,
-  token?: string,
-): Promise<ChannelInfo | null> {
-  const res = await fetch(`${baseUrl}/api/v1/channels`, {
-    headers: headers(token),
-  });
-  if (!res.ok) return null;
-  const data: { channels: ChannelInfo[] } = await res.json();
-  return data.channels.find((ch) => ch.id === channelId) ?? null;
 }
 
 const defaultMeta: ServerMeta = {
@@ -78,34 +41,15 @@ export async function fetchServerMeta(baseUrl: string): Promise<ServerMeta> {
   }
 }
 
-export async function getTokenClaims(
-  baseUrl: string,
-  token: string,
-): Promise<TokenClaims | null> {
-  try {
-    const res = await fetch(`${baseUrl}/api/v1/tokens/claims`, {
-      headers: headers(token),
-    });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
-    return null;
-  }
+/** Create a ZooidClient bound to the current origin. */
+export function createClient(token?: string): ZooidClient {
+  return new ZooidClient({
+    server: window.location.origin,
+    token,
+  });
 }
 
-export async function publishEvent(
-  baseUrl: string,
-  channelId: string,
-  payload: { type?: string; data: unknown },
-  token: string,
-): Promise<boolean> {
-  const res = await fetch(`${baseUrl}/api/v1/channels/${channelId}/events`, {
-    method: 'POST',
-    headers: { ...headers(token), 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  return res.ok;
-}
+// BFF auth endpoints (not in SDK — they use cookies/credentials)
 
 export async function refreshAuth(
   baseUrl: string,
@@ -131,28 +75,4 @@ export async function authLogout(baseUrl: string): Promise<void> {
   } catch {
     // Best effort
   }
-}
-
-export async function pollEvents(
-  baseUrl: string,
-  channelId: string,
-  options: { cursor?: string; since?: string; limit?: number; token?: string },
-): Promise<PollResult> {
-  const params = new URLSearchParams();
-  if (options.cursor) params.set('cursor', options.cursor);
-  if (options.since) params.set('since', options.since);
-  if (options.limit) params.set('limit', String(options.limit));
-
-  const qs = params.toString();
-  const url = `${baseUrl}/api/v1/channels/${channelId}/events${qs ? `?${qs}` : ''}`;
-
-  const res = await fetch(url, {
-    headers: headers(options.token),
-  });
-
-  if (!res.ok) {
-    return { events: [], cursor: null, has_more: false };
-  }
-
-  return res.json();
 }

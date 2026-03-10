@@ -24,6 +24,9 @@ export type {
   TailStream,
   UpdateServerMetaOptions,
   ClaimResult,
+  TrustedKey,
+  AddKeyOptions,
+  TokenClaims,
 } from './types';
 
 // Deprecated aliases for backward compatibility

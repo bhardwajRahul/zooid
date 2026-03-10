@@ -5,6 +5,10 @@ import { D1Dialect } from 'kysely-d1';
 import type { Context } from 'hono';
 import type { Bindings } from './index';
 
+const ZOOID_ADMINS: Record<string, string[]> = {
+  'admin@zooid.dev': ['admin'],
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let cachedAuth: any = null;
 
@@ -29,6 +33,14 @@ export function getAuth(c: Context<{ Bindings: Bindings }>) {
       oauthProvider({
         loginPage: '/sign-in',
         consentPage: '/consent',
+        customUserInfoClaims: ({ user }) => {
+          const scopes = ZOOID_ADMINS[user.email];
+          return scopes ? { 'https://zooid.dev/scopes': scopes } : {};
+        },
+        customIdTokenClaims: ({ user }) => {
+          const scopes = ZOOID_ADMINS[user.email];
+          return scopes ? { 'https://zooid.dev/scopes': scopes } : {};
+        },
       }),
     ],
   });

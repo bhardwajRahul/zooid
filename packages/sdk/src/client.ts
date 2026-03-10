@@ -20,6 +20,9 @@ import type {
   TailStream,
   UpdateServerMetaOptions,
   ClaimResult,
+  TrustedKey,
+  AddKeyOptions,
+  TokenClaims,
 } from './types';
 
 /**
@@ -153,9 +156,30 @@ export class ZooidClient {
     return this.request<ClaimResult>('POST', '/api/v1/directory/claim', body);
   }
 
+  /** Get the claims of the current token. */
+  async getTokenClaims(): Promise<TokenClaims> {
+    return this.request<TokenClaims>('GET', '/api/v1/tokens/claims');
+  }
+
   /** Mint a new token. Requires admin token. */
   async mintToken(options: MintTokenOptions): Promise<MintTokenResult> {
     return this.request<MintTokenResult>('POST', '/api/v1/tokens', options);
+  }
+
+  /** List trusted signing keys. Requires admin token. */
+  async listKeys(): Promise<TrustedKey[]> {
+    const res = await this.request<{ keys: TrustedKey[] }>('GET', '/api/v1/keys');
+    return res.keys;
+  }
+
+  /** Add a trusted signing key. Requires admin token. */
+  async addKey(options: AddKeyOptions): Promise<TrustedKey> {
+    return this.request<TrustedKey>('POST', '/api/v1/keys', options);
+  }
+
+  /** Revoke a trusted signing key. Requires admin token. */
+  async revokeKey(kid: string): Promise<void> {
+    await this.request<{ ok: boolean }>('DELETE', `/api/v1/keys/${encodeURIComponent(kid)}`);
   }
 
   /** Delete a channel and all its data. Requires admin token. */
