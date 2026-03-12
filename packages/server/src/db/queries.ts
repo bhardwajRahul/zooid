@@ -432,6 +432,10 @@ export async function deleteWebhook(
   return (result.meta.changes ?? 0) > 0;
 }
 
+/**
+ * Delete a channel and all its data (events + webhooks).
+ * @deprecated Use storage.destroy() + deleteChannelRecord() instead.
+ */
 export async function deleteChannel(
   db: D1Database,
   channelId: string,
@@ -450,6 +454,21 @@ export async function deleteChannel(
   ]);
 
   return true;
+}
+
+/**
+ * Delete only the channel registry row from D1.
+ * Call storage.destroy() first to clean up events and webhooks.
+ */
+export async function deleteChannelRecord(
+  db: D1Database,
+  channelId: string,
+): Promise<boolean> {
+  const result = await db
+    .prepare('DELETE FROM channels WHERE id = ?')
+    .bind(channelId)
+    .run();
+  return (result.meta.changes ?? 0) > 0;
 }
 
 export async function getWebhooksForChannel(

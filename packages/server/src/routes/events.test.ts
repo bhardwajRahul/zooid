@@ -5,6 +5,8 @@ import { setupTestDb, cleanTestDb } from '../test-utils';
 import { createToken } from '../lib/jwt';
 import { deliverToWebhooks } from './events';
 import { createWebhook } from '../db/queries';
+import { D1ChannelStorage } from '../storage/d1';
+import type { ChannelContext } from '../storage/types';
 
 const JWT_SECRET = 'test-jwt-secret';
 
@@ -740,11 +742,20 @@ describe('Event routes', () => {
         },
       ) as unknown as typeof fetch;
 
+      const ctx: ChannelContext = {
+        channel_id: 'pub-channel',
+        channel: { id: 'pub-channel', name: 'Public Channel', description: null, tags: null, is_public: 1, config: null, max_subscribers: 100, created_at: '' },
+        is_public: true,
+        retention_days: 7,
+        server_url: 'https://my-server.zooid.dev',
+        server_id: 'zooid-local',
+      };
+      const storage = new D1ChannelStorage(env.DB, ctx);
+
       await deliverToWebhooks(
-        { ...env, ZOOID_JWT_SECRET: JWT_SECRET } as never,
-        'pub-channel',
+        storage,
+        ctx,
         { id: '01TEST000000000000000000AA', type: 'signal' },
-        'https://my-server.zooid.dev',
         mockFetch,
       );
 
@@ -796,15 +807,21 @@ describe('Event routes', () => {
         },
       ) as unknown as typeof fetch;
 
+      const ctx: ChannelContext = {
+        channel_id: 'pub-channel',
+        channel: { id: 'pub-channel', name: 'Public Channel', description: null, tags: null, is_public: 1, config: null, max_subscribers: 100, created_at: '' },
+        is_public: true,
+        retention_days: 7,
+        signing_key: signingKeyBase64,
+        server_url: 'https://my-server.zooid.dev',
+        server_id: 'zooid-local',
+      };
+      const storage = new D1ChannelStorage(env.DB, ctx);
+
       await deliverToWebhooks(
-        {
-          ...env,
-          ZOOID_JWT_SECRET: JWT_SECRET,
-          ZOOID_SIGNING_KEY: signingKeyBase64,
-        } as never,
-        'pub-channel',
+        storage,
+        ctx,
         { id: '01TEST000000000000000000BB', type: 'alert' },
-        'https://my-server.zooid.dev',
         mockFetch,
       );
 

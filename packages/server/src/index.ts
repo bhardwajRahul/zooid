@@ -8,6 +8,8 @@ import {
   requireSubscribeIfPrivate,
   optionalAuth,
 } from './middleware/auth';
+import { resolveChannel } from './middleware/storage';
+import { D1ChannelBackend } from './storage';
 import {
   ListChannels,
   CreateChannel,
@@ -60,6 +62,15 @@ openapi.registry.registerComponent('securitySchemes', 'bearerAuth', {
   bearerFormat: 'JWT',
 });
 
+// Wire up the channel storage backend
+api.use('*', async (c, next) => {
+  c.set(
+    'channelBackend',
+    new D1ChannelBackend(c.env.DB, c.env.CHANNEL_DO),
+  );
+  await next();
+});
+
 // Server meta routes
 openapi.get('/server', GetServerMeta);
 // @ts-expect-error chanfana types don't include middleware overloads
@@ -81,12 +92,12 @@ openapi.post('/channels', requireAuth(), requireScope('admin'), CreateChannel);
 openapi.patch('/channels/:channelId', requireAuth(), requireScope('admin'), UpdateChannel);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
-openapi.delete('/channels/:channelId', requireAuth(), requireScope('admin'), DeleteChannel);
+openapi.delete('/channels/:channelId', requireAuth(), requireScope('admin'), resolveChannel('channelId'), DeleteChannel);
 
 // Event routes
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
-openapi.post('/channels/:channelId/events', requireAuth(), requireScope('publish', { channelParam: 'channelId' }), PublishEvents);
+openapi.post('/channels/:channelId/events', requireAuth(), requireScope('publish', { channelParam: 'channelId' }), resolveChannel('channelId'), PublishEvents);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.get('/channels/:channelId/events', requireSubscribeIfPrivate('channelId'), PollEvents);
@@ -95,7 +106,7 @@ openapi.get('/channels/:channelId/events', requireSubscribeIfPrivate('channelId'
 openapi.get('/channels/:channelId/events/:eventId', requireSubscribeIfPrivate('channelId'), GetEventById);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
-openapi.delete('/channels/:channelId/events/:eventId', requireAuth(), requireScope('publish', { channelParam: 'channelId' }), DeleteEventById);
+openapi.delete('/channels/:channelId/events/:eventId', requireAuth(), requireScope('publish', { channelParam: 'channelId' }), resolveChannel('channelId'), DeleteEventById);
 
 // Directory claim route
 // prettier-ignore
@@ -108,7 +119,7 @@ openapi.post('/directory/claim', requireAuth(), requireScope('admin'), Directory
 openapi.post('/channels/:channelId/webhooks', requireSubscribeIfPrivate('channelId'), RegisterWebhook);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
-openapi.delete('/channels/:channelId/webhooks/:webhookId', requireAuth(), requireScope('admin'), DeleteWebhook);
+openapi.delete('/channels/:channelId/webhooks/:webhookId', requireAuth(), requireScope('admin'), resolveChannel('channelId'), DeleteWebhook);
 
 // Key management routes (admin-only)
 // @ts-expect-error chanfana types don't include middleware overloads

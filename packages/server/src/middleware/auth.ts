@@ -1,5 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables, ZooidJWT } from '../types';
+import type { ChannelContext } from '../storage/types';
+import { getChannel, getRetentionDays } from '../db/queries';
 import {
   verifyTokenAny,
   normalizeScopes,
@@ -115,13 +117,29 @@ export function requireSubscribeIfPrivate(channelParam: string) {
     const channelId = c.req.param(channelParam)!;
     const db = c.env.DB;
 
-    const channel = await db
-      .prepare('SELECT is_public FROM channels WHERE id = ?')
-      .bind(channelId)
-      .first<{ is_public: number }>();
+    // Load full channel row (not just is_public) so we can set up storage context
+    const channel = await getChannel(db, channelId);
 
     if (!channel) {
       return c.json({ error: 'Channel not found' }, 404);
+    }
+
+    // Set up storage context if backend is available
+    const backend = c.get('channelBackend');
+    if (backend && !c.get('channelStorage')) {
+      const ctx: ChannelContext = {
+        channel_id: channelId,
+        channel,
+        is_public: channel.is_public === 1,
+        retention_days: getRetentionDays(channel),
+        signing_key: c.env.ZOOID_SIGNING_KEY,
+        server_url: new URL(c.req.url).origin,
+        server_id: c.env.ZOOID_SERVER_ID,
+      };
+      const { storage, realtime } = backend.getChannel(ctx);
+      c.set('channelStorage', storage);
+      c.set('realtimeBroadcast', realtime);
+      c.set('channelCtx', ctx);
     }
 
     if (channel.is_public === 1) {

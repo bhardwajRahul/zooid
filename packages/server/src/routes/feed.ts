@@ -1,12 +1,7 @@
 import { Hono } from 'hono';
 import { stringify } from 'yaml';
 import type { Bindings, Variables, ZooidEvent } from '../types';
-import { getChannel } from '../db/queries';
-import {
-  pollEvents,
-  cleanupExpiredEvents,
-  getRetentionDays,
-} from '../db/queries';
+import type { ChannelStorage, ChannelContext } from '../storage/types';
 import { requireSubscribeIfPrivate } from '../middleware/auth';
 
 type Env = { Bindings: Bindings; Variables: Variables };
@@ -17,17 +12,11 @@ feed.get(
   '/channels/:channelId/feed.json',
   requireSubscribeIfPrivate('channelId'),
   async (c) => {
-    const channelId = c.req.param('channelId');
-    const db = c.env.DB;
+    const storage = c.get('channelStorage') as ChannelStorage;
+    const ctx = c.get('channelCtx') as ChannelContext;
+    const channelId = ctx.channel_id;
 
-    const channel = await getChannel(db, channelId);
-    if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
-    }
-
-    await cleanupExpiredEvents(db, channelId, getRetentionDays(channel));
-
-    const result = await pollEvents(db, channelId, {
+    const result = await storage.pollEvents({
       limit: 50,
       since: c.req.query('since'),
       cursor: c.req.query('cursor'),
@@ -41,8 +30,8 @@ feed.get(
 
     const jsonFeed = {
       version: 'https://jsonfeed.org/version/1.1',
-      title: channel.name,
-      description: channel.description || '',
+      title: ctx.channel.name,
+      description: ctx.channel.description || '',
       items,
     };
 

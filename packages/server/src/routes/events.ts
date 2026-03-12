@@ -2,18 +2,12 @@ import { OpenAPIRoute } from 'chanfana';
 import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
-import {
-  getChannel,
-  createEvent,
-  createEvents,
-  getEvent,
-  deleteEvent,
-  pollEvents,
-  cleanupExpiredEvents,
-  getRetentionDays,
-  isStrictTypes,
-  getWebhooksForChannel,
-} from '../db/queries';
+import type {
+  ChannelStorage,
+  RealtimeBroadcast,
+  ChannelContext,
+} from '../storage/types';
+import { isStrictTypes } from '../db/queries';
 import { normalizeScopes, isAdmin } from '../lib/jwt';
 import { importPrivateKey, signPayload } from '../lib/signing';
 import { validateEvent } from '../lib/schema-validator';
@@ -117,12 +111,9 @@ export class PublishEvents extends OpenAPIRoute {
   async handle(c: Context<Env>) {
     const data = await this.getValidatedData<typeof this.schema>();
     const { channelId } = data.params;
-    const db = c.env.DB;
-
-    const channel = await getChannel(db, channelId);
-    if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
-    }
+    const storage = c.get('channelStorage') as ChannelStorage;
+    const realtime = c.get('realtimeBroadcast') as RealtimeBroadcast;
+    const ctx = c.get('channelCtx') as ChannelContext;
 
     const body = data.body;
     const jwt = c.get('jwtPayload');
@@ -138,8 +129,8 @@ export class PublishEvents extends OpenAPIRoute {
       { required?: string[]; properties?: Record<string, unknown> }
     > | null = null;
 
-    if (isStrictTypes(channel) && channel.config) {
-      const parsed = JSON.parse(channel.config) as {
+    if (isStrictTypes(ctx.channel) && ctx.channel.config) {
+      const parsed = JSON.parse(ctx.channel.config) as {
         types?: Record<string, { schema?: Record<string, unknown> }>;
       };
       if (parsed.types) {
@@ -152,8 +143,6 @@ export class PublishEvents extends OpenAPIRoute {
         );
       }
     }
-
-    const serverUrl = new URL(c.req.url).origin;
 
     // Batch publish
     if ('events' in body && Array.isArray(body.events)) {
@@ -172,26 +161,25 @@ export class PublishEvents extends OpenAPIRoute {
         }
       }
 
-      const created = await createEvents(
-        db,
-        channelId,
-        publisherId,
-        publisherName,
-        body.events,
+      const created = await storage.publishEvents(
+        body.events.map((evt) => ({
+          publisher_id: publisherId,
+          publisher_name: publisherName,
+          type: evt.type ?? null,
+          data: evt.data,
+        })),
       );
 
       const fanOut = async () => {
-        try {
-          const doId = c.env.CHANNEL_DO.idFromName(channelId);
-          const stub = c.env.CHANNEL_DO.get(doId);
-          for (const event of created) {
-            await stub.broadcast(event as unknown as Record<string, unknown>);
+        for (const event of created) {
+          try {
+            await realtime.broadcast(channelId, event);
+          } catch {
+            // Broadcast may fail in test environments
           }
-        } catch {
-          // CHANNEL_DO binding may not exist in tests
         }
         for (const event of created) {
-          await deliverToWebhooks(c.env, channelId, event, serverUrl);
+          await deliverToWebhooks(storage, ctx, event);
         }
       };
       try {
@@ -215,28 +203,25 @@ export class PublishEvents extends OpenAPIRoute {
       }
     }
 
-    const event = await createEvent(db, {
-      channelId,
-      publisherId,
-      publisherName,
+    const event = await storage.publishEvent({
+      publisher_id: publisherId,
+      publisher_name: publisherName,
       type: body.type ?? null,
       data: body.data,
     });
 
     const afterPublish = async () => {
       try {
-        const doId = c.env.CHANNEL_DO.idFromName(channelId);
-        const stub = c.env.CHANNEL_DO.get(doId);
-        await stub.broadcast(event as unknown as Record<string, unknown>);
+        await realtime.broadcast(channelId, event);
       } catch {
-        // CHANNEL_DO binding may not exist in tests
+        // Broadcast may fail in test environments
       }
-      await deliverToWebhooks(c.env, channelId, event, serverUrl);
+      await deliverToWebhooks(storage, ctx, event);
     };
     try {
       c.executionCtx.waitUntil(afterPublish());
     } catch {
-      // No execution context in tests
+      await afterPublish();
     }
 
     return c.json(event, 201);
@@ -285,22 +270,11 @@ export class PollEvents extends OpenAPIRoute {
 
   async handle(c: Context<Env>) {
     const data = await this.getValidatedData<typeof this.schema>();
-    const { channelId } = data.params;
-    const db = c.env.DB;
-
-    const channel = await getChannel(db, channelId);
-    if (channel) {
-      await cleanupExpiredEvents(db, channelId, getRetentionDays(channel));
-    }
+    const storage = c.get('channelStorage') as ChannelStorage;
 
     const { since, cursor, type, limit } = data.query;
 
-    const result = await pollEvents(db, channelId, {
-      since,
-      cursor,
-      type,
-      limit,
-    });
+    const result = await storage.pollEvents({ since, cursor, type, limit });
 
     if (c.get('channelIsPublic')) {
       const maxAge = parseInt(c.env.ZOOID_POLL_INTERVAL ?? '2', 10);
@@ -351,10 +325,10 @@ export class GetEventById extends OpenAPIRoute {
 
   async handle(c: Context<Env>) {
     const data = await this.getValidatedData<typeof this.schema>();
-    const { channelId, eventId } = data.params;
-    const db = c.env.DB;
+    const { eventId } = data.params;
+    const storage = c.get('channelStorage') as ChannelStorage;
 
-    const event = await getEvent(db, channelId, eventId);
+    const event = await storage.getEvent(eventId);
     if (!event) {
       return c.json({ error: 'Event not found' }, 404);
     }
@@ -399,10 +373,10 @@ export class DeleteEventById extends OpenAPIRoute {
 
   async handle(c: Context<Env>) {
     const data = await this.getValidatedData<typeof this.schema>();
-    const { channelId, eventId } = data.params;
-    const db = c.env.DB;
+    const { eventId } = data.params;
+    const storage = c.get('channelStorage') as ChannelStorage;
 
-    const event = await getEvent(db, channelId, eventId);
+    const event = await storage.getEvent(eventId);
     if (!event) {
       return c.json({ error: 'Event not found' }, 404);
     }
@@ -421,28 +395,23 @@ export class DeleteEventById extends OpenAPIRoute {
       }
     }
 
-    await deleteEvent(db, channelId, eventId);
+    await storage.deleteEvent(eventId);
     return c.body(null, 204);
   }
 }
 
 export async function deliverToWebhooks(
-  env: Bindings,
-  channelId: string,
+  storage: ChannelStorage,
+  ctx: ChannelContext,
   event: { id: string; type: string | null },
-  serverUrl: string,
   fetchFn: typeof fetch = fetch,
 ) {
-  const webhooks = await getWebhooksForChannel(
-    env.DB,
-    channelId,
-    event.type ?? undefined,
-  );
+  const webhooks = await storage.getWebhooks(event.type ?? undefined);
 
   if (webhooks.length === 0) return;
 
-  const signingKey = env.ZOOID_SIGNING_KEY
-    ? await importPrivateKey(env.ZOOID_SIGNING_KEY)
+  const signingKey = ctx.signing_key
+    ? await importPrivateKey(ctx.signing_key)
     : null;
 
   const body = JSON.stringify(event as unknown as Record<string, unknown>);
@@ -456,11 +425,11 @@ export async function deliverToWebhooks(
     webhooks.map((webhook) => {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'X-Zooid-Server': serverUrl,
+        'X-Zooid-Server': ctx.server_url,
         'X-Zooid-Timestamp': timestamp,
-        'X-Zooid-Channel': channelId,
+        'X-Zooid-Channel': ctx.channel_id,
         'X-Zooid-Event-Id': event.id,
-        'X-Zooid-Key-Id': env.ZOOID_SERVER_ID || 'zooid-local',
+        'X-Zooid-Key-Id': ctx.server_id || 'zooid-local',
       };
 
       if (signature) {

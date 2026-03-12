@@ -1,12 +1,7 @@
 import { Hono } from 'hono';
 import { stringify } from 'yaml';
 import type { Bindings, Variables, ZooidEvent } from '../types';
-import { getChannel } from '../db/queries';
-import {
-  pollEvents,
-  cleanupExpiredEvents,
-  getRetentionDays,
-} from '../db/queries';
+import type { ChannelStorage, ChannelContext } from '../storage/types';
 import { requireSubscribeIfPrivate } from '../middleware/auth';
 import { buildXml } from '../lib/xml';
 
@@ -18,17 +13,10 @@ rss.get(
   '/channels/:channelId/rss',
   requireSubscribeIfPrivate('channelId'),
   async (c) => {
-    const channelId = c.req.param('channelId');
-    const db = c.env.DB;
+    const storage = c.get('channelStorage') as ChannelStorage;
+    const ctx = c.get('channelCtx') as ChannelContext;
 
-    const channel = await getChannel(db, channelId);
-    if (!channel) {
-      return c.json({ error: 'Channel not found' }, 404);
-    }
-
-    await cleanupExpiredEvents(db, channelId, getRetentionDays(channel));
-
-    const result = await pollEvents(db, channelId, {
+    const result = await storage.pollEvents({
       limit: 50,
       since: c.req.query('since'),
       cursor: c.req.query('cursor'),
@@ -44,8 +32,8 @@ rss.get(
       rss: {
         '@_version': '2.0',
         channel: {
-          title: channel.name,
-          description: channel.description || '',
+          title: ctx.channel.name,
+          description: ctx.channel.description || '',
           ...(items.length > 0 ? { item: items } : {}),
         },
       },

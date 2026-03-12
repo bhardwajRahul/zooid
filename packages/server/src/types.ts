@@ -75,9 +75,20 @@ export interface TrustedKeyRow {
   created_at: string;
 }
 
+import type {
+  ChannelBackend,
+  ChannelStorage,
+  RealtimeBroadcast,
+  ChannelContext,
+} from './storage/types';
+
 export interface Variables {
   jwtPayload: ZooidJWT;
   jwtKid?: string;
   jwtIssuer?: string;
   channelIsPublic?: boolean;
+  channelBackend?: ChannelBackend;
+  channelStorage?: ChannelStorage;
+  realtimeBroadcast?: RealtimeBroadcast;
+  channelCtx?: ChannelContext;
 }

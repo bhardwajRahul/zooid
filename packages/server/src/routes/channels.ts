@@ -10,12 +10,13 @@ import {
   canPublish,
   canSubscribe,
 } from '../lib/jwt';
+import type { ChannelStorage } from '../storage/types';
 import {
   createChannel,
   getChannel,
   listChannels,
   updateChannel,
-  deleteChannel,
+  deleteChannelRecord,
 } from '../db/queries';
 
 type Env = { Bindings: Bindings; Variables: Variables };
@@ -334,7 +335,14 @@ export class DeleteChannel extends OpenAPIRoute {
     const data = await this.getValidatedData<typeof this.schema>();
     const { channelId } = data.params;
 
-    const deleted = await deleteChannel(c.env.DB, channelId);
+    // Destroy channel data (events + webhooks) via storage adapter
+    const storage = c.get('channelStorage') as ChannelStorage | undefined;
+    if (storage) {
+      await storage.destroy();
+    }
+
+    // Delete channel registry entry from D1
+    const deleted = await deleteChannelRecord(c.env.DB, channelId);
     if (!deleted) {
       return c.json({ error: 'Channel not found' }, 404);
     }

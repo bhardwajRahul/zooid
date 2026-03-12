@@ -2,7 +2,7 @@ import { OpenAPIRoute } from 'chanfana';
 import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
-import { createWebhook, deleteWebhook } from '../db/queries';
+import type { ChannelStorage } from '../storage/types';
 import { isAllowedWebhookUrl } from '../lib/validation';
 
 type Env = { Bindings: Bindings; Variables: Variables };
@@ -56,9 +56,8 @@ export class RegisterWebhook extends OpenAPIRoute {
 
   async handle(c: Context<Env>) {
     const data = await this.getValidatedData<typeof this.schema>();
-    const { channelId } = data.params;
     const body = data.body;
-    const db = c.env.DB;
+    const storage = c.get('channelStorage') as ChannelStorage;
 
     if (!isAllowedWebhookUrl(body.url)) {
       return c.json(
@@ -67,11 +66,10 @@ export class RegisterWebhook extends OpenAPIRoute {
       );
     }
 
-    const webhook = await createWebhook(db, {
-      channelId,
+    const webhook = await storage.registerWebhook({
       url: body.url,
-      eventTypes: body.event_types,
-      ttlSeconds: body.ttl_seconds,
+      event_types: body.event_types,
+      ttl_seconds: body.ttl_seconds,
     });
 
     return c.json(webhook, 201);
@@ -122,10 +120,10 @@ export class DeleteWebhook extends OpenAPIRoute {
 
   async handle(c: Context<Env>) {
     const data = await this.getValidatedData<typeof this.schema>();
-    const { channelId, webhookId } = data.params;
-    const db = c.env.DB;
+    const { webhookId } = data.params;
+    const storage = c.get('channelStorage') as ChannelStorage;
 
-    const deleted = await deleteWebhook(db, webhookId, channelId);
+    const deleted = await storage.deleteWebhook(webhookId);
     if (!deleted) {
       return c.json({ error: 'Webhook not found' }, 404);
     }
