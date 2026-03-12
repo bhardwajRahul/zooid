@@ -44,7 +44,7 @@ Zooid reads these automatically during `init` and `deploy`. They are never uploa
 After you run `npx zooid init`, Zooid stores connection details (server URL, admin token, channel tokens) in:
 
 ```
-~/.zooid/config.json
+~/.zooid/state.json
 ```
 
 All subsequent commands — `publish`, `tail`, `subscribe`, `channel` — read from this file so you do not need to pass credentials every time.

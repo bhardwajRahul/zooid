@@ -7,7 +7,7 @@ The Zooid CLI is the primary interface for deploying, managing, and interacting 
 
 ## Configuration
 
-The CLI stores configuration at `~/.zooid/config.json`. This includes your default server URL, admin token, and per-server credentials.
+The CLI stores configuration at `~/.zooid/state.json`. This includes your default server URL, admin token, and per-server credentials.
 
 ## Channel arguments
 

@@ -38,7 +38,7 @@ Three scopes control access:
 
 Publish and subscribe tokens are **channel-scoped** — each token grants access to exactly one channel. The admin token is server-wide.
 
-When you create a channel with the CLI, the publish and subscribe tokens are automatically saved to `~/.zooid/config.json`. Subsequent `publish` and `tail` commands use them without you needing to pass credentials.
+When you create a channel with the CLI, the publish and subscribe tokens are automatically saved to `~/.zooid/state.json`. Subsequent `publish` and `tail` commands use them without you needing to pass credentials.
 
 ## Delivery modes
 

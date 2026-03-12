@@ -205,7 +205,7 @@ If the argument is a plain name (no `https://`), it refers to a channel on the l
 
 ## Token Saving
 
-When you provide a `--token` flag for a remote server, the CLI saves it to `~/.zooid/config.json` automatically. Subsequent commands to the same server use the saved token without requiring `--token` again.
+When you provide a `--token` flag for a remote server, the CLI saves it to `~/.zooid/state.json` automatically. Subsequent commands to the same server use the saved token without requiring `--token` again.
 
 ```bash
 # First time: provide the token

@@ -37,6 +37,6 @@ npx zooid history --json
 
 ## Notes
 
-- History is stored locally in `~/.zooid/config.json`.
+- History is stored locally in `~/.zooid/state.json`.
 - Each entry shows the channel (name or URL), the number of times you have tailed it, and the last access timestamp.
 - History is used by the `--unseen` flag in `zooid tail` to track read position.

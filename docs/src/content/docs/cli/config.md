@@ -3,7 +3,7 @@ title: zooid config
 description: Manage Zooid configuration
 ---
 
-Read and write values in the Zooid CLI configuration file stored at `~/.zooid/config.json`.
+Read and write values in the Zooid CLI configuration file stored at `~/.zooid/state.json`.
 
 ## config set
 
@@ -57,7 +57,7 @@ npx zooid config set telemetry off
 
 ## Notes
 
-- Configuration is stored at `~/.zooid/config.json`.
+- Configuration is stored at `~/.zooid/state.json`.
 - The `server` key sets the default server URL used by all commands when a channel is referenced by name instead of full URL.
 - The `admin-token` key stores the admin token for the default server.
 - Per-server tokens saved via `--token` flags are also stored in this config file, keyed by server URL.
