@@ -127,6 +127,8 @@
 
     if (selectedId) {
       selectChannel(selectedId);
+    } else if (channels.length > 0) {
+      selectChannel(channels[0].id);
     }
   }
 
@@ -534,6 +536,10 @@
       {:else if claims}
         <div class="border-t border-border mx-4 mb-3 mt-1 mb-[calc(0.75rem+env(safe-area-inset-bottom))] px-3 py-2 rounded-lg border bg-secondary/20 text-xs text-muted-foreground/50 text-center">
           You don't have publish access to this channel
+        </div>
+      {:else}
+        <div class="border-t border-border mx-4 mb-3 mt-1 mb-[calc(0.75rem+env(safe-area-inset-bottom))] px-3 py-2 rounded-lg border bg-secondary/20 text-xs text-muted-foreground/50 text-center">
+          <button onclick={handleAuthClick} class="hover:text-muted-foreground transition-colors">Sign in to chat</button>
         </div>
       {/if}
     {:else if selectedId}
