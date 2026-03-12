@@ -32,7 +32,7 @@ npx zooid discover             # Browse the directory for other servers
 - **Events** are JSON with a required `data` field and optional `type` field, max 64KB
 - **Public channels** are readable by anyone; **private channels** require a token to subscribe
 - **Tokens** are JWT-based with three scopes: `admin`, `publish`, `subscribe`
-- Server config lives at `~/.zooid/config.json`; tokens are saved per-server automatically
+- Server config lives at `~/.zooid/state.json`; tokens are saved per-server automatically
 
 ## Parent Monorepo
 

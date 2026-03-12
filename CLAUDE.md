@@ -4,22 +4,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Zooid is an open-source pub/sub server for AI agents. Agents publish signals to named channels, other agents subscribe via webhook, WebSocket, polling, or RSS. Deploys to Cloudflare Workers with `npx zooid deploy`. The full product and technical spec is in `.specs/zooid-spec.md`.
+Zooid is an open-source pub/sub server where AI agents and humans collaborate as equals. Both publish and subscribe to channels — agents via SDK, CLI, or webhooks; humans via web dashboard, RSS, or the same CLI. Deploys to Cloudflare Workers with `npx zooid deploy`, completely free. Current version: **0.5.0**.
+
+The full product spec is in `.specs/zooid-spec.md`. Project state and implementation status is tracked in `.specs/project-state.md`.
 
 ## Status
 
-Pre-MVP. The spec and README exist but no source code has been written yet. Package manager is **pnpm** (v10.7.0).
+**Post-MVP, actively shipping.** All core features are implemented and tested: server API, SDK, CLI (15+ commands), Svelte web dashboard, OIDC auth, WebSocket real-time, directory integration. Package manager is **pnpm** (v10.7.0).
 
 ## Architecture
 
 Monorepo with packages under `packages/`:
 
-- **`packages/server/`** — Cloudflare Worker (Hono + D1/SQLite). Routes: channels CRUD, event publish/poll, webhook registration, RSS feed, web dashboard, `/.well-known/zooid.json`. Public channel polling is CDN-cached at the edge.
-- **`packages/cli/`** — `npx zooid` CLI (Node.js). Commands: deploy, channel, publish, subscribe, config. Stores config at `~/.zooid/config.json`
-- **`packages/web/`** — Single-page dashboard inlined into the Worker as a self-contained HTML string (no separate hosting)
-- **`packages/skills/`** — Framework integrations (OpenClaw skill, MCP server) — V2 scope
+- **`packages/types/`** (`@zooid/types`) — Shared TypeScript types (ZooidEvent, PollResult, ChannelListItem, etc.)
+- **`packages/sdk/`** (`@zooid/sdk`) — Client SDK for Node.js, browsers, and Workers. ZooidClient class with publish, subscribe, poll, tail, webhook verification.
+- **`packages/server/`** (`@zooid/server`) — Cloudflare Worker (Hono + D1/SQLite). Full API: channels CRUD, event publish/poll, webhooks, WebSocket (Durable Objects), RSS/OPML/JSON Feed, OIDC auth (BFF), trusted keys/JWKS, `/.well-known/zooid.json`. Public channel polling is CDN-cached at the edge.
+- **`packages/cli/`** (`zooid`) — `npx zooid` CLI (Node.js). Commands: deploy, dev, init, channel CRUD, publish, tail (-f), subscribe, token mint, server get/set, share/unshare/discover, status, history, config. Stores config at `~/.zooid/state.json`.
+- **`packages/web/`** (`@zooid/web`) — Svelte 5 single-page dashboard inlined into the Worker. Real-time WebSocket with polling fallback, channel management, event feed, auth (token + OIDC), key/token management.
+- **`packages/ui/`** (`@zooid/ui`) — Shared UI components (minimal, foundational)
+- **`packages/homepage/`** — Astro-based docs/marketing site (in progress)
 
-Other top-level directories: `tests/`, `docs/`, `scripts/`.
+Other top-level directories: `tests/` (integration/e2e), `scripts/`.
 
 ## Testing
 
@@ -34,14 +39,16 @@ Other top-level directories: `tests/`, `docs/`, `scripts/`.
 | Server framework | Hono                                                          |
 | Database         | Cloudflare D1 (SQLite)                                        |
 | Runtime          | Cloudflare Workers                                            |
-| Auth             | JWT (HS256), stateless — no token table                       |
+| Auth             | JWT (HS256 + EdDSA), stateless, OIDC integration via BFF      |
 | Webhook signing  | Ed25519 (asymmetric, public key at `/.well-known/zooid.json`) |
 | Event IDs        | ULID (time-ordered, sortable)                                 |
 | CLI              | Node.js via npx                                               |
+| Web dashboard    | Svelte 5 (inlined into Worker)                                |
+| Schema/validation| Zod + chanfana (OpenAPI)                                      |
 
 ## Key Design Decisions
 
-- **Auth is stateless**: JWT tokens signed with `ZOOID_JWT_SECRET` env var. Three scopes: `admin`, `publish` (channel-scoped), `subscribe` (channel-scoped).
+- **Auth is stateless**: JWT tokens signed with HS256 (server secret) or EdDSA (trusted external keys via JWKS). Three scope prefixes: `admin`, `pub:channel-id`, `sub:channel-id` (with wildcard support: `pub:*`, `pub:prefix-*`). OIDC group claims map to Zooid scopes for human auth.
 - **Ed25519 over HMAC** for webhook signing: asymmetric means consumers verify with a public key, no shared secrets needed. Signature format: `<timestamp>.<raw_json_body>`.
 - **Event payload max 64KB**. Events retained 7 days with lazy cleanup on read (no cron on Workers free tier).
 - **Channel IDs**: URL-safe slugs — lowercase alphanumeric + hyphens, 3-64 chars.

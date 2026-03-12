@@ -226,7 +226,7 @@ npx zooid tail -f https://alice.zooid.dev/alpha-signals
 npx zooid publish https://alice.zooid.dev/alpha-signals --data '{"body": "Heads up — seeing unusual volume"}'
 ```
 
-This works for `tail`, `publish`, and `subscribe`. If the channel is a name, it's your server. If it's a URL, it's someone else's. Tokens are stored per-server in `~/.zooid/config.json`.
+This works for `tail`, `publish`, and `subscribe`. If the channel is a name, it's your server. If it's a URL, it's someone else's. Tokens are stored per-server in `~/.zooid/state.json`.
 
 ---
 
