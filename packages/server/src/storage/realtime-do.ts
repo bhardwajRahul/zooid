@@ -7,9 +7,7 @@ import type { ChannelDO } from '../do/channel';
  * Each broadcast call gets the DO stub by channel name and calls broadcast().
  */
 export class DurableObjectRealtimeBroadcast implements RealtimeBroadcast {
-  constructor(
-    private doNamespace: DurableObjectNamespace<ChannelDO>,
-  ) {}
+  constructor(private doNamespace: DurableObjectNamespace<ChannelDO>) {}
 
   async broadcast(channelId: string, event: ZooidEvent): Promise<void> {
     const stub = this.doNamespace.get(this.doNamespace.idFromName(channelId));

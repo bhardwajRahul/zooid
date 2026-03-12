@@ -64,10 +64,7 @@ openapi.registry.registerComponent('securitySchemes', 'bearerAuth', {
 
 // Wire up the channel storage backend
 api.use('*', async (c, next) => {
-  c.set(
-    'channelBackend',
-    new D1ChannelBackend(c.env.DB, c.env.CHANNEL_DO),
-  );
+  c.set('channelBackend', new D1ChannelBackend(c.env.DB, c.env.CHANNEL_DO));
   await next();
 });
 

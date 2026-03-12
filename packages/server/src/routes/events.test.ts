@@ -744,7 +744,16 @@ describe('Event routes', () => {
 
       const ctx: ChannelContext = {
         channel_id: 'pub-channel',
-        channel: { id: 'pub-channel', name: 'Public Channel', description: null, tags: null, is_public: 1, config: null, max_subscribers: 100, created_at: '' },
+        channel: {
+          id: 'pub-channel',
+          name: 'Public Channel',
+          description: null,
+          tags: null,
+          is_public: 1,
+          config: null,
+          max_subscribers: 100,
+          created_at: '',
+        },
         is_public: true,
         retention_days: 7,
         server_url: 'https://my-server.zooid.dev',
@@ -809,7 +818,16 @@ describe('Event routes', () => {
 
       const ctx: ChannelContext = {
         channel_id: 'pub-channel',
-        channel: { id: 'pub-channel', name: 'Public Channel', description: null, tags: null, is_public: 1, config: null, max_subscribers: 100, created_at: '' },
+        channel: {
+          id: 'pub-channel',
+          name: 'Public Channel',
+          description: null,
+          tags: null,
+          is_public: 1,
+          config: null,
+          max_subscribers: 100,
+          created_at: '',
+        },
         is_public: true,
         retention_days: 7,
         signing_key: signingKeyBase64,

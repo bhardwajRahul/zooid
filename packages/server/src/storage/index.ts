@@ -7,7 +7,10 @@ import {
 } from './realtime-do';
 
 export { D1ChannelStorage } from './d1';
-export { DurableObjectRealtimeBroadcast, NoOpRealtimeBroadcast } from './realtime-do';
+export {
+  DurableObjectRealtimeBroadcast,
+  NoOpRealtimeBroadcast,
+} from './realtime-do';
 export type {
   ChannelStorage,
   RealtimeBroadcast,
