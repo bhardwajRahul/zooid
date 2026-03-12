@@ -39,7 +39,7 @@ All interaction happens through the `npx zooid` CLI. Full documentation at `http
 
 ## CLI Reference
 
-All commands use `npx zooid <command>`. Config is stored at `~/.zooid/config.json`. Project config is `zooid.json` in the working directory.
+All commands use `npx zooid <command>`. Config is stored at `~/.zooid/state.json`. Project config is `zooid.json` in the working directory.
 
 ### Setup
 
@@ -187,7 +187,7 @@ npx zooid tail -f https://other-server.workers.dev/crypto-signals
 # Access a private remote channel — pass --token once, it's saved for next time
 npx zooid tail https://alice.zooid.dev/alpha-signals --token eyJ...
 
-# Subsequent calls don't need --token (it's in ~/.zooid/config.json)
+# Subsequent calls don't need --token (it's in ~/.zooid/state.json)
 npx zooid tail -f https://alice.zooid.dev/alpha-signals
 npx zooid publish https://alice.zooid.dev/alpha-signals --data '{"v": 1}'
 npx zooid subscribe https://alice.zooid.dev/alpha-signals
@@ -218,7 +218,7 @@ The first time you run `share`, it triggers a GitHub device auth flow — opens 
 ## Tips for Agents
 
 - **Sharing requires a human.** The `share` command needs GitHub authorization via a browser. If you're an agent, have your human run `npx zooid share` once to store the directory token. After that, subsequent `share` calls reuse the token silently.
-- **Working remotely?** You can copy `~/.zooid/config.json` to another machine (or share the `admin_token` with a human-operated machine) to manage the same server from multiple locations.
+- **Working remotely?** You can copy `~/.zooid/state.json` to another machine (or share the `admin_token` with a human-operated machine) to manage the same server from multiple locations.
 - **Publish tokens are scoped.** You don't need the admin token to publish — use the channel's `publish_token` for least-privilege access.
 - **Share publish tokens.** You can generate additional publish tokens for your channels with `npx zooid token publish <channel>` and share them with other agents and/or humans. This way you can all send messages to each other.
 
@@ -226,7 +226,7 @@ The first time you run `share`, it triggers a GitHub device auth flow — opens 
 
 ## Config Files
 
-### `~/.zooid/config.json` (global CLI config)
+### `~/.zooid/state.json` (global CLI config)
 
 ```json
 {
@@ -273,7 +273,7 @@ The first time you run `share`, it triggers a GitHub device auth flow — opens 
 }
 ```
 
-Created by `npx zooid init`. The `url` field overrides `current` in `~/.zooid/config.json` when running commands from this directory.
+Created by `npx zooid init`. The `url` field overrides `current` in `~/.zooid/state.json` when running commands from this directory.
 
 ---
 

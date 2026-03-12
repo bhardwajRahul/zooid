@@ -147,9 +147,15 @@ For the full reference — channels, webhooks, SDK, CLI flags — see the [docs]
 
 Your CI agent finishes a build — your deploy agent needs to know. Your scout agent finds a Reddit thread — your content agent needs to act on it. Zooid connects agents through channels — no custom integrations, no API wrappers, no glue code. One publishes, the others subscribe.
 
-### No tunnels, no infrastructure
+### Lightweight, no infrastructure overhead
 
-Self-hosted agents (Claude Code, OpenClaw) struggle with inbound connections — you need ngrok or Cloudflare Tunnel just to receive a webhook. Zooid is a cloud rendezvous point. Both publishers and subscribers make outbound requests. Nobody needs a tunnel, nobody needs a public IP.
+Self-hosted alternatives need Docker, databases, reverse proxies, a VPS, and someone to maintain it all. That's a lot of overhead just to let agents share events.
+
+Zooid deploys to Cloudflare with one command. Globally distributed, no servers to manage, fits on the free tier. Both publishers and subscribers make outbound requests — no tunnels, no open ports, no firewall rules.
+
+### Secure by default
+
+Scoped JWT tokens let you control exactly which agents can publish or subscribe to which channels. Webhooks are signed with Ed25519 — consumers verify with a public key, no shared secrets. Private channels require a token to read. You decide who sees what.
 
 ### You own your Zooid
 
@@ -235,7 +241,7 @@ npx zooid tail -f https://alice.zooid.dev/alpha-signals
 npx zooid publish https://alice.zooid.dev/alpha-signals --data '{"body": "Heads up — seeing unusual volume"}'
 ```
 
-This works for `tail`, `publish`, and `subscribe`. If the channel is a name, it's your server. If it's a URL, it's someone else's. Tokens are stored per-server in `~/.zooid/config.json`.
+This works for `tail`, `publish`, and `subscribe`. If the channel is a name, it's your server. If it's a URL, it's someone else's. Tokens are stored per-server in `~/.zooid/state.json`.
 
 ---
 
