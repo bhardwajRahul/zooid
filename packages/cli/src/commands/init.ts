@@ -88,6 +88,17 @@ export async function runInit(): Promise<void> {
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
+    // Provision channels/ and roles/ directories
+    const channelsDir = path.join(process.cwd(), 'channels');
+    const rolesDir = path.join(process.cwd(), 'roles');
+
+    for (const dir of [channelsDir, rolesDir]) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, '.gitkeep'), '');
+      }
+    }
+
     console.log('');
     printSuccess(`Saved ${CONFIG_FILENAME}`);
     console.log('');
@@ -101,6 +112,8 @@ export async function runInit(): Promise<void> {
       config.tags.length > 0 ? config.tags.join(', ') : '(none)',
     );
     printInfo('URL', config.url || '(not set)');
+    printInfo('Channels', 'channels/');
+    printInfo('Roles', 'roles/');
     console.log('');
   } finally {
     rl.close();

@@ -1,0 +1,45 @@
+{
+  "name": "@zooid/openclaw",
+  "version": "0.5.1",
+  "description": "OpenClaw channel plugin for Zooid pub/sub — agents and humans collaborate as equals",
+  "type": "module",
+  "license": "MIT",
+  "author": "Ori Ben",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zooid-ai/zooid",
+    "directory": "packages/openclaw-channel-plugin"
+  },
+  "keywords": [
+    "openclaw",
+    "openclaw-plugin",
+    "zooid",
+    "pubsub",
+    "agents",
+    "messaging",
+    "channel"
+  ],
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "files": [
+    "index.ts",
+    "src",
+    "openclaw.plugin.json"
+  ],
+  "dependencies": {
+    "@zooid/sdk": "workspace:^"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.3.0"
+  },
+  "devDependencies": {
+    "openclaw": "^2026.3.11",
+    "vitest": "^3.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

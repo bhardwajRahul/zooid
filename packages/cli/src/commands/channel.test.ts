@@ -10,6 +10,7 @@ import {
 } from './channel';
 
 let tmpDir: string;
+let origCwd: string;
 const mockClient = {
   createChannel: vi.fn(),
   listChannels: vi.fn(),
@@ -23,11 +24,13 @@ vi.mock('@zooid/sdk', () => ({
 
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-test-'));
+  origCwd = process.cwd();
   vi.stubEnv('ZOOID_CONFIG_DIR', tmpDir);
   vi.clearAllMocks();
 });
 
 afterEach(() => {
+  process.chdir(origCwd);
   vi.unstubAllEnvs();
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });

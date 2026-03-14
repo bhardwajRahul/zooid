@@ -272,6 +272,29 @@ async function getCfCredentials(): Promise<CfCredentials> {
   }
 }
 
+/** Channel definition as declared in channels/*.json */
+export interface ChannelDef {
+  name?: string;
+  description?: string;
+  visibility: 'public' | 'private';
+  config?: Record<string, unknown>;
+}
+
+/** Load all channel definitions from channels/ directory. */
+export function loadChannelDefs(): Map<string, ChannelDef> {
+  const channelsDir = path.join(process.cwd(), 'channels');
+  if (!fs.existsSync(channelsDir)) return new Map();
+
+  const defs = new Map<string, ChannelDef>();
+  for (const file of fs.readdirSync(channelsDir)) {
+    if (!file.endsWith('.json')) continue;
+    const id = file.replace(/\.json$/, '');
+    const raw = fs.readFileSync(path.join(channelsDir, file), 'utf-8');
+    defs.set(id, JSON.parse(raw) as ChannelDef);
+  }
+  return defs;
+}
+
 export async function runDeploy(): Promise<void> {
   // 1. Load zooid.json (run init if missing)
   let config = loadServerConfig();
@@ -644,7 +667,15 @@ export async function runDeploy(): Promise<void> {
   }
   printInfo('Config', '~/.zooid/state.json');
   console.log('');
-  if (isFirstDeploy) {
+  // Hint about push if channels/ has definitions
+  const channelDefs = loadChannelDefs();
+  if (channelDefs.size > 0) {
+    console.log(
+      `  Found ${channelDefs.size} channel definition(s) in channels/`,
+    );
+    console.log('  Run npx zooid push to sync them to the server.');
+    console.log('');
+  } else if (isFirstDeploy) {
     console.log('  Next steps:');
     console.log('    Edit wrangler.toml to add env vars, observability, etc.');
     console.log('    npx zooid channel create my-channel');

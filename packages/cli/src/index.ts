@@ -6,6 +6,8 @@ import {
   runChannelUpdate,
   runChannelDelete,
 } from './commands/channel';
+import { runPush } from './commands/push';
+import { runPull } from './commands/pull';
 import { runPublish } from './commands/publish';
 import { runSubscribePoll, runSubscribeWebhook } from './commands/subscribe';
 import { runTail } from './commands/tail';
@@ -404,6 +406,29 @@ channelCmd
       printSuccess(`Deleted channel: ${id}`);
     } catch (err) {
       handleError('channel delete', err);
+    }
+  });
+
+// --- push / pull ---
+program
+  .command('push')
+  .description('Push local channel definitions (channels/) to server')
+  .action(async () => {
+    try {
+      await runPush();
+    } catch (err) {
+      handleError('push', err);
+    }
+  });
+
+program
+  .command('pull')
+  .description('Pull channel definitions from server into channels/')
+  .action(async () => {
+    try {
+      await runPull();
+    } catch (err) {
+      handleError('pull', err);
     }
   });
 
