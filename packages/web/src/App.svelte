@@ -409,7 +409,7 @@
 
   // --- Publish ---
 
-  async function handlePublish(payload: { type?: string; data: unknown }) {
+  async function handlePublish(payload: { type?: string; reply_to?: string; data: unknown }) {
     if (!selectedId || !token) return;
     try {
       await client.publish(selectedId, payload);

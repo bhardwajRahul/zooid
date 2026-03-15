@@ -95,6 +95,8 @@ export interface MintTokenResult {
 export interface PublishOptions {
   /** Optional event type string for subscriber filtering. */
   type?: string;
+  /** ULID of the parent event to reply to. */
+  reply_to?: string;
   /** Event payload (will be JSON-serialized, max 64 KB). */
   data: unknown;
 }

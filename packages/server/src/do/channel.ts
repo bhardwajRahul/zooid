@@ -132,7 +132,8 @@ export class ChannelDO extends DurableObject<Bindings> {
       throw new Error('Event payload exceeds 64KB limit');
     }
 
-    // Validate reply_to
+    // Validate reply_to references an existing event in this channel.
+    // Cross-channel replies are impossible: each DO only has its own events.
     if (input.reply_to) {
       const parent = [
         ...this.sql.exec('SELECT id FROM events WHERE id = ?', input.reply_to),
@@ -155,7 +156,9 @@ export class ChannelDO extends DurableObject<Bindings> {
       input.data,
     );
 
-    // Populate closure table for threading
+    // Populate closure table for threading.
+    // Safe from races: DO is single-threaded, so publishes are serialized.
+    // A deep chain (B→A, C→B) always sees B's ancestors before C runs.
     if (input.reply_to) {
       this.sql.exec('PRAGMA foreign_keys = ON');
 

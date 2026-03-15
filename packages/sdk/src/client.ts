@@ -210,6 +210,9 @@ export class ZooidClient {
     if (options.type !== undefined) {
       body.type = options.type;
     }
+    if (options.reply_to !== undefined) {
+      body.reply_to = options.reply_to;
+    }
     return this.request<ZooidEvent>(
       'POST',
       `/api/v1/channels/${channelId}/events`,

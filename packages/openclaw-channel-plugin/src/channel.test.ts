@@ -142,6 +142,7 @@ describe('zooidPlugin outbound', () => {
       publisher_id: null,
       publisher_name: null,
       type: 'message',
+      reply_to: null,
       data: '{"body":"hello"}',
       created_at: new Date().toISOString(),
     }));
@@ -173,6 +174,7 @@ describe('zooidPlugin outbound', () => {
       publisher_id: null,
       publisher_name: null,
       type: 'message',
+      reply_to: null,
       data: '{"body":"status update","priority":"high"}',
       created_at: new Date().toISOString(),
     }));

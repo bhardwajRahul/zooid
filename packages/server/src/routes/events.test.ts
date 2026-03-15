@@ -850,4 +850,237 @@ describe('Event routes', () => {
       expect(captured[0].headers['X-Zooid-Signature']).toBeTruthy();
     });
   });
+
+  // Threading requires DO-per-channel backend (V2).
+  // D1 backend has no reply_to column or closure table.
+  const describeThreading =
+    env.ZOOID_STORAGE_BACKEND === 'd1' ? describe.skip : describe;
+
+  describeThreading('Threading (reply_to, /thread, /replies)', () => {
+    it('publishes an event with reply_to', async () => {
+      const parentRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ type: 'question', data: { text: 'Why?' } }),
+        },
+        'pub-channel',
+      );
+      const parent = (await parentRes.json()) as { id: string };
+
+      const replyRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'answer',
+            reply_to: parent.id,
+            data: { text: 'Because.' },
+          }),
+        },
+        'pub-channel',
+      );
+      expect(replyRes.status).toBe(201);
+      const reply = (await replyRes.json()) as {
+        id: string;
+        reply_to: string;
+      };
+      expect(reply.reply_to).toBe(parent.id);
+    });
+
+    it('returns reply_to=null for top-level events', async () => {
+      const res = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ data: { text: 'top-level' } }),
+        },
+        'pub-channel',
+      );
+      const event = (await res.json()) as { reply_to: string | null };
+      expect(event.reply_to).toBeNull();
+    });
+
+    it('GET /events/:eventId/thread returns all descendants', async () => {
+      // Build: root → reply1, root → reply2
+      const rootRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ data: { text: 'root' } }),
+        },
+        'pub-channel',
+      );
+      const root = (await rootRes.json()) as { id: string };
+
+      await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            reply_to: root.id,
+            data: { text: 'reply1' },
+          }),
+        },
+        'pub-channel',
+      );
+
+      await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            reply_to: root.id,
+            data: { text: 'reply2' },
+          }),
+        },
+        'pub-channel',
+      );
+
+      const threadRes = await app.request(
+        `/api/v1/channels/pub-channel/events/${root.id}/thread`,
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(threadRes.status).toBe(200);
+      const body = (await threadRes.json()) as {
+        events: Array<{ data: string; reply_to: string }>;
+      };
+      expect(body.events).toHaveLength(2);
+      expect(body.events[0].reply_to).toBe(root.id);
+      expect(body.events[1].reply_to).toBe(root.id);
+    });
+
+    it('GET /events/:eventId/replies returns only direct replies', async () => {
+      const rootRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ data: { text: 'root' } }),
+        },
+        'pub-channel',
+      );
+      const root = (await rootRes.json()) as { id: string };
+
+      const r1Res = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            reply_to: root.id,
+            data: { text: 'direct' },
+          }),
+        },
+        'pub-channel',
+      );
+      const r1 = (await r1Res.json()) as { id: string };
+
+      // Nested reply (to r1, not root)
+      await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            reply_to: r1.id,
+            data: { text: 'nested' },
+          }),
+        },
+        'pub-channel',
+      );
+
+      const repliesRes = await app.request(
+        `/api/v1/channels/pub-channel/events/${root.id}/replies`,
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(repliesRes.status).toBe(200);
+      const body = (await repliesRes.json()) as {
+        events: Array<{ data: string }>;
+      };
+      expect(body.events).toHaveLength(1);
+      expect(JSON.parse(body.events[0].data).text).toBe('direct');
+    });
+
+    it('thread returns empty array for event with no replies', async () => {
+      const res = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({ data: { text: 'lonely' } }),
+        },
+        'pub-channel',
+      );
+      const event = (await res.json()) as { id: string };
+
+      const threadRes = await app.request(
+        `/api/v1/channels/pub-channel/events/${event.id}/thread`,
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      const body = (await threadRes.json()) as { events: unknown[] };
+      expect(body.events).toHaveLength(0);
+    });
+
+    it('thread requires subscribe token for private channel', async () => {
+      const res = await app.request(
+        '/api/v1/channels/priv-channel/events/01FAKE00000000000000000000/thread',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(res.status).toBe(401);
+    });
+
+    it('reactions work as replies with type=reaction', async () => {
+      const msgRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'message',
+            data: { text: 'Great work!' },
+          }),
+        },
+        'pub-channel',
+      );
+      const msg = (await msgRes.json()) as { id: string };
+
+      await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'reaction',
+            reply_to: msg.id,
+            data: '🔥',
+          }),
+        },
+        'pub-channel',
+      );
+
+      await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'reaction',
+            reply_to: msg.id,
+            data: '👍',
+          }),
+        },
+        'pub-channel',
+      );
+
+      const repliesRes = await app.request(
+        `/api/v1/channels/pub-channel/events/${msg.id}/replies`,
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      const body = (await repliesRes.json()) as {
+        events: Array<{ type: string; reply_to: string }>;
+      };
+      expect(body.events).toHaveLength(2);
+      expect(body.events.every((e) => e.type === 'reaction')).toBe(true);
+      expect(body.events.every((e) => e.reply_to === msg.id)).toBe(true);
+    });
+  });
 });

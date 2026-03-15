@@ -1,4 +1,4 @@
-import { ZooidClient } from '@zooid/sdk';
+import { ZooidClient, type ZooidEvent } from '@zooid/sdk';
 import {
   dispatchInboundReplyWithBase,
   formatTextWithAttachmentLinks,
@@ -138,15 +138,7 @@ function normalizeTarget(raw: string): string {
 // ---------------------------------------------------------------------------
 
 async function handleZooidInbound(params: {
-  event: {
-    id: string;
-    channel_id: string;
-    publisher_id: string | null;
-    publisher_name: string | null;
-    type: string | null;
-    data: string;
-    created_at: string;
-  };
+  event: ZooidEvent;
   channelId: string;
   account: ResolvedZooidAccount;
   cfg: OpenClawConfig;
@@ -221,6 +213,8 @@ async function handleZooidInbound(params: {
     Provider: CHANNEL_ID,
     Surface: CHANNEL_ID,
     MessageSid: event.id,
+    ReplyToId: event.reply_to ?? undefined,
+    MessageThreadId: event.reply_to ?? undefined,
     Timestamp: Date.parse(event.created_at),
     OriginatingChannel: CHANNEL_ID,
     OriginatingTo: `zooid:${channelId}`,
@@ -244,6 +238,7 @@ async function handleZooidInbound(params: {
       log?.info?.(`[${account.accountId}] delivering reply to ${channelId}`);
       await client.publish(channelId, {
         type: 'message',
+        reply_to: payload.replyToId,
         data: { body: text },
       });
     },
@@ -274,8 +269,8 @@ export const zooidPlugin = {
   },
   capabilities: {
     chatTypes: ['channel'] as const,
-    reactions: false,
-    threads: false,
+    reactions: true,
+    threads: true,
     media: false,
     polls: false,
     nativeCommands: false,
@@ -375,12 +370,32 @@ export const zooidPlugin = {
       to: string;
       text: string;
       accountId?: string | null;
+      replyToId?: string | null;
     }) => {
       const account = resolveAccount(ctx.cfg, ctx.accountId);
       const client = createClientForAccount(account);
       const event = await client.publish(ctx.to, {
         type: 'message',
+        reply_to: ctx.replyToId ?? undefined,
         data: { body: ctx.text },
+      });
+      return { channel: CHANNEL_ID, messageId: event.id };
+    },
+    sendMedia: async (ctx: {
+      cfg: OpenClawConfig;
+      to: string;
+      text: string;
+      mediaUrl: string;
+      mediaLocalRoots?: string[];
+      accountId?: string | null;
+      replyToId?: string | null;
+    }) => {
+      const account = resolveAccount(ctx.cfg, ctx.accountId);
+      const client = createClientForAccount(account);
+      const event = await client.publish(ctx.to, {
+        type: 'message',
+        reply_to: ctx.replyToId ?? undefined,
+        data: { body: ctx.text, media: ctx.mediaUrl },
       });
       return { channel: CHANNEL_ID, messageId: event.id };
     },
@@ -390,6 +405,7 @@ export const zooidPlugin = {
       text: string;
       payload: { text: string; channelData?: Record<string, unknown> };
       accountId?: string | null;
+      replyToId?: string | null;
     }) => {
       const account = resolveAccount(ctx.cfg, ctx.accountId);
       const client = createClientForAccount(account);
@@ -401,6 +417,7 @@ export const zooidPlugin = {
       }
       const event = await client.publish(ctx.to, {
         type: 'message',
+        reply_to: ctx.replyToId ?? undefined,
         data: eventData,
       });
       return { channel: CHANNEL_ID, messageId: event.id };

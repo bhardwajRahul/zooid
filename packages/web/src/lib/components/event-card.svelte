@@ -21,7 +21,7 @@
   let relativeTime = $derived(formatRelative(event.created_at));
   let fullTime = $derived(formatFull(event.created_at));
   let publisherLabel = $derived(formatPublisher(event));
-  let inReplyTo = $derived(extractReplyTo(event.data));
+  let inReplyTo = $derived(event.reply_to ?? null);
 
   let detailOpen = $state(false);
 
@@ -31,14 +31,6 @@
     } catch {
       return raw;
     }
-  }
-
-  function extractReplyTo(raw: string): string | null {
-    try {
-      const parsed = JSON.parse(raw);
-      if (typeof parsed.in_reply_to === 'string') return parsed.in_reply_to;
-    } catch {}
-    return null;
   }
 
   function scrollToEvent(id: string) {

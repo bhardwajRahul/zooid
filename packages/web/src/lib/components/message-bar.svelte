@@ -9,7 +9,7 @@
   }: {
     channel: ChannelInfo;
     replyTo?: string | null;
-    onPublish: (payload: { type?: string; data: unknown }) => void;
+    onPublish: (payload: { type?: string; reply_to?: string; data: unknown }) => void;
   } = $props();
 
   let textInput = $state('');
@@ -152,12 +152,7 @@
           }
         }
 
-        // Attach in_reply_to if replying
-        if (replyTo && typeof data === 'object' && data !== null) {
-          data = { ...data, in_reply_to: replyTo };
-        }
-
-        onPublish({ type: activeType, data });
+        onPublish({ type: activeType, reply_to: replyTo ?? undefined, data });
         textInput = '';
         replyTo = null;
       } else {
