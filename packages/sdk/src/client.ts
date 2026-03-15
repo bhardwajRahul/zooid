@@ -400,30 +400,93 @@ export class ZooidClient {
       return this.startPolling(channelId, callback, options);
     }
 
-    // mode: 'auto' or 'ws' — try WebSocket
+    let stopped = false;
+    let activeWs: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const unsubscribe = () => {
+      stopped = true;
+      if (reconnectTimer !== null) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
+      if (activeWs) {
+        activeWs.onclose = null;
+        activeWs.onerror = null;
+        activeWs.close();
+        activeWs = null;
+      }
+    };
+
+    const scheduleReconnect = (attempt: number) => {
+      if (stopped) return;
+      // Exponential backoff: 1s, 2s, 4s, 8s, …, capped at 30s
+      const delay = Math.min(1000 * Math.pow(2, attempt), 30_000);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        if (!stopped) connectWs(attempt + 1);
+      }, delay);
+    };
+
+    const connectWs = (attempt: number) => {
+      if (stopped) return;
+      const url = this.buildWsUrl(channelId, options);
+      const ws = new globalThis.WebSocket(url);
+      activeWs = ws;
+
+      ws.onopen = () => {
+        attempt = 0;
+      };
+
+      ws.onmessage = (e: MessageEvent) => {
+        try {
+          const event = JSON.parse(String(e.data)) as ZooidEvent;
+          callback(event);
+        } catch {
+          // ignore non-JSON messages
+        }
+      };
+
+      ws.onclose = () => {
+        if (stopped) return;
+        activeWs = null;
+        scheduleReconnect(attempt);
+      };
+
+      ws.onerror = () => {
+        ws.close();
+      };
+    };
+
+    // Initial connection: retry once on failure, then fallback (auto) or reject (ws)
     const tryWs = (retryOnFail: boolean): Promise<() => void> => {
       return new Promise<() => void>((resolve, reject) => {
         const url = this.buildWsUrl(channelId, options);
         const ws = new globalThis.WebSocket(url);
+        activeWs = ws;
 
         ws.onopen = () => {
-          resolve(() => {
+          // Initial connection succeeded — wire up auto-reconnect handlers
+          ws.onmessage = (e: MessageEvent) => {
+            try {
+              const event = JSON.parse(String(e.data)) as ZooidEvent;
+              callback(event);
+            } catch {
+              // ignore non-JSON messages
+            }
+          };
+
+          ws.onclose = () => {
+            if (stopped) return;
+            activeWs = null;
+            scheduleReconnect(0);
+          };
+
+          ws.onerror = () => {
             ws.close();
-          });
-        };
+          };
 
-        ws.onmessage = (e: MessageEvent) => {
-          try {
-            const event = JSON.parse(String(e.data)) as ZooidEvent;
-            callback(event);
-          } catch {
-            // ignore non-JSON messages
-          }
-        };
-
-        ws.onclose = () => {
-          // If WS closes before opening, this is handled by onerror.
-          // If WS was open and then closed, attempt reconnect.
+          resolve(unsubscribe);
         };
 
         ws.onerror = () => {

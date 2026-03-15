@@ -35,6 +35,10 @@ class MockWebSocket {
   simulateError() {
     this.onerror?.();
   }
+  simulateClose() {
+    this.closed = true;
+    this.onclose?.();
+  }
 }
 
 beforeEach(() => {
@@ -399,6 +403,106 @@ describe('ZooidClient.subscribe() — ws mode', () => {
     const unsub = await promise;
     expect(typeof unsub).toBe('function');
     unsub();
+  });
+});
+
+describe('ZooidClient.subscribe() — ws reconnection', () => {
+  beforeEach(() => {
+    vi.stubGlobal('WebSocket', MockWebSocket);
+  });
+
+  it('reconnects after WS closes post-open', async () => {
+    const client = new ZooidClient({ server: 'https://example.com' });
+    const callback = vi.fn();
+
+    const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    const ws1 = MockWebSocket.instances[0];
+    ws1.simulateOpen();
+    await promise;
+
+    // Simulate server dropping the connection
+    ws1.simulateClose();
+
+    expect(MockWebSocket.instances).toHaveLength(1);
+
+    // Advance past first reconnect delay (1s)
+    await vi.advanceTimersByTimeAsync(1000);
+
+    // A new WS should have been created
+    expect(MockWebSocket.instances).toHaveLength(2);
+    const ws2 = MockWebSocket.instances[1];
+    ws2.simulateOpen();
+
+    // New WS should deliver messages
+    ws2.simulateMessage(
+      JSON.stringify({
+        id: 'e1',
+        type: 'x',
+        data: '{}',
+        created_at: '2026-01-01T00:00:00Z',
+      }),
+    );
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses exponential backoff on repeated reconnect failures', async () => {
+    const client = new ZooidClient({ server: 'https://example.com' });
+    const callback = vi.fn();
+
+    const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    const ws1 = MockWebSocket.instances[0];
+    ws1.simulateOpen();
+    await promise;
+
+    // Connection drops
+    ws1.simulateClose();
+
+    // 1st reconnect at 1s — fails
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(MockWebSocket.instances).toHaveLength(2);
+    MockWebSocket.instances[1].simulateError(); // triggers close
+
+    // 2nd reconnect at 2s — fails
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(MockWebSocket.instances).toHaveLength(3);
+    MockWebSocket.instances[2].simulateError();
+
+    // 3rd reconnect at 4s — succeeds
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(MockWebSocket.instances).toHaveLength(4);
+    MockWebSocket.instances[3].simulateOpen();
+
+    // Should still work
+    MockWebSocket.instances[3].simulateMessage(
+      JSON.stringify({
+        id: 'e1',
+        type: 'x',
+        data: '{}',
+        created_at: '2026-01-01T00:00:00Z',
+      }),
+    );
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops reconnecting after unsubscribe', async () => {
+    const client = new ZooidClient({ server: 'https://example.com' });
+    const callback = vi.fn();
+
+    const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    const ws1 = MockWebSocket.instances[0];
+    ws1.simulateOpen();
+    const unsub = await promise;
+
+    // Connection drops
+    ws1.simulateClose();
+
+    // Unsubscribe before reconnect fires
+    unsub();
+
+    await vi.advanceTimersByTimeAsync(5000);
+
+    // Should NOT have created a new WS
+    expect(MockWebSocket.instances).toHaveLength(1);
   });
 });
 

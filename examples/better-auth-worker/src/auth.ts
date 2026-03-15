@@ -2,6 +2,7 @@ import { betterAuth } from 'better-auth';
 import { jwt } from 'better-auth/plugins';
 import { oauthProvider } from '@better-auth/oauth-provider';
 import { D1Dialect } from 'kysely-d1';
+import type { User } from 'better-auth';
 import type { Context } from 'hono';
 import type { Bindings } from './index';
 
@@ -33,11 +34,11 @@ export function getAuth(c: Context<{ Bindings: Bindings }>) {
       oauthProvider({
         loginPage: '/sign-in',
         consentPage: '/consent',
-        customUserInfoClaims: ({ user }) => {
+        customUserInfoClaims: ({ user }: { user: User }) => {
           const scopes = ZOOID_ADMINS[user.email];
           return scopes ? { 'https://zooid.dev/scopes': scopes } : {};
         },
-        customIdTokenClaims: ({ user }) => {
+        customIdTokenClaims: ({ user }: { user: User }) => {
           const scopes = ZOOID_ADMINS[user.email];
           return scopes ? { 'https://zooid.dev/scopes': scopes } : {};
         },
