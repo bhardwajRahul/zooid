@@ -2,7 +2,7 @@ import { OpenAPIRoute } from 'chanfana';
 import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
-import { getChannel } from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
 import { importPrivateKey } from '../lib/signing';
 
 type Env = { Bindings: Bindings; Variables: Variables };
@@ -96,9 +96,10 @@ export class DirectoryClaim extends OpenAPIRoute {
     }
 
     // Validate all channels exist
+    const serverStorage = c.get('serverStorage') as ServerStorage;
     const missing: string[] = [];
     for (const id of channels) {
-      const ch = await getChannel(c.env.DB, id);
+      const ch = await serverStorage.getChannel(id);
       if (!ch) missing.push(id);
     }
     if (missing.length > 0) {

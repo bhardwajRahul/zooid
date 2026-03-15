@@ -1,7 +1,8 @@
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables, ZooidJWT } from '../types';
 import type { ChannelContext } from '../storage/types';
-import { getChannel, getRetentionDays } from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
+import { getRetentionDays } from '../db/queries';
 import {
   verifyTokenAny,
   normalizeScopes,
@@ -115,10 +116,10 @@ export function optionalAuth() {
 export function requireSubscribeIfPrivate(channelParam: string) {
   return createMiddleware<Env>(async (c, next) => {
     const channelId = c.req.param(channelParam)!;
-    const db = c.env.DB;
 
     // Load full channel row (not just is_public) so we can set up storage context
-    const channel = await getChannel(db, channelId);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const channel = await serverStorage.getChannel(channelId);
 
     if (!channel) {
       return c.json({ error: 'Channel not found' }, 404);

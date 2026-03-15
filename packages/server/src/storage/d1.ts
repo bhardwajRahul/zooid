@@ -67,6 +67,16 @@ export class D1ChannelStorage implements ChannelStorage {
     return deleteEvent(this.db, this.ctx.channel_id, eventId);
   }
 
+  async getThread(_eventId: string): Promise<ZooidEvent[]> {
+    // D1 V1 backend does not support threading — requires DO-per-channel (V2)
+    return [];
+  }
+
+  async getReplies(_eventId: string): Promise<ZooidEvent[]> {
+    // D1 V1 backend does not support threading — requires DO-per-channel (V2)
+    return [];
+  }
+
   async registerWebhook(input: RegisterWebhookInput): Promise<Webhook> {
     return createWebhook(this.db, {
       channelId: this.ctx.channel_id,

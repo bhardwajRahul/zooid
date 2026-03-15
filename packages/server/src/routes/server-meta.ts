@@ -2,7 +2,7 @@ import { OpenAPIRoute } from 'chanfana';
 import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
-import { getServerMeta, upsertServerMeta } from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -31,7 +31,8 @@ export class GetServerMeta extends OpenAPIRoute {
   };
 
   async handle(c: Context<Env>) {
-    const meta = await getServerMeta(c.env.DB);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const meta = await serverStorage.getServerMeta();
 
     if (!meta) {
       return c.json({
@@ -110,7 +111,8 @@ export class UpdateServerMeta extends OpenAPIRoute {
     const data = await this.getValidatedData<typeof this.schema>();
     const body = data.body;
 
-    const meta = await upsertServerMeta(c.env.DB, body);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const meta = await serverStorage.upsertServerMeta(body);
     return c.json(meta);
   }
 }

@@ -15,6 +15,8 @@ export interface ZooidEvent {
   publisher_name: string | null;
   /** Optional event type string for filtering (e.g. `"trade"`, `"alert"`). */
   type: string | null;
+  /** ULID of the parent event this is replying to, or `null` for top-level events. */
+  reply_to: string | null;
   /** JSON-serialized event payload (max 64 KB). */
   data: string;
   /** ISO 8601 timestamp when the event was created. */

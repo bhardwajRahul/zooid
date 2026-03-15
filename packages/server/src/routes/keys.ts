@@ -2,12 +2,7 @@ import { OpenAPIRoute } from 'chanfana';
 import { z } from 'zod';
 import type { Context } from 'hono';
 import type { Bindings, Variables } from '../types';
-import {
-  listTrustedKeys,
-  getTrustedKey,
-  addTrustedKey,
-  removeTrustedKey,
-} from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -42,7 +37,8 @@ export class ListKeys extends OpenAPIRoute {
   };
 
   async handle(c: Context<Env>) {
-    const rows = await listTrustedKeys(c.env.DB);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const rows = await serverStorage.listTrustedKeys();
     return c.json({
       keys: rows.map((r) => ({
         kid: r.kid,
@@ -126,13 +122,14 @@ export class AddKey extends OpenAPIRoute {
     const data = await this.getValidatedData<typeof this.schema>();
     const body = data.body;
 
-    const existing = await getTrustedKey(c.env.DB, body.kid);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const existing = await serverStorage.getTrustedKey(body.kid);
     if (existing) {
       return c.json({ error: `Key "${body.kid}" already exists` }, 409);
     }
 
     try {
-      const key = await addTrustedKey(c.env.DB, body);
+      const key = await serverStorage.addTrustedKey(body);
       return c.json(
         {
           ...key,
@@ -199,7 +196,8 @@ export class RevokeKey extends OpenAPIRoute {
       );
     }
 
-    const deleted = await removeTrustedKey(c.env.DB, targetKid);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const deleted = await serverStorage.removeTrustedKey(targetKid);
     if (!deleted) {
       return c.json({ error: 'Key not found' }, 404);
     }

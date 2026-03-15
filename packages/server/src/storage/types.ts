@@ -8,6 +8,7 @@ export interface PublishEventInput {
   publisher_id?: string | null;
   publisher_name?: string | null;
   type?: string | null;
+  reply_to?: string | null;
   data: unknown; // will be JSON.stringify'd, max 64KB
 }
 
@@ -59,6 +60,10 @@ export interface ChannelStorage {
   pollEvents(options: PollOptions): Promise<PollResult>;
   getEvent(eventId: string): Promise<ZooidEvent | null>;
   deleteEvent(eventId: string): Promise<boolean>;
+
+  // Threads
+  getThread(eventId: string): Promise<ZooidEvent[]>;
+  getReplies(eventId: string): Promise<ZooidEvent[]>;
 
   // Webhooks
   registerWebhook(input: RegisterWebhookInput): Promise<Webhook>;

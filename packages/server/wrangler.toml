@@ -24,3 +24,4 @@ new_sqlite_classes = ["ChannelDO"]
 [vars]
 ZOOID_SERVER_ID = "zooid"
 ZOOID_POLL_INTERVAL = "30"
+ZOOID_STORAGE_BACKEND = "do"  # "do" = DO-per-channel (V2), "d1" = shared D1 (V1)

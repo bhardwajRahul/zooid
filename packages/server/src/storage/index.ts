@@ -21,6 +21,14 @@ export type {
   RegisterWebhookInput,
 } from './types';
 
+export { D1ServerStorage } from './d1-server';
+export type {
+  ServerStorage,
+  CreateChannelInput,
+  UpdateChannelInput,
+  AddTrustedKeyInput,
+} from './server-types';
+
 /**
  * V1 backend: D1 for storage, Durable Objects for WebSocket broadcast.
  * Storage and realtime are independent — broadcast doesn't know about storage.

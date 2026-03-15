@@ -28,6 +28,7 @@ export interface Bindings {
   ZOOID_SERVER_URL?: string;
   ZOOID_TOKEN_EXPIRY?: string;
   ZOOID_POLL_INTERVAL?: string;
+  ZOOID_STORAGE_BACKEND?: string; // "do" (default) or "d1"
   // OIDC auth proxy
   ZOOID_AUTH_URL?: string;
   ZOOID_OIDC_ISSUER?: string;
@@ -81,6 +82,7 @@ import type {
   RealtimeBroadcast,
   ChannelContext,
 } from './storage/types';
+import type { ServerStorage } from './storage/server-types';
 
 export interface Variables {
   jwtPayload: ZooidJWT;
@@ -91,4 +93,5 @@ export interface Variables {
   channelStorage?: ChannelStorage;
   realtimeBroadcast?: RealtimeBroadcast;
   channelCtx?: ChannelContext;
+  serverStorage?: ServerStorage;
 }

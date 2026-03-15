@@ -1,7 +1,8 @@
 import { createMiddleware } from 'hono/factory';
 import type { Bindings, Variables } from '../types';
 import type { ChannelContext } from '../storage/types';
-import { getChannel, getRetentionDays } from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
+import { getRetentionDays } from '../db/queries';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -19,7 +20,8 @@ export function resolveChannel(channelParam: string) {
     }
 
     const channelId = c.req.param(channelParam)!;
-    const channel = await getChannel(c.env.DB, channelId);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const channel = await serverStorage.getChannel(channelId);
     if (!channel) {
       return c.json({ error: 'Channel not found' }, 404);
     }

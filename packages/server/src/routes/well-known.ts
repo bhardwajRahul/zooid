@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
-import { getServerMeta } from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
 
 const wellKnown = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -40,7 +40,8 @@ function rawKeyToSpkiBase64Url(base64Key: string): string {
 
 wellKnown.get('/.well-known/zooid.json', async (c) => {
   const pollInterval = parseInt(c.env.ZOOID_POLL_INTERVAL || '30', 10);
-  const meta = await getServerMeta(c.env.DB);
+  const serverStorage = c.get('serverStorage') as ServerStorage;
+  const meta = await serverStorage.getServerMeta();
 
   const response: Record<string, unknown> = {
     version: '0.1',

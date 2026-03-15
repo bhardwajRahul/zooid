@@ -28,11 +28,13 @@ export class PublishEvents extends OpenAPIRoute {
           'application/json': {
             schema: z.object({
               type: z.string().optional(),
+              reply_to: z.string().optional(),
               data: z.unknown().optional(),
               events: z
                 .array(
                   z.object({
                     type: z.string().optional(),
+                    reply_to: z.string().optional(),
                     data: z.unknown(),
                   }),
                 )
@@ -166,6 +168,7 @@ export class PublishEvents extends OpenAPIRoute {
           publisher_id: publisherId,
           publisher_name: publisherName,
           type: evt.type ?? null,
+          reply_to: evt.reply_to ?? null,
           data: evt.data,
         })),
       );
@@ -207,6 +210,7 @@ export class PublishEvents extends OpenAPIRoute {
       publisher_id: publisherId,
       publisher_name: publisherName,
       type: body.type ?? null,
+      reply_to: body.reply_to ?? null,
       data: body.data,
     });
 

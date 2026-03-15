@@ -11,13 +11,7 @@ import {
   canSubscribe,
 } from '../lib/jwt';
 import type { ChannelStorage } from '../storage/types';
-import {
-  createChannel,
-  getChannel,
-  listChannels,
-  updateChannel,
-  deleteChannelRecord,
-} from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -51,7 +45,8 @@ export class ListChannels extends OpenAPIRoute {
   };
 
   async handle(c: Context<Env>) {
-    const list = await listChannels(c.env.DB);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const list = await serverStorage.listChannels();
 
     const payload = c.get('jwtPayload') as ZooidJWT | undefined;
     if (!payload) {
@@ -162,12 +157,13 @@ export class CreateChannel extends OpenAPIRoute {
       return c.json({ error: 'strict_types requires types in config' }, 400);
     }
 
-    const existing = await getChannel(c.env.DB, body.id);
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const existing = await serverStorage.getChannel(body.id);
     if (existing) {
       return c.json({ error: 'Channel already exists' }, 409);
     }
 
-    const channel = await createChannel(c.env.DB, body);
+    const channel = await serverStorage.createChannel(body);
 
     const token = await mintServerToken(
       { scopes: [`pub:${channel.id}`, `sub:${channel.id}`] },
@@ -263,9 +259,11 @@ export class UpdateChannel extends OpenAPIRoute {
     const { channelId } = data.params;
     const body = data.body;
 
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+
     // Validate strict_types requires types — check incoming config or existing
     if (body.config?.strict_types && !body.config?.types) {
-      const existing = await getChannel(c.env.DB, channelId);
+      const existing = await serverStorage.getChannel(channelId);
       const existingConfig = existing?.config
         ? JSON.parse(existing.config)
         : null;
@@ -274,7 +272,7 @@ export class UpdateChannel extends OpenAPIRoute {
       }
     }
 
-    const channel = await updateChannel(c.env.DB, channelId, body);
+    const channel = await serverStorage.updateChannel(channelId, body);
     if (!channel) {
       return c.json({ error: 'Channel not found' }, 404);
     }
@@ -341,8 +339,9 @@ export class DeleteChannel extends OpenAPIRoute {
       await storage.destroy();
     }
 
-    // Delete channel registry entry from D1
-    const deleted = await deleteChannelRecord(c.env.DB, channelId);
+    // Delete channel registry entry via serverStorage
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const deleted = await serverStorage.deleteChannel(channelId);
     if (!deleted) {
       return c.json({ error: 'Channel not found' }, 404);
     }

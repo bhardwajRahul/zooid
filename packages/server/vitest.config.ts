@@ -1,5 +1,18 @@
 import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
 
+const sharedConfig = {
+  poolOptions: {
+    workers: {
+      wrangler: {
+        configPath: './wrangler.toml',
+      },
+      miniflare: {
+        d1Databases: ['DB'],
+      },
+    },
+  },
+};
+
 export default defineWorkersConfig({
   test: {
     coverage: {
@@ -8,15 +21,6 @@ export default defineWorkersConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.test.ts', 'src/test-utils.ts'],
     },
-    poolOptions: {
-      workers: {
-        wrangler: {
-          configPath: './wrangler.toml',
-        },
-        miniflare: {
-          d1Databases: ['DB'],
-        },
-      },
-    },
+    ...sharedConfig,
   },
 });

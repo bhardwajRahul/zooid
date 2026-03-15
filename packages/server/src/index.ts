@@ -9,7 +9,8 @@ import {
   optionalAuth,
 } from './middleware/auth';
 import { resolveChannel } from './middleware/storage';
-import { D1ChannelBackend } from './storage';
+import { D1ChannelBackend, D1ServerStorage } from './storage';
+import { DOChannelBackend } from './storage/do-backend';
 import {
   ListChannels,
   CreateChannel,
@@ -23,6 +24,7 @@ import {
   DeleteEventById,
 } from './routes/events';
 import { RegisterWebhook, DeleteWebhook } from './routes/webhooks';
+import { GetThread, GetReplies } from './routes/threads';
 import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
 import { GetTokenClaims, MintToken } from './routes/tokens';
 import { DirectoryClaim } from './routes/directory';
@@ -36,6 +38,12 @@ import { opml } from './routes/opml';
 type Env = { Bindings: Bindings; Variables: Variables };
 
 const app = new Hono<Env>();
+
+// Wire up serverStorage at root level (needed by well-known routes)
+app.use('*', async (c, next) => {
+  c.set('serverStorage', new D1ServerStorage(c.env.DB));
+  await next();
+});
 
 // Well-known stays at root
 app.route('', wellKnown);
@@ -63,8 +71,13 @@ openapi.registry.registerComponent('securitySchemes', 'bearerAuth', {
 });
 
 // Wire up the channel storage backend
+// ZOOID_STORAGE_BACKEND: "do" (default) = DO-per-channel, "d1" = shared D1
 api.use('*', async (c, next) => {
-  c.set('channelBackend', new D1ChannelBackend(c.env.DB, c.env.CHANNEL_DO));
+  const useD1 = c.env.ZOOID_STORAGE_BACKEND === 'd1';
+  const backend = useD1
+    ? new D1ChannelBackend(c.env.DB, c.env.CHANNEL_DO)
+    : new DOChannelBackend(c.env.CHANNEL_DO);
+  c.set('channelBackend', backend);
   await next();
 });
 
@@ -104,6 +117,14 @@ openapi.get('/channels/:channelId/events/:eventId', requireSubscribeIfPrivate('c
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.delete('/channels/:channelId/events/:eventId', requireAuth(), requireScope('publish', { channelParam: 'channelId' }), resolveChannel('channelId'), DeleteEventById);
+
+// Thread routes
+// prettier-ignore
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.get('/channels/:channelId/events/:eventId/thread', requireSubscribeIfPrivate('channelId'), GetThread);
+// prettier-ignore
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.get('/channels/:channelId/events/:eventId/replies', requireSubscribeIfPrivate('channelId'), GetReplies);
 
 // Directory claim route
 // prettier-ignore

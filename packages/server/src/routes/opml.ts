@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import type { Bindings, Variables } from '../types';
-import { listChannels } from '../db/queries';
+import type { ServerStorage } from '../storage/server-types';
 import { buildXml } from '../lib/xml';
 
 type Env = { Bindings: Bindings; Variables: Variables };
@@ -8,8 +8,8 @@ type Env = { Bindings: Bindings; Variables: Variables };
 export const opml = new Hono<Env>();
 
 opml.get('/opml', async (c) => {
-  const db = c.env.DB;
-  const channels = await listChannels(db);
+  const serverStorage = c.get('serverStorage') as ServerStorage;
+  const channels = await serverStorage.listChannels();
   const url = new URL(c.req.url);
   const baseUrl = `${url.protocol}//${url.host}`;
 
