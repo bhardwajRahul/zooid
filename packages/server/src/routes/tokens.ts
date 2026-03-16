@@ -23,6 +23,7 @@ export class GetTokenClaims extends OpenAPIRoute {
               scopes: z.array(z.string()),
               sub: z.string().optional(),
               name: z.string().optional(),
+              groups: z.array(z.string()).optional(),
               iat: z.number(),
               exp: z.number().optional(),
             }),
@@ -51,6 +52,7 @@ export class GetTokenClaims extends OpenAPIRoute {
 
     if (payload.sub) claims.sub = payload.sub;
     if (payload.name) claims.name = payload.name;
+    if (payload.groups?.length) claims.groups = payload.groups;
     if (payload.exp) claims.exp = payload.exp;
 
     return c.json(claims);
@@ -73,6 +75,7 @@ export class MintToken extends OpenAPIRoute {
               sub: z.string().optional(),
               name: z.string().optional(),
               expires_in: z.string().optional(),
+              groups: z.array(z.string()).optional(),
             }),
           },
         },
@@ -151,6 +154,7 @@ export class MintToken extends OpenAPIRoute {
     const claims: Partial<ZooidJWT> = { scopes: body.scopes };
     if (body.sub) claims.sub = body.sub;
     if (body.name) claims.name = body.name;
+    if (body.groups?.length) claims.groups = body.groups;
 
     try {
       const token = await mintServerToken(claims, c.env, {

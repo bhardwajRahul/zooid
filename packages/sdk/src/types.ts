@@ -83,6 +83,8 @@ export interface MintTokenOptions {
   name?: string;
   /** Token expiry duration (e.g. `"5m"`, `"1h"`, `"7d"`, `"30d"`). */
   expires_in?: string;
+  /** Role names — inert metadata for channel policy evaluation. */
+  groups?: string[];
 }
 
 /** Result of minting a token. */

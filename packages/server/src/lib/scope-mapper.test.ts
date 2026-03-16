@@ -167,4 +167,23 @@ describe('resolveScopes', () => {
     const result = resolve({ email: 'alice@example.com' });
     expect(result.name).toBe('alice@example.com');
   });
+
+  // --- Groups passthrough ---
+
+  describe('groups passthrough', () => {
+    it('should return groups from OIDC claims in resolved auth', () => {
+      const result = resolve(
+        { groups: ['editor', 'admin'] },
+        {
+          ZOOID_SCOPE_MAPPING: '{"editor":["pub:*","sub:*"],"admin":["admin"]}',
+        },
+      );
+      expect(result.groups).toEqual(['editor', 'admin']);
+    });
+
+    it('should omit groups when not in OIDC claims', () => {
+      const result = resolve({});
+      expect(result.groups).toBeUndefined();
+    });
+  });
 });

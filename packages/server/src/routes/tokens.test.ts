@@ -371,4 +371,62 @@ describe('POST /api/v1/tokens', () => {
     const body = (await res.json()) as { token: string };
     expect(body.token).toBeTruthy();
   });
+
+  describe('groups claim in minting', () => {
+    it('should include groups in minted token when provided', async () => {
+      const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
+      const mintRes = await app.request(
+        '/api/v1/tokens',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({
+            scopes: ['pub:current', 'sub:current'],
+            groups: ['qa', 'engineer'],
+          }),
+        },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(mintRes.status).toBe(200);
+      const { token } = (await mintRes.json()) as { token: string };
+
+      const claimsRes = await app.request(
+        '/api/v1/tokens/claims',
+        { headers: { Authorization: `Bearer ${token}` } },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(claimsRes.status).toBe(200);
+      const claims = (await claimsRes.json()) as Record<string, unknown>;
+      expect(claims.groups).toEqual(['qa', 'engineer']);
+    });
+
+    it('should omit groups from minted token when not provided', async () => {
+      const adminToken = await createToken({ scope: 'admin' }, JWT_SECRET);
+      const mintRes = await app.request(
+        '/api/v1/tokens',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${adminToken}`,
+          },
+          body: JSON.stringify({ scopes: ['pub:current'] }),
+        },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      expect(mintRes.status).toBe(200);
+      const { token } = (await mintRes.json()) as { token: string };
+
+      const claimsRes = await app.request(
+        '/api/v1/tokens/claims',
+        { headers: { Authorization: `Bearer ${token}` } },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+      const claims = (await claimsRes.json()) as Record<string, unknown>;
+      expect(claims.groups).toBeUndefined();
+    });
+  });
 });

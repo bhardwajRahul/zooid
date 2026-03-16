@@ -267,6 +267,7 @@ auth.get('/auth/callback', async (c) => {
       scopes: resolved.scopes,
       sub: resolved.sub,
       name: resolved.name,
+      groups: resolved.groups,
     },
     c.env,
     { expiresIn: ZOOID_JWT_TTL },

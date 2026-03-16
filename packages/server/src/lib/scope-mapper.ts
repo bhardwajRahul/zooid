@@ -32,6 +32,7 @@ export interface ResolvedAuth {
   scopes: string[];
   sub: string;
   name?: string;
+  groups?: string[];
 }
 
 export function resolveScopes(
@@ -75,6 +76,7 @@ export function resolveScopes(
     scopes,
     sub: claims.sub,
     name: claims.name || claims.preferred_username || claims.email || undefined,
+    groups: claims.groups?.length ? claims.groups : undefined,
   };
 }
 

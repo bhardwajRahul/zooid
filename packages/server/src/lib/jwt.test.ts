@@ -6,6 +6,7 @@ import {
   createEdDSAToken,
   verifyEdDSAToken,
   verifyTokenAny,
+  mintServerToken,
   normalizeScopes,
   hasScope,
   canPublish,
@@ -502,6 +503,66 @@ describe('JWT', () => {
         'no-key',
       );
       await expect(verifyTokenAny(token, { DB: env.DB })).rejects.toThrow();
+    });
+  });
+
+  describe('groups claim', () => {
+    let testPrivateJwk: JsonWebKey;
+    let testKeyRow: TrustedKeyRow;
+
+    beforeAll(async () => {
+      await setupTestDb();
+      const keypair = await generateTestKeypair();
+      testPrivateJwk = keypair.privateJwk;
+      testKeyRow = makeTrustedKeyRow(keypair.publicJwk);
+    });
+
+    it('should round-trip groups in HS256 token', async () => {
+      const token = await createToken(
+        {
+          scopes: ['pub:current', 'sub:current'],
+          sub: 'agent:test',
+          groups: ['qa'],
+        },
+        TEST_SECRET,
+      );
+      const payload = await verifyToken(token, TEST_SECRET);
+      expect(payload.groups).toEqual(['qa']);
+    });
+
+    it('should round-trip groups in EdDSA token', async () => {
+      const token = await createEdDSAToken(
+        {
+          scopes: ['pub:current'],
+          sub: 'agent:test',
+          groups: ['qa', 'engineer'],
+        },
+        testPrivateJwk,
+        testKeyRow.kid,
+      );
+      const payload = await verifyEdDSAToken(token, testKeyRow);
+      expect(payload.groups).toEqual(['qa', 'engineer']);
+    });
+
+    it('should omit groups when not provided', async () => {
+      const token = await createToken(
+        { scopes: ['pub:current'], sub: 'agent:test' },
+        TEST_SECRET,
+      );
+      const payload = await verifyToken(token, TEST_SECRET);
+      expect(payload.groups).toBeUndefined();
+    });
+
+    it('should preserve groups through mintServerToken', async () => {
+      const token = await mintServerToken(
+        { scopes: ['pub:current'], sub: 'agent:test', groups: ['qa'] },
+        { ZOOID_JWT_SECRET: TEST_SECRET, DB: env.DB },
+      );
+      const { payload } = await verifyTokenAny(token, {
+        ZOOID_JWT_SECRET: TEST_SECRET,
+        DB: env.DB,
+      });
+      expect(payload.groups).toEqual(['qa']);
     });
   });
 });

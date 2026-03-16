@@ -27,6 +27,7 @@ export async function runTokenMint(
   if (options.sub) body.sub = options.sub;
   if (options.name) body.name = options.name;
   if (options.expiresIn) body.expires_in = options.expiresIn;
+  if (options.role?.length) body.groups = options.role;
 
   return client.mintToken(body);
 }
