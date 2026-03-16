@@ -41,6 +41,8 @@ export interface Bindings {
 export interface ZooidJWT {
   // New multi-scope claim: ["admin", "pub:channel-id", "sub:channel-id"]
   scopes?: string[];
+  // Role names — inert metadata for channel policy evaluation
+  groups?: string[];
   // Legacy fields (backward compat — normalized to scopes on verify)
   scope?: 'admin' | 'publish' | 'subscribe';
   channel?: string;

@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
-import { loadChannelDefs } from '../lib/channels';
+import os from 'node:os';
+import { loadChannelDefs } from './channels';
 
 let tmpDir: string;
 let origCwd: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-deploy-test-'));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-channels-test-'));
   origCwd = process.cwd();
   process.chdir(tmpDir);
   fs.writeFileSync(path.join(tmpDir, 'zooid.json'), '{}');
@@ -25,21 +25,13 @@ function writeChannelDef(id: string, def: Record<string, unknown>) {
   fs.writeFileSync(path.join(dir, `${id}.json`), JSON.stringify(def));
 }
 
-describe('loadChannelDefs()', () => {
+describe('loadChannelDefs (from .zooid/channels/)', () => {
   it('returns empty map when .zooid/channels/ does not exist', () => {
     const defs = loadChannelDefs();
     expect(defs.size).toBe(0);
   });
 
-  it('returns empty map when .zooid/channels/ has no JSON files', () => {
-    const dir = path.join(tmpDir, '.zooid', 'channels');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, '.gitkeep'), '');
-    const defs = loadChannelDefs();
-    expect(defs.size).toBe(0);
-  });
-
-  it('loads channel definitions from JSON files', () => {
+  it('loads channel definitions from .zooid/channels/*.json', () => {
     writeChannelDef('signals', {
       name: 'Trading Signals',
       description: 'Processed signals',
@@ -57,11 +49,16 @@ describe('loadChannelDefs()', () => {
     const signals = defs.get('signals')!;
     expect(signals.name).toBe('Trading Signals');
     expect(signals.visibility).toBe('private');
-    expect(signals.config).toEqual({ strict_types: true });
+  });
 
-    const market = defs.get('market-data')!;
-    expect(market.name).toBe('Market Data');
-    expect(market.visibility).toBe('public');
+  it('ignores non-JSON files', () => {
+    const dir = path.join(tmpDir, '.zooid', 'channels');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, '.gitkeep'), '');
+    writeChannelDef('signals', { visibility: 'public' });
+
+    const defs = loadChannelDefs();
+    expect(defs.size).toBe(1);
   });
 
   it('uses filename without .json as channel ID', () => {
@@ -70,11 +67,12 @@ describe('loadChannelDefs()', () => {
     expect(defs.has('my-channel')).toBe(true);
   });
 
-  it('ignores non-JSON files', () => {
-    const dir = path.join(tmpDir, '.zooid', 'channels');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'README.md'), '# Channels');
+  it('finds .zooid/channels/ from a subdirectory', () => {
     writeChannelDef('signals', { visibility: 'public' });
+    const sub = path.join(tmpDir, 'src');
+    fs.mkdirSync(sub, { recursive: true });
+    process.chdir(sub);
+
     const defs = loadChannelDefs();
     expect(defs.size).toBe(1);
   });

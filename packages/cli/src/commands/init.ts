@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline/promises';
-import { printSuccess, printError, printInfo } from '../lib/output';
+import { printSuccess, printError, printInfo, printStep } from '../lib/output';
 import { ask } from '../lib/prompts';
+import { fetchTemplate } from '../lib/template';
 
 export interface ZooidServerConfig {
   name: string;
@@ -32,8 +33,18 @@ export function saveServerConfig(config: ZooidServerConfig): void {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 }
 
-export async function runInit(): Promise<void> {
+export async function runInit(options?: { template?: string }): Promise<void> {
   const configPath = getConfigPath();
+
+  // Fetch template if provided (before interactive config)
+  if (options?.template) {
+    printStep('Fetching template...');
+    const result = await fetchTemplate(options.template, process.cwd());
+    printSuccess(
+      `Template loaded (${result.channelCount} channel(s), ${result.roleCount} role(s))`,
+    );
+  }
+
   const existing = loadServerConfig();
 
   if (existing) {
@@ -88,9 +99,9 @@ export async function runInit(): Promise<void> {
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
-    // Provision channels/ and roles/ directories
-    const channelsDir = path.join(process.cwd(), 'channels');
-    const rolesDir = path.join(process.cwd(), 'roles');
+    // Provision .zooid/channels/ and .zooid/roles/ directories
+    const channelsDir = path.join(process.cwd(), '.zooid', 'channels');
+    const rolesDir = path.join(process.cwd(), '.zooid', 'roles');
 
     for (const dir of [channelsDir, rolesDir]) {
       if (!fs.existsSync(dir)) {
@@ -112,8 +123,8 @@ export async function runInit(): Promise<void> {
       config.tags.length > 0 ? config.tags.join(', ') : '(none)',
     );
     printInfo('URL', config.url || '(not set)');
-    printInfo('Channels', 'channels/');
-    printInfo('Roles', 'roles/');
+    printInfo('Channels', '.zooid/channels/');
+    printInfo('Roles', '.zooid/roles/');
     console.log('');
   } finally {
     rl.close();

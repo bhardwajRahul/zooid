@@ -166,6 +166,21 @@ export class ZooidClient {
     return this.request<MintTokenResult>('POST', '/api/v1/tokens', options);
   }
 
+  /** List roles configured on the server. Requires admin token. */
+  async listRoles(): Promise<
+    Array<{ id: string; name?: string; description?: string; scopes: string[] }>
+  > {
+    const res = await this.request<{
+      roles: Array<{
+        id: string;
+        name?: string;
+        description?: string;
+        scopes: string[];
+      }>;
+    }>('GET', '/api/v1/roles');
+    return res.roles;
+  }
+
   /** List trusted signing keys. Requires admin token. */
   async listKeys(): Promise<TrustedKey[]> {
     const res = await this.request<{ keys: TrustedKey[] }>(

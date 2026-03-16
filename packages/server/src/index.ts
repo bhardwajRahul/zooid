@@ -29,6 +29,7 @@ import { GetServerMeta, UpdateServerMeta } from './routes/server-meta';
 import { GetTokenClaims, MintToken } from './routes/tokens';
 import { DirectoryClaim } from './routes/directory';
 import { ListKeys, AddKey, RevokeKey } from './routes/keys';
+import { ListRoles } from './routes/roles';
 import { auth } from './routes/auth';
 import { ws } from './routes/ws';
 import { rss } from './routes/rss';
@@ -138,6 +139,10 @@ openapi.post('/channels/:channelId/webhooks', requireSubscribeIfPrivate('channel
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
 openapi.delete('/channels/:channelId/webhooks/:webhookId', requireAuth(), requireScope('admin'), resolveChannel('channelId'), DeleteWebhook);
+
+// Role routes (admin-only, reads from ZOOID_SCOPE_MAPPING env var)
+// @ts-expect-error chanfana types don't include middleware overloads
+openapi.get('/roles', requireAuth(), requireScope('admin'), ListRoles);
 
 // Key management routes (admin-only)
 // @ts-expect-error chanfana types don't include middleware overloads

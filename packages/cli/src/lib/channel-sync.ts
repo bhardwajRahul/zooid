@@ -1,17 +1,20 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import readline from 'node:readline/promises';
-import { ZooidClient } from '@zooid/sdk';
-import { createClient } from '../lib/client';
-import { printSuccess, printInfo, printStep } from '../lib/output';
-import { ask } from '../lib/prompts';
-import { type ChannelDef, loadChannelDefs } from './deploy';
+import type { ZooidClient } from '@zooid/sdk';
+import { loadChannelDefs } from './channels';
+import { printSuccess, printInfo } from './output';
+import { ask } from './prompts';
 
-export interface PushOptions {
+export interface SyncOptions {
   /** Override the delete confirmation prompt (for testing). */
   confirmDelete?: (
     orphaned: Array<{ id: string; name?: string }>,
   ) => Promise<boolean>;
+}
+
+export interface SyncResult {
+  created: number;
+  updated: number;
+  deleted: number;
 }
 
 /** Default confirmation prompt using readline. */
@@ -21,7 +24,7 @@ async function defaultConfirmDelete(
   console.log('');
   printInfo(
     'Warning',
-    `${orphaned.length} channel(s) on server not in channels/:`,
+    `${orphaned.length} channel(s) on server not in .zooid/channels/:`,
   );
   for (const ch of orphaned) {
     printInfo('  -', `${ch.id}${ch.name ? ` (${ch.name})` : ''}`);
@@ -43,23 +46,16 @@ async function defaultConfirmDelete(
   }
 }
 
-/** Push local channel definitions to the remote server. */
-export async function runPush(
-  client?: ZooidClient,
-  options: PushOptions = {},
-): Promise<void> {
+/**
+ * Sync local .zooid/channels/ to the server.
+ * Creates new, updates existing, prompts to delete orphans.
+ */
+export async function syncChannelsToServer(
+  client: ZooidClient,
+  options: SyncOptions = {},
+): Promise<SyncResult> {
   const localDefs = loadChannelDefs();
-  if (localDefs.size === 0) {
-    printInfo('Nothing to push', 'no channel definitions in channels/');
-    return;
-  }
-
-  const c = client ?? createClient();
-
-  printStep('Syncing channels...');
-
-  // Get existing channels from server
-  const remoteChannels = await c.listChannels();
+  const remoteChannels = await client.listChannels();
   const remoteIds = new Set(remoteChannels.map((ch) => ch.id));
   const localIds = new Set(localDefs.keys());
 
@@ -70,7 +66,7 @@ export async function runPush(
   // Create new channels
   for (const [id, def] of localDefs) {
     if (!remoteIds.has(id)) {
-      await c.createChannel({
+      await client.createChannel({
         id,
         name: def.name ?? id,
         description: def.description,
@@ -85,7 +81,7 @@ export async function runPush(
   // Update existing channels
   for (const [id, def] of localDefs) {
     if (remoteIds.has(id)) {
-      await c.updateChannel(id, {
+      await client.updateChannel(id, {
         name: def.name,
         description: def.description,
         is_public: def.visibility === 'public',
@@ -96,14 +92,14 @@ export async function runPush(
     }
   }
 
-  // Warn about channels on server but not locally
+  // Prompt to delete orphaned channels
   const orphaned = remoteChannels.filter((ch) => !localIds.has(ch.id));
   if (orphaned.length > 0) {
     const confirmFn = options.confirmDelete ?? defaultConfirmDelete;
     const confirmed = await confirmFn(orphaned);
     if (confirmed) {
       for (const ch of orphaned) {
-        await c.deleteChannel(ch.id);
+        await client.deleteChannel(ch.id);
         printSuccess(`Channel deleted: ${ch.id}`);
         deleted++;
       }
@@ -112,11 +108,5 @@ export async function runPush(
     }
   }
 
-  if (created || updated || deleted) {
-    printSuccess(
-      `Channels synced (${created} created, ${updated} updated, ${deleted} deleted)`,
-    );
-  } else {
-    printSuccess('Channels up to date');
-  }
+  return { created, updated, deleted };
 }

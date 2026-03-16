@@ -10,6 +10,10 @@ import { loadConfig, saveConfig } from '../lib/config';
 import { createEdDSAAdminToken } from '../lib/crypto';
 import { printSuccess, printError, printInfo, printStep } from '../lib/output';
 import { loadServerConfig, saveServerConfig, runInit } from './init';
+import { loadChannelDefs } from '../lib/channels';
+import { loadRoleDefs, rolesToScopeMapping } from '../lib/roles';
+import { setWranglerVar } from '../lib/wrangler-vars';
+import { syncChannelsToServer } from '../lib/channel-sync';
 
 const require = createRequire(import.meta.url);
 
@@ -270,29 +274,6 @@ async function getCfCredentials(): Promise<CfCredentials> {
   } finally {
     rl.close();
   }
-}
-
-/** Channel definition as declared in channels/*.json */
-export interface ChannelDef {
-  name?: string;
-  description?: string;
-  visibility: 'public' | 'private';
-  config?: Record<string, unknown>;
-}
-
-/** Load all channel definitions from channels/ directory. */
-export function loadChannelDefs(): Map<string, ChannelDef> {
-  const channelsDir = path.join(process.cwd(), 'channels');
-  if (!fs.existsSync(channelsDir)) return new Map();
-
-  const defs = new Map<string, ChannelDef>();
-  for (const file of fs.readdirSync(channelsDir)) {
-    if (!file.endsWith('.json')) continue;
-    const id = file.replace(/\.json$/, '');
-    const raw = fs.readFileSync(path.join(channelsDir, file), 'utf-8');
-    defs.set(id, JSON.parse(raw) as ChannelDef);
-  }
-  return defs;
 }
 
 export async function runDeploy(): Promise<void> {
@@ -593,7 +574,20 @@ export async function runDeploy(): Promise<void> {
     }
   }
 
-  // 10. Deploy worker
+  // 10. Sync roles to ZOOID_SCOPE_MAPPING in wrangler.toml
+  const roles = loadRoleDefs();
+  if (roles.size > 0) {
+    printStep('Syncing roles to wrangler.toml...');
+    const mapping = rolesToScopeMapping(roles);
+    setWranglerVar(USER_WRANGLER_TOML, 'ZOOID_SCOPE_MAPPING', mapping);
+    fs.copyFileSync(USER_WRANGLER_TOML, path.join(stagingDir, 'wrangler.toml'));
+    printSuccess(`${roles.size} role(s) synced to ZOOID_SCOPE_MAPPING`);
+  } else {
+    setWranglerVar(USER_WRANGLER_TOML, 'ZOOID_SCOPE_MAPPING', null);
+    fs.copyFileSync(USER_WRANGLER_TOML, path.join(stagingDir, 'wrangler.toml'));
+  }
+
+  // 11. Deploy worker
   printStep('Deploying worker...');
   const deployOutput = wranglerVerbose('deploy', stagingDir, creds);
 
@@ -667,15 +661,33 @@ export async function runDeploy(): Promise<void> {
   }
   printInfo('Config', '~/.zooid/state.json');
   console.log('');
-  // Hint about push if channels/ has definitions
-  const channelDefs = loadChannelDefs();
-  if (channelDefs.size > 0) {
-    console.log(
-      `  Found ${channelDefs.size} channel definition(s) in channels/`,
-    );
-    console.log('  Run npx zooid push to sync them to the server.');
-    console.log('');
-  } else if (isFirstDeploy) {
+  // Sync channels to server (create, update, delete-orphan prompt)
+  if (canonicalUrl && adminToken) {
+    const channelDefs = loadChannelDefs();
+    if (channelDefs.size > 0 || !isFirstDeploy) {
+      printStep('Syncing channels to server...');
+      try {
+        const client = new ZooidClient({
+          server: canonicalUrl,
+          token: adminToken,
+        });
+        const result = await syncChannelsToServer(client);
+        if (result.created || result.updated || result.deleted) {
+          printSuccess(
+            `Channels synced (${result.created} created, ${result.updated} updated, ${result.deleted} deleted)`,
+          );
+        } else {
+          printSuccess('Channels up to date');
+        }
+      } catch (err) {
+        printError(
+          `Failed to sync channels: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+  }
+
+  if (isFirstDeploy) {
     console.log('  Next steps:');
     console.log('    Edit wrangler.toml to add env vars, observability, etc.');
     console.log('    npx zooid channel create my-channel');

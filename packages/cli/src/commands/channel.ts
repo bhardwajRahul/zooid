@@ -13,6 +13,8 @@ import {
   getStatePath,
   saveConfig,
 } from '../lib/config';
+import { writeChannelFile, deleteChannelFile } from '../lib/channel-files';
+import { findProjectRoot } from '../lib/project';
 
 export interface ChannelCreateOptions {
   name?: string;
@@ -48,6 +50,20 @@ export async function runChannelCreate(
     saveConfig({ channels });
   }
 
+  // Write local .zooid/channels/ file (best-effort — skip if not in a project)
+  if (findProjectRoot()) {
+    try {
+      writeChannelFile(id, {
+        visibility: options.public === false ? 'private' : 'public',
+        ...(options.name && { name: options.name }),
+        ...(options.description && { description: options.description }),
+        ...(config && { config }),
+      });
+    } catch {
+      // Not in a zooid project or .zooid/ doesn't exist — skip silently
+    }
+  }
+
   return result;
 }
 
@@ -64,7 +80,23 @@ export async function runChannelUpdate(
   client?: ZooidClient,
 ): Promise<ChannelInfo> {
   const c = client ?? createClient();
-  return c.updateChannel(channelId, options);
+  const result = await c.updateChannel(channelId, options);
+
+  // Update local .zooid/channels/ file (best-effort)
+  if (findProjectRoot()) {
+    try {
+      writeChannelFile(channelId, {
+        visibility: result.is_public ? 'public' : 'private',
+        ...(result.name && result.name !== channelId && { name: result.name }),
+        ...(result.description && { description: result.description }),
+        ...(result.config && { config: result.config }),
+      });
+    } catch {
+      // Skip silently
+    }
+  }
+
+  return result;
 }
 
 export async function runChannelDelete(
@@ -82,6 +114,15 @@ export async function runChannelDelete(
       delete file.servers[serverUrl].channels![channelId];
       const fs = await import('node:fs');
       fs.writeFileSync(getStatePath(), JSON.stringify(file, null, 2) + '\n');
+    }
+  }
+
+  // Delete local .zooid/channels/ file (best-effort)
+  if (findProjectRoot()) {
+    try {
+      deleteChannelFile(channelId);
+    } catch {
+      // File may not exist locally — skip silently
     }
   }
 }

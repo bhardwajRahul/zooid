@@ -6,7 +6,6 @@ import {
   runChannelUpdate,
   runChannelDelete,
 } from './commands/channel';
-import { runPush } from './commands/push';
 import { runPull } from './commands/pull';
 import { runPublish } from './commands/publish';
 import { runSubscribePoll, runSubscribeWebhook } from './commands/subscribe';
@@ -21,6 +20,12 @@ import { runTokenMint } from './commands/token';
 import { runDev } from './commands/dev';
 import { runInit } from './commands/init';
 import { runDeploy } from './commands/deploy';
+import {
+  runRoleCreate,
+  runRoleList,
+  runRoleUpdate,
+  runRoleDelete,
+} from './commands/role';
 import {
   printSuccess,
   printError,
@@ -191,10 +196,11 @@ program
 // --- init ---
 program
   .command('init')
-  .description('Create zooid-server.json with server identity')
-  .action(async () => {
+  .description('Create zooid.json with server identity')
+  .option('--template <url>', 'Initialize from a GitHub template URL')
+  .action(async (opts) => {
     try {
-      await runInit();
+      await runInit({ template: opts.template });
     } catch (err) {
       handleError('init', err);
     }
@@ -409,21 +415,10 @@ channelCmd
     }
   });
 
-// --- push / pull ---
-program
-  .command('push')
-  .description('Push local channel definitions (channels/) to server')
-  .action(async () => {
-    try {
-      await runPush();
-    } catch (err) {
-      handleError('push', err);
-    }
-  });
-
+// --- pull ---
 program
   .command('pull')
-  .description('Pull channel definitions from server into channels/')
+  .description('Pull channel and role definitions from server into .zooid/')
   .action(async () => {
     try {
       await runPull();
@@ -716,25 +711,38 @@ tokenCmd
     'Mint a new token. Scopes: admin, pub:<channel>, sub:<channel>. Wildcards: pub:*, sub:prefix-*',
   )
   .argument(
-    '<scopes...>',
+    '[scopes...]',
     'Scopes to grant (e.g. admin, pub:my-channel, sub:*)',
+  )
+  .option(
+    '--role <roles...>',
+    'Mint with scopes from named roles (reads .zooid/roles/)',
   )
   .option('--sub <sub>', 'Subject identifier (e.g. publisher ID)')
   .option('--name <name>', 'Display name (used for publisher identity)')
   .option('--expires-in <duration>', 'Token expiry (e.g. 5m, 1h, 7d, 30d)')
   .action(async (scopes: string[], opts) => {
     try {
-      for (const s of scopes) {
-        if (s !== 'admin' && !s.startsWith('pub:') && !s.startsWith('sub:')) {
-          throw new Error(
-            `Invalid scope "${s}". Must be "admin", "pub:<channel>", or "sub:<channel>"`,
-          );
+      if (!opts.role?.length && (!scopes || scopes.length === 0)) {
+        printError('Provide scopes or --role');
+        process.exit(1);
+      }
+      // Validate scope format (only for explicit scopes, not --role)
+      if (!opts.role?.length) {
+        for (const s of scopes) {
+          if (s !== 'admin' && !s.startsWith('pub:') && !s.startsWith('sub:')) {
+            printError(
+              `Invalid scope "${s}". Must be "admin", "pub:<channel>", or "sub:<channel>"`,
+            );
+            process.exit(1);
+          }
         }
       }
-      const result = await runTokenMint(scopes, {
+      const result = await runTokenMint(scopes ?? [], {
         sub: opts.sub,
         name: opts.name,
         expiresIn: opts.expiresIn,
+        role: opts.role,
       });
       console.log(result.token);
     } catch (err) {
@@ -843,6 +851,116 @@ program
       printSuccess(`Removed ${channel} from directory`);
     } catch (err) {
       handleError('unshare', err);
+    }
+  });
+
+// --- role ---
+const roleCmd = program.command('role').description('Manage role definitions');
+
+roleCmd
+  .command('create <id>')
+  .description('Create a role definition in .zooid/roles/')
+  .option('--name <name>', 'Display name')
+  .option('--description <desc>', 'Role description')
+  .argument('<scopes...>', 'Scopes to grant (e.g. pub:signals sub:market-data)')
+  .action((id, scopes, opts) => {
+    try {
+      for (const s of scopes) {
+        if (s !== 'admin' && !s.startsWith('pub:') && !s.startsWith('sub:')) {
+          printError(
+            `Invalid scope "${s}". Must be "admin", "pub:<channel>", or "sub:<channel>"`,
+          );
+          process.exit(1);
+        }
+      }
+      runRoleCreate(id, {
+        name: opts.name,
+        description: opts.description,
+        scopes,
+      });
+      printSuccess(`Created .zooid/roles/${id}.json`);
+      printInfo('Next', 'Run `npx zooid deploy` to sync to server');
+    } catch (err) {
+      handleError('role create', err);
+    }
+  });
+
+roleCmd
+  .command('list')
+  .description('List role definitions in .zooid/roles/')
+  .action(() => {
+    try {
+      const ids = runRoleList();
+      if (ids.length === 0) {
+        console.log(
+          'No roles defined. Create one with: npx zooid role create <id> <scopes...>',
+        );
+      } else {
+        for (const id of ids) {
+          console.log(`  ${id}`);
+        }
+      }
+    } catch (err) {
+      handleError('role list', err);
+    }
+  });
+
+roleCmd
+  .command('update <id>')
+  .description('Update a role definition in .zooid/roles/')
+  .option('--name <name>', 'Display name')
+  .option('--description <desc>', 'Role description')
+  .option('--scopes <scopes...>', 'Replace scopes')
+  .action((id, opts) => {
+    try {
+      const fields: Record<string, unknown> = {};
+      if (opts.name !== undefined) fields.name = opts.name;
+      if (opts.description !== undefined) fields.description = opts.description;
+      if (opts.scopes !== undefined) fields.scopes = opts.scopes;
+
+      if (Object.keys(fields).length === 0) {
+        throw new Error(
+          'No fields specified. Use --name, --description, or --scopes.',
+        );
+      }
+
+      runRoleUpdate(id, fields);
+      printSuccess(`Updated .zooid/roles/${id}.json`);
+      printInfo('Next', 'Run `npx zooid deploy` to sync to server');
+    } catch (err) {
+      handleError('role update', err);
+    }
+  });
+
+roleCmd
+  .command('delete <id>')
+  .description('Delete a role definition from .zooid/roles/')
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .action(async (id, opts) => {
+    try {
+      if (!opts.yes) {
+        const readline = await import('node:readline');
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout,
+        });
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(
+            `Delete role "${id}" from .zooid/roles/? [y/N] `,
+            resolve,
+          );
+        });
+        rl.close();
+        if (answer.toLowerCase() !== 'y') {
+          console.log('Aborted.');
+          return;
+        }
+      }
+      runRoleDelete(id);
+      printSuccess(`Deleted .zooid/roles/${id}.json`);
+      printInfo('Next', 'Run `npx zooid deploy` to sync to server');
+    } catch (err) {
+      handleError('role delete', err);
     }
   });
 
