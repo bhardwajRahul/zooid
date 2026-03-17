@@ -6,9 +6,11 @@ import type { User } from 'better-auth';
 import type { Context } from 'hono';
 import type { Bindings } from './index';
 
-const ZOOID_ADMINS: Record<string, string[]> = {
+const ZOOID_GROUPS: Record<string, string[]> = {
   'admin@zooid.dev': ['admin'],
 };
+
+const DEFAULT_GROUPS = ['member'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let cachedAuth: any = null;
@@ -35,12 +37,12 @@ export function getAuth(c: Context<{ Bindings: Bindings }>) {
         loginPage: '/sign-in',
         consentPage: '/consent',
         customUserInfoClaims: ({ user }: { user: User }) => {
-          const scopes = ZOOID_ADMINS[user.email];
-          return scopes ? { 'https://zooid.dev/scopes': scopes } : {};
+          const groups = ZOOID_GROUPS[user.email] ?? DEFAULT_GROUPS;
+          return { groups };
         },
         customIdTokenClaims: ({ user }: { user: User }) => {
-          const scopes = ZOOID_ADMINS[user.email];
-          return scopes ? { 'https://zooid.dev/scopes': scopes } : {};
+          const groups = ZOOID_GROUPS[user.email] ?? DEFAULT_GROUPS;
+          return { groups };
         },
       }),
     ],
