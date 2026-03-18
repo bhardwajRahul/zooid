@@ -8,11 +8,13 @@
     viewMode = 'pretty',
     canReply = false,
     onReply,
+    onOpenRef,
   }: {
     events: ZooidEvent[];
     viewMode?: 'pretty' | 'raw';
     canReply?: boolean;
     onReply?: (eventId: string) => void;
+    onOpenRef?: (detail: { channel: string; eventId: string }) => void;
   } = $props();
 
   let reversed = $derived([...events].reverse());
@@ -41,7 +43,7 @@
         {#if i > 0}
           <div class="border-t border-border/30 mx-2"></div>
         {/if}
-        <EventCard {event} {viewMode} {canReply} {onReply} />
+        <EventCard {event} {viewMode} {canReply} {onReply} {onOpenRef} />
       {/each}
     </div>
   {/if}

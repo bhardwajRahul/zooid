@@ -3,7 +3,10 @@ import { env } from 'cloudflare:test';
 import { setupTestDb, cleanTestDb } from '../test-utils';
 import {
   createChannel,
+  getChannel,
   listChannels,
+  updateChannel,
+  patchChannelMeta,
   createEvent,
   createEvents,
   pollEvents,
@@ -289,6 +292,8 @@ describe('Event queries', () => {
       description: null,
       tags: null,
       is_public: 1,
+      config: null as string | null,
+      meta: null as string | null,
       max_subscribers: 100,
       created_at: '2024-01-01T00:00:00Z',
     };
@@ -327,6 +332,105 @@ describe('Event queries', () => {
         }),
       ).toBe(7);
     });
+  });
+});
+
+describe('Channel meta', () => {
+  beforeAll(async () => {
+    await setupTestDb();
+  });
+
+  beforeEach(async () => {
+    await cleanTestDb();
+  });
+
+  it('should store and return meta when provided on create', async () => {
+    const channel = await createChannel(env.DB, {
+      id: 'meta-test',
+      name: 'Meta Test',
+      meta: { display: { sort: 'asc' } },
+    });
+
+    const fetched = await getChannel(env.DB, 'meta-test');
+    expect(fetched).not.toBeNull();
+    expect(JSON.parse(fetched!.meta!)).toEqual({ display: { sort: 'asc' } });
+  });
+
+  it('should return null meta when not provided', async () => {
+    await createChannel(env.DB, {
+      id: 'no-meta',
+      name: 'No Meta',
+    });
+
+    const fetched = await getChannel(env.DB, 'no-meta');
+    expect(fetched!.meta).toBeNull();
+  });
+
+  it('should include meta in listChannels', async () => {
+    await createChannel(env.DB, {
+      id: 'list-meta',
+      name: 'List Meta',
+      meta: { display: { sort: 'desc' } },
+    });
+
+    const list = await listChannels(env.DB);
+    const ch = list.find((c) => c.id === 'list-meta');
+    expect(ch).toBeDefined();
+    expect(ch!.meta).toEqual({ display: { sort: 'desc' } });
+  });
+
+  it('should update meta via updateChannel', async () => {
+    await createChannel(env.DB, {
+      id: 'update-meta',
+      name: 'Update Meta',
+    });
+
+    const updated = await updateChannel(env.DB, 'update-meta', {
+      meta: { display: { sort: 'asc' } },
+    });
+
+    expect(updated).not.toBeNull();
+    expect(JSON.parse(updated!.meta!)).toEqual({ display: { sort: 'asc' } });
+  });
+
+  it('should shallow-merge meta via patchChannelMeta', async () => {
+    await createChannel(env.DB, {
+      id: 'patch-meta',
+      name: 'Patch Meta',
+      meta: { display: { sort: 'asc' }, session: { agent: 'claude' } },
+    });
+
+    const patched = await patchChannelMeta(env.DB, 'patch-meta', {
+      display: { sort: 'desc' },
+    });
+
+    expect(patched).not.toBeNull();
+    const meta = JSON.parse(patched!.meta!);
+    expect(meta.display).toEqual({ sort: 'desc' });
+    expect(meta.session).toEqual({ agent: 'claude' });
+  });
+
+  it('should delete a meta key when set to null', async () => {
+    await createChannel(env.DB, {
+      id: 'delete-meta-key',
+      name: 'Delete Meta Key',
+      meta: { display: { sort: 'asc' }, session: { agent: 'claude' } },
+    });
+
+    const patched = await patchChannelMeta(env.DB, 'delete-meta-key', {
+      session: null,
+    });
+
+    const meta = JSON.parse(patched!.meta!);
+    expect(meta.display).toEqual({ sort: 'asc' });
+    expect(meta.session).toBeUndefined();
+  });
+
+  it('should return null from patchChannelMeta for non-existent channel', async () => {
+    const result = await patchChannelMeta(env.DB, 'nonexistent', {
+      display: { sort: 'asc' },
+    });
+    expect(result).toBeNull();
   });
 });
 

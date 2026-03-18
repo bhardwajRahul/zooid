@@ -62,6 +62,7 @@ export interface Channel {
   tags: string | null;
   is_public: number;
   config: string | null;
+  meta: string | null;
   max_subscribers: number;
   created_at: string;
 }

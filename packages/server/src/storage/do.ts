@@ -46,12 +46,19 @@ export class DurableObjectChannelStorage implements ChannelStorage {
   async publishEvent(input: PublishEventInput): Promise<ZooidEvent> {
     const dataStr =
       typeof input.data === 'string' ? input.data : JSON.stringify(input.data);
+    const metaStr =
+      input.meta != null
+        ? typeof input.meta === 'string'
+          ? input.meta
+          : JSON.stringify(input.meta)
+        : null;
     const event = await this.stub.publishEvent(this.doCtx, {
       publisher_id: input.publisher_id,
       publisher_name: input.publisher_name,
       type: input.type,
       reply_to: input.reply_to,
       data: dataStr,
+      meta: metaStr,
     });
     return toZooidEvent(event, this.ctx.channel_id);
   }
@@ -66,6 +73,12 @@ export class DurableObjectChannelStorage implements ChannelStorage {
         typeof input.data === 'string'
           ? input.data
           : JSON.stringify(input.data),
+      meta:
+        input.meta != null
+          ? typeof input.meta === 'string'
+            ? input.meta
+            : JSON.stringify(input.meta)
+          : null,
     }));
     const events = await this.stub.publishEvents(this.doCtx, doInputs);
     return events.map((e) => toZooidEvent(e, this.ctx.channel_id));

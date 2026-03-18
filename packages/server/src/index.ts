@@ -16,6 +16,7 @@ import {
   CreateChannel,
   UpdateChannel,
   DeleteChannel,
+  PatchChannelMeta,
 } from './routes/channels';
 import {
   PublishEvents,
@@ -35,6 +36,7 @@ import { ws } from './routes/ws';
 import { rss } from './routes/rss';
 import { feed } from './routes/feed';
 import { opml } from './routes/opml';
+import { devSeed } from './routes/dev-seed';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -103,6 +105,9 @@ openapi.post('/channels', requireAuth(), requireScope('admin'), CreateChannel);
 openapi.patch('/channels/:channelId', requireAuth(), requireScope('admin'), UpdateChannel);
 // prettier-ignore
 // @ts-expect-error chanfana types don't include middleware overloads
+openapi.patch('/channels/:channelId/meta', requireAuth(), requireScope('admin'), PatchChannelMeta);
+// prettier-ignore
+// @ts-expect-error chanfana types don't include middleware overloads
 openapi.delete('/channels/:channelId', requireAuth(), requireScope('admin'), resolveChannel('channelId'), DeleteChannel);
 
 // Event routes
@@ -160,6 +165,9 @@ api.route('', ws);
 api.route('', rss);
 api.route('', feed);
 api.route('', opml);
+
+// Dev-only seed route (seeds DO storage with test data)
+api.route('', devSeed);
 
 api.get('/', (c) => c.json({ ok: true }));
 app.route('/api/v1', api);

@@ -28,20 +28,28 @@ VALUES
    datetime('now', '-4 hours'));
 
 -- Events: build-status
-INSERT OR IGNORE INTO events (id, channel_id, publisher_id, type, data, created_at)
+INSERT OR IGNORE INTO events (id, channel_id, publisher_id, type, data, meta, created_at)
 VALUES
   ('01JKH00000000000SEED0010', 'build-status', 'ci-runner', 'build',
    '{"repo":"zooid-ai/zooid","branch":"main","status":"passed","duration_s":42}',
+   NULL,
    datetime('now', '-6 hours')),
   ('01JKH00000000000SEED0011', 'build-status', 'ci-runner', 'deploy',
-   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.10","status":"live","nested":{"worker_url":"https://zooid-staging.example.com", "markdown":"**This is not a drill**\n\n- Check the staging environment\n- Verify the new features\n- Report any issues"}}',
+   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.10","status":"live","ref":"zooid:build-status/01JKH00000000000SEED0010"}',
+   '{"component":"deploy-card@0.1"}',
    datetime('now', '-5 hours')),
   ('01JKH00000000000SEED0012', 'build-status', 'ci-runner', 'deploy',
-   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.10","status":"live","nested":{"worker_url":"https://zooid-staging.example.com/some-very-long?url=with-lots-of-unbroken-text-so-we-can-see-lines", "markdown":"**This is not a drill**\n\n- Check the staging environment\n- Verify the new features\n- Report any issues"}}',
+   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.10","status":"live","ref":"https://github.com/zooid-ai/zooid/actions/runs/12345"}',
+   '{"component":"deploy-card@0.1"}',
    datetime('now', '-5 hours')),
   ('01JKH00000000000SEED0013', 'build-status', 'ci-runner', 'deploy',
-   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.11","status":"live","nested":{"worker_url":"https://zooid-staging.example.com/some-very-long?url=with-lots-of-unbroken-text-so-we-can-see-lines-all-the-way", "markdown":"**This is not a drill**\n\n- Check the staging environment\n- Verify the new features\n- Report any issues"}}',
-   datetime('now', '-4 hours'));
+   '{"repo":"zooid-ai/zooid","env":"staging","version":"0.0.11","status":"live","ref":"zooid:daily-haiku/01JKH00000000000SEED0002"}',
+   NULL,
+   datetime('now', '-4 hours')),
+  ('01JKH00000000000SEED0014', 'build-status', 'ci-runner', 'deploy',
+   '{"repo":"zooid-ai/zooid","env":"production","version":"0.0.11","status":"live","ref":"zooid:ori.zoon.eco/signals/01JKH00000000000SEED0010"}',
+   NULL,
+   datetime('now', '-3 hours'));
 
 -- Events: agent-logs (private channel, with in_reply_to chain)
 INSERT OR IGNORE INTO events (id, channel_id, publisher_id, publisher_name, type, data, created_at)
@@ -50,7 +58,7 @@ VALUES
    '{"score":1,"title":"How I killed Death by Admin","url":"https://reddit.com/r/automation/example","subreddit":"automation","posted_at":"2026-03-07T06:13:21Z","relevance_reason":"Describes automating lead follow-ups using an LLM agent.","body":"We had a bottleneck: manual lead processing was eating 2+ hours daily."}',
    datetime('now', '-3 hours')),
   ('01JKH00000000000SEED0021', 'agent-logs', 'agent-01', 'Reply drafter', 'reply_draft',
-   '{"in_reply_to":"01JKH00000000000SEED0020","body":"This is a great example of smart automation! That 2+ hours saved daily is huge. We have found that using a conversational AI interviewer that can engage leads for 2-3 minutes to extract BANT info took it even further."}',
+   '{"in_reply_to":"01JKH00000000000SEED0020","body":"This is a great example of smart automation! That 2+ hours saved daily is huge.","ref":"zooid:daily-haiku/01JKH00000000000SEED0001"}',
    datetime('now', '-2 hours')),
   ('01JKH00000000000SEED0022', 'agent-logs', 'agent-01', 'Intent extractor', 'intent_extraction',
    '{"in_reply_to":"01JKH00000000000SEED0020","body":"Solo founder building and selling AI automation services.","persona":"Solo founder and AI automation consultant","intent":"Showcase their AI automation solution and find new clients.","pain_points":["manual lead processing was eating 2+ hours daily"],"tools_mentioned":["Webhook listener","LLM agent","SMTP","CRM"]}',

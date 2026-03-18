@@ -18,15 +18,17 @@ export async function createChannel(
     tags?: string[];
     is_public?: boolean;
     config?: Record<string, unknown>;
+    meta?: Record<string, unknown>;
   },
 ): Promise<Channel> {
   const isPublic = channel.is_public === false ? 0 : 1;
   const config = channel.config ? JSON.stringify(channel.config) : null;
+  const meta = channel.meta ? JSON.stringify(channel.meta) : null;
   const tags = channel.tags ? JSON.stringify(channel.tags) : null;
 
   await db
     .prepare(
-      `INSERT INTO channels (id, name, description, tags, is_public, config) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO channels (id, name, description, tags, is_public, config, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       channel.id,
@@ -35,6 +37,7 @@ export async function createChannel(
       tags,
       isPublic,
       config,
+      meta,
     )
     .run();
 
@@ -55,6 +58,7 @@ export async function updateChannel(
     tags?: string[] | null;
     is_public?: boolean;
     config?: Record<string, unknown> | null;
+    meta?: Record<string, unknown> | null;
   },
 ): Promise<Channel | null> {
   const existing = await db
@@ -87,6 +91,10 @@ export async function updateChannel(
     setClauses.push('config = ?');
     binds.push(fields.config ? JSON.stringify(fields.config) : null);
   }
+  if (fields.meta !== undefined) {
+    setClauses.push('meta = ?');
+    binds.push(fields.meta ? JSON.stringify(fields.meta) : null);
+  }
   if (setClauses.length > 0) {
     await db
       .prepare(`UPDATE channels SET ${setClauses.join(', ')} WHERE id = ?`)
@@ -112,6 +120,44 @@ export async function getChannel(
     .first<Channel>();
 }
 
+export async function patchChannelMeta(
+  db: D1Database,
+  channelId: string,
+  patch: Record<string, unknown>,
+): Promise<Channel | null> {
+  const existing = await db
+    .prepare(`SELECT id, meta FROM channels WHERE id = ?`)
+    .bind(channelId)
+    .first<{ id: string; meta: string | null }>();
+
+  if (!existing) return null;
+
+  const currentMeta: Record<string, unknown> = existing.meta
+    ? JSON.parse(existing.meta)
+    : {};
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) {
+      delete currentMeta[key];
+    } else {
+      currentMeta[key] = value;
+    }
+  }
+
+  const newMeta =
+    Object.keys(currentMeta).length > 0 ? JSON.stringify(currentMeta) : null;
+
+  await db
+    .prepare(`UPDATE channels SET meta = ? WHERE id = ?`)
+    .bind(newMeta, channelId)
+    .run();
+
+  return db
+    .prepare(`SELECT * FROM channels WHERE id = ?`)
+    .bind(channelId)
+    .first<Channel>();
+}
+
 export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
   const rows = await db
     .prepare(
@@ -122,6 +168,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
         c.tags,
         c.is_public,
         c.config,
+        c.meta,
         COALESCE(e.event_count, 0) as event_count,
         e.last_event_at
       FROM channels c
@@ -142,6 +189,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
       tags: string | null;
       is_public: number;
       config: string | null;
+      meta: string | null;
       event_count: number;
       last_event_at: string | null;
     }>();
@@ -153,6 +201,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
     tags: row.tags ? JSON.parse(row.tags) : [],
     is_public: row.is_public === 1,
     config: row.config ? JSON.parse(row.config) : null,
+    meta: row.meta ? JSON.parse(row.meta) : null,
     event_count: row.event_count,
     last_event_at: row.last_event_at,
   }));
@@ -174,6 +223,7 @@ export async function createEvent(
     publisherName?: string | null;
     type?: string | null;
     data: unknown;
+    meta?: unknown;
   },
 ): Promise<ZooidEvent> {
   const dataStr = JSON.stringify(event.data);
@@ -181,11 +231,12 @@ export async function createEvent(
     throw new Error('Event payload exceeds 64KB limit');
   }
 
+  const metaStr = event.meta != null ? JSON.stringify(event.meta) : null;
   const id = generateUlid();
 
   await db
     .prepare(
-      `INSERT INTO events (id, channel_id, publisher_id, publisher_name, type, data) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO events (id, channel_id, publisher_id, publisher_name, type, data, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -194,6 +245,7 @@ export async function createEvent(
       event.publisherName ?? null,
       event.type ?? null,
       dataStr,
+      metaStr,
     )
     .run();
 
@@ -210,7 +262,7 @@ export async function createEvents(
   channelId: string,
   publisherId: string | null,
   publisherName: string | null,
-  events: Array<{ type?: string | null; data: unknown }>,
+  events: Array<{ type?: string | null; data: unknown; meta?: unknown }>,
 ): Promise<ZooidEvent[]> {
   if (events.length > MAX_BATCH_SIZE) {
     throw new Error(`Batch size exceeds maximum of ${MAX_BATCH_SIZE}`);
@@ -224,12 +276,13 @@ export async function createEvents(
       throw new Error('Event payload exceeds 64KB limit');
     }
 
+    const metaStr = event.meta != null ? JSON.stringify(event.meta) : null;
     const id = generateUlid();
     ids.push(id);
 
     await db
       .prepare(
-        `INSERT INTO events (id, channel_id, publisher_id, publisher_name, type, data) VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO events (id, channel_id, publisher_id, publisher_name, type, data, meta) VALUES (?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -238,6 +291,7 @@ export async function createEvents(
         publisherName,
         event.type ?? null,
         dataStr,
+        metaStr,
       )
       .run();
   }

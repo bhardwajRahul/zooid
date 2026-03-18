@@ -10,7 +10,8 @@
     "directory": "packages/server"
   },
   "scripts": {
-    "dev": "wrangler d1 execute zooid-db-zooid --local --file=src/db/schema.sql --persist-to .wrangler/state && wrangler d1 execute zooid-db-zooid --local --file=src/db/seed.sql --persist-to .wrangler/state && wrangler dev",
+    "dev": "rm -rf .wrangler/state && wrangler d1 execute zooid-db-zooid --local --file=src/db/schema.sql --persist-to .wrangler/state && wrangler d1 execute zooid-db-zooid --local --file=src/db/seed.sql --persist-to .wrangler/state && wrangler dev",
+    "dev:seed": "curl -s -X POST http://localhost:8787/api/v1/_dev/seed | node -e \"process.stdin.on('data',d=>console.log(JSON.stringify(JSON.parse(d),null,2)))\"",
     "deploy": "wrangler deploy",
     "test": "vitest run"
   },

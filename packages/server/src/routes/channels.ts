@@ -33,6 +33,7 @@ export class ListChannels extends OpenAPIRoute {
                   tags: z.array(z.string()),
                   is_public: z.boolean(),
                   config: z.record(z.string(), z.unknown()).nullable(),
+                  meta: z.record(z.string(), z.unknown()).nullable(),
                   event_count: z.number(),
                   last_event_at: z.string().nullable(),
                 }),
@@ -87,6 +88,7 @@ export class CreateChannel extends OpenAPIRoute {
               tags: z.array(z.string()).optional(),
               is_public: z.boolean().optional(),
               config: z.record(z.string(), z.unknown()).optional(),
+              meta: z.record(z.string(), z.unknown()).optional(),
             }),
           },
         },
@@ -198,6 +200,7 @@ export class UpdateChannel extends OpenAPIRoute {
               tags: z.array(z.string()).nullable().optional(),
               is_public: z.boolean().optional(),
               config: z.record(z.string(), z.unknown()).nullable().optional(),
+              meta: z.record(z.string(), z.unknown()).nullable().optional(),
             }),
           },
         },
@@ -215,6 +218,7 @@ export class UpdateChannel extends OpenAPIRoute {
               tags: z.array(z.string()),
               is_public: z.boolean(),
               config: z.record(z.string(), z.unknown()).nullable(),
+              meta: z.record(z.string(), z.unknown()).nullable(),
             }),
           },
         },
@@ -284,6 +288,7 @@ export class UpdateChannel extends OpenAPIRoute {
       tags: channel.tags ? JSON.parse(channel.tags as string) : [],
       is_public: (channel.is_public as unknown as number) === 1,
       config: channel.config ? JSON.parse(channel.config as string) : null,
+      meta: channel.meta ? JSON.parse(channel.meta as string) : null,
     });
   }
 }
@@ -347,5 +352,80 @@ export class DeleteChannel extends OpenAPIRoute {
     }
 
     return c.body(null, 204);
+  }
+}
+
+export class PatchChannelMeta extends OpenAPIRoute {
+  schema = {
+    summary: 'Patch channel meta (shallow merge)',
+    tags: ['Channels'],
+    security: [{ bearerAuth: [] }],
+    request: {
+      params: z.object({
+        channelId: z.string(),
+      }),
+      body: {
+        content: {
+          'application/json': {
+            schema: z.record(z.string(), z.unknown()),
+          },
+        },
+      },
+    },
+    responses: {
+      200: {
+        description: 'Updated channel with merged meta',
+        content: {
+          'application/json': {
+            schema: z.object({
+              id: z.string(),
+              meta: z.record(z.string(), z.unknown()).nullable(),
+            }),
+          },
+        },
+      },
+      401: {
+        description: 'Missing or invalid authentication',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      403: {
+        description: 'Insufficient permissions',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+      404: {
+        description: 'Channel not found',
+        content: {
+          'application/json': {
+            schema: z.object({ error: z.string() }),
+          },
+        },
+      },
+    },
+  };
+
+  async handle(c: Context<Env>) {
+    const data = await this.getValidatedData<typeof this.schema>();
+    const { channelId } = data.params;
+    const patch = data.body;
+
+    const serverStorage = c.get('serverStorage') as ServerStorage;
+    const channel = await serverStorage.patchChannelMeta(channelId, patch);
+
+    if (!channel) {
+      return c.json({ error: 'Channel not found' }, 404);
+    }
+
+    return c.json({
+      id: channel.id,
+      meta: channel.meta ? JSON.parse(channel.meta as string) : null,
+    });
   }
 }

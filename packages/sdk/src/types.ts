@@ -47,8 +47,10 @@ export interface CreateChannelOptions {
   description?: string;
   /** Whether the channel is publicly accessible. Defaults to `true`. */
   is_public?: boolean;
-  /** Optional channel config (types, storage, strict_types). */
+  /** Optional channel config (types, policies, storage, strict_types). */
   config?: Record<string, unknown>;
+  /** Optional channel meta (display, runtime state). */
+  meta?: Record<string, unknown>;
 }
 
 /** Options for updating an existing channel via `PATCH /api/v1/channels/:id`. */
@@ -63,6 +65,8 @@ export interface UpdateChannelOptions {
   is_public?: boolean;
   /** Channel config (set to `null` to clear). */
   config?: Record<string, unknown> | null;
+  /** Channel meta (set to `null` to clear). */
+  meta?: Record<string, unknown> | null;
 }
 
 /** Result of creating a new channel. */
@@ -101,6 +105,8 @@ export interface PublishOptions {
   reply_to?: string;
   /** Event payload (will be JSON-serialized, max 64 KB). */
   data: unknown;
+  /** Optional presentation directives (arbitrary JSON object). */
+  meta?: Record<string, unknown>;
 }
 
 /** Options for polling events from a channel. */

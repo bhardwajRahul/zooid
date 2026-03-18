@@ -3,17 +3,20 @@
   import { parsePretty, renderMarkdown, type PrettyNode } from '../pretty-json';
   import { formatRelative, formatFull } from '../time';
   import Avatar from './avatar.svelte';
+  import RefLink from './ref-link.svelte';
 
   let {
     event,
     viewMode = 'pretty',
     canReply = false,
     onReply,
+    onOpenRef,
   }: {
     event: ZooidEvent;
     viewMode?: 'pretty' | 'raw';
     canReply?: boolean;
     onReply?: (eventId: string) => void;
+    onOpenRef?: (detail: { channel: string; eventId: string }) => void;
   } = $props();
 
   let rawData = $derived(formatRaw(event.data));
@@ -70,6 +73,11 @@
     </div>
     <div class="break-words overflow-wrap-anywhere text-foreground/70" style="padding-left: {(depth + 1) * 0.75}rem">
       {#if node.markdown}<span class="prose-inline">{@html renderMarkdown(node.value)}</span>{:else}{#each node.value.split('\n') as line, i}{#if i > 0}<br />{/if}{line}{/each}{/if}
+    </div>
+  {:else if node.kind === 'ref'}
+    <div class="break-words overflow-wrap-anywhere" style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>
+      <span class="font-semibold text-foreground/90">{node.key}</span><span class="text-foreground/50">: </span>
+      <RefLink ref={node.value} {onOpenRef} />
     </div>
   {:else if node.kind === 'text'}
     <div class="break-words overflow-wrap-anywhere" style={depth > 0 ? `padding-left: ${depth * 0.75}rem` : ''}>

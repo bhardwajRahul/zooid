@@ -108,6 +108,47 @@ describe('parsePretty', () => {
   });
 });
 
+describe('ref convention', () => {
+  it('should mark ref field with kind "ref"', () => {
+    const nodes = parsePretty(
+      JSON.stringify({
+        body: 'Trade executed',
+        ref: 'zooid:signals/01HWXYZ123456789012345A',
+      }),
+    );
+
+    const refNode = nodes!.find((n) => n.key === 'ref');
+    expect(refNode).toBeDefined();
+    expect(refNode!.kind).toBe('ref');
+    expect((refNode as { value: string }).value).toBe(
+      'zooid:signals/01HWXYZ123456789012345A',
+    );
+  });
+
+  it('should mark ref with https: scheme', () => {
+    const nodes = parsePretty(
+      JSON.stringify({
+        ref: 'https://example.com/resource',
+      }),
+    );
+
+    const refNode = nodes!.find((n) => n.key === 'ref');
+    expect(refNode!.kind).toBe('ref');
+  });
+
+  it('should not mark non-ref string fields as ref', () => {
+    const nodes = parsePretty(
+      JSON.stringify({
+        body: 'zooid:signals/01HWXYZ123456789012345A',
+        symbol: 'AAPL',
+      }),
+    );
+
+    const bodyNode = nodes!.find((n) => n.key === 'body');
+    expect(bodyNode!.kind).toBe('text');
+  });
+});
+
 describe('looksLikeMarkdown', () => {
   it('detects bold syntax', () => {
     expect(looksLikeMarkdown('some **bold** text')).toBe(true);

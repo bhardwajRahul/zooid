@@ -30,12 +30,14 @@ export class PublishEvents extends OpenAPIRoute {
               type: z.string().optional(),
               reply_to: z.string().optional(),
               data: z.unknown().optional(),
+              meta: z.record(z.string(), z.unknown()).optional(),
               events: z
                 .array(
                   z.object({
                     type: z.string().optional(),
                     reply_to: z.string().optional(),
                     data: z.unknown(),
+                    meta: z.record(z.string(), z.unknown()).optional(),
                   }),
                 )
                 .optional(),
@@ -170,6 +172,7 @@ export class PublishEvents extends OpenAPIRoute {
           type: evt.type ?? null,
           reply_to: evt.reply_to ?? null,
           data: evt.data,
+          meta: evt.meta,
         })),
       );
 
@@ -212,6 +215,7 @@ export class PublishEvents extends OpenAPIRoute {
       type: body.type ?? null,
       reply_to: body.reply_to ?? null,
       data: body.data,
+      meta: body.meta,
     });
 
     const afterPublish = async () => {

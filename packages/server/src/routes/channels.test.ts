@@ -533,6 +533,148 @@ describe('Channel routes', () => {
     });
   });
 
+  describe('PATCH /channels/:channelId/meta', () => {
+    it('shallow-merges meta', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'meta-patch',
+          name: 'Meta Patch',
+          meta: { display: { sort: 'asc' }, custom: 'value' },
+        }),
+      });
+
+      const res = await authRequest('/api/v1/channels/meta-patch/meta', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          display: { sort: 'desc' },
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        id: string;
+        meta: Record<string, unknown>;
+      };
+      expect(body.meta.display).toEqual({ sort: 'desc' });
+      expect(body.meta.custom).toBe('value');
+    });
+
+    it('deletes meta key when set to null', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'meta-delete-key',
+          name: 'Meta Delete Key',
+          meta: { display: { sort: 'asc' }, session: { agent: 'claude' } },
+        }),
+      });
+
+      const res = await authRequest('/api/v1/channels/meta-delete-key/meta', {
+        method: 'PATCH',
+        body: JSON.stringify({ session: null }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { meta: Record<string, unknown> };
+      expect(body.meta.display).toEqual({ sort: 'asc' });
+      expect(body.meta.session).toBeUndefined();
+    });
+
+    it('returns 404 for non-existent channel', async () => {
+      const res = await authRequest('/api/v1/channels/nonexistent/meta', {
+        method: 'PATCH',
+        body: JSON.stringify({ display: { sort: 'asc' } }),
+      });
+
+      expect(res.status).toBe(404);
+    });
+
+    it('rejects without auth', async () => {
+      const res = await app.request(
+        '/api/v1/channels/some-channel/meta',
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ display: { sort: 'asc' } }),
+        },
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      expect(res.status).toBe(401);
+    });
+
+    it('rejects with non-admin token', async () => {
+      const res = await authRequest(
+        '/api/v1/channels/some-channel/meta',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ display: { sort: 'asc' } }),
+        },
+        'subscribe',
+        'some-channel',
+      );
+
+      expect(res.status).toBe(403);
+    });
+  });
+
+  describe('channel meta on create and update', () => {
+    it('accepts meta on channel creation', async () => {
+      const res = await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'meta-create',
+          name: 'Meta Create',
+          meta: { display: { sort: 'asc' } },
+        }),
+      });
+
+      expect(res.status).toBe(201);
+    });
+
+    it('returns meta in channel update response', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({ id: 'meta-update', name: 'Meta Update' }),
+      });
+
+      const res = await authRequest('/api/v1/channels/meta-update', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          meta: { display: { sort: 'desc' } },
+        }),
+      });
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { meta: Record<string, unknown> };
+      expect(body.meta).toEqual({ display: { sort: 'desc' } });
+    });
+
+    it('includes meta in channel list', async () => {
+      await authRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'meta-list',
+          name: 'Meta List',
+          meta: { display: { sort: 'asc' } },
+        }),
+      });
+
+      const res = await app.request(
+        '/api/v1/channels',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      const body = (await res.json()) as {
+        channels: Array<{ id: string; meta: Record<string, unknown> | null }>;
+      };
+      const ch = body.channels.find((c) => c.id === 'meta-list');
+      expect(ch!.meta).toEqual({ display: { sort: 'asc' } });
+    });
+  });
+
   describe('DELETE /channels/:channelId', () => {
     it('deletes an existing channel', async () => {
       await authRequest('/api/v1/channels', {

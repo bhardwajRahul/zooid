@@ -228,6 +228,9 @@ export class ZooidClient {
     if (options.reply_to !== undefined) {
       body.reply_to = options.reply_to;
     }
+    if (options.meta !== undefined) {
+      body.meta = options.meta;
+    }
     return this.request<ZooidEvent>(
       'POST',
       `/api/v1/channels/${channelId}/events`,
@@ -244,6 +247,7 @@ export class ZooidClient {
       events: events.map((e) => {
         const item: Record<string, unknown> = { data: e.data };
         if (e.type !== undefined) item.type = e.type;
+        if (e.meta !== undefined) item.meta = e.meta;
         return item;
       }),
     };

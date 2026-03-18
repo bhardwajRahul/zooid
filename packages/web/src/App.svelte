@@ -8,6 +8,7 @@
   import KeysAndTokensPage from './lib/components/keys-and-tokens-page.svelte';
   import CreateChannelModal from './lib/components/create-channel-modal.svelte';
   import EditChannelModal from './lib/components/edit-channel-modal.svelte';
+  import RefSideSheet from './lib/components/ref-side-sheet.svelte';
   import {
     fetchServerMeta,
     createClient,
@@ -53,6 +54,13 @@
 
   // Mobile sidebar
   let sidebarOpen = $state(false);
+
+  // Ref side sheet
+  let refSheet = $state<{ channel: string; eventId: string } | null>(null);
+
+  function handleOpenRef(detail: { channel: string; eventId: string }) {
+    refSheet = detail;
+  }
 
   // Modals
   let createChannelOpen = $state(false);
@@ -530,7 +538,7 @@
   <div class="flex-1 flex flex-col min-w-0">
     {#if channel}
       <ChannelHeader {channel} bind:viewMode {isAdmin} onMenuClick={() => sidebarOpen = true} onEditChannel={() => editChannelOpen = true} />
-      <EventFeed {events} {viewMode} {canReply} onReply={handleReply} />
+      <EventFeed {events} {viewMode} {canReply} onReply={handleReply} onOpenRef={handleOpenRef} />
       {#if canPublishToChannel}
         <MessageBar {channel} bind:replyTo onPublish={handlePublish} />
       {:else if claims}
@@ -607,3 +615,12 @@
   onSaved={handleChannelEdited}
   onDeleted={handleChannelDeleted}
 />
+
+{#if refSheet}
+  <RefSideSheet
+    channel={refSheet.channel}
+    eventId={refSheet.eventId}
+    {client}
+    onClose={() => refSheet = null}
+  />
+{/if}

@@ -10,6 +10,7 @@ export type PrettyNode =
       markdown: boolean;
       multiline: boolean;
     }
+  | { kind: 'ref'; key: string; value: string }
   | { kind: 'group'; key: string; children: PrettyNode[] }
   | { kind: 'list'; key: string; items: PrettyNode[][] };
 
@@ -63,6 +64,9 @@ export function objectToNodes(obj: Record<string, unknown>): PrettyNode[] {
       };
     }
     const str = typeof value === 'string' ? value : JSON.stringify(value);
+    if (key === 'ref' && typeof value === 'string') {
+      return { kind: 'ref' as const, key, value: str };
+    }
     const multiline = str.includes('\n');
     return {
       kind: 'text' as const,

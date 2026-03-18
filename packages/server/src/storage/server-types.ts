@@ -9,6 +9,7 @@ export interface CreateChannelInput {
   tags?: string[];
   is_public?: boolean;
   config?: Record<string, unknown>;
+  meta?: Record<string, unknown>;
 }
 
 /** Fields that can be updated on a channel. All optional. */
@@ -18,6 +19,7 @@ export interface UpdateChannelInput {
   tags?: string[] | null;
   is_public?: boolean;
   config?: Record<string, unknown> | null;
+  meta?: Record<string, unknown> | null;
 }
 
 /** Input for adding a trusted key. */
@@ -47,6 +49,10 @@ export interface ServerStorage {
   updateChannel(
     channelId: string,
     input: UpdateChannelInput,
+  ): Promise<Channel | null>;
+  patchChannelMeta(
+    channelId: string,
+    patch: Record<string, unknown>,
   ): Promise<Channel | null>;
   deleteChannel(channelId: string): Promise<boolean>;
 

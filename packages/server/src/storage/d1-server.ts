@@ -11,6 +11,7 @@ import {
   getChannel,
   listChannels,
   updateChannel,
+  patchChannelMeta,
   deleteChannelRecord,
   getServerMeta,
   upsertServerMeta,
@@ -44,6 +45,13 @@ export class D1ServerStorage implements ServerStorage {
     input: UpdateChannelInput,
   ): Promise<Channel | null> {
     return updateChannel(this.db, channelId, input);
+  }
+
+  async patchChannelMeta(
+    channelId: string,
+    patch: Record<string, unknown>,
+  ): Promise<Channel | null> {
+    return patchChannelMeta(this.db, channelId, patch);
   }
 
   async deleteChannel(channelId: string): Promise<boolean> {

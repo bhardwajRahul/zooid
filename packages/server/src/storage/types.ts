@@ -10,6 +10,7 @@ export interface PublishEventInput {
   type?: string | null;
   reply_to?: string | null;
   data: unknown; // will be JSON.stringify'd, max 64KB
+  meta?: unknown; // will be JSON.stringify'd if present
 }
 
 /** Options for polling events. */

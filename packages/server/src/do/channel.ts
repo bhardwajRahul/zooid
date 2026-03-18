@@ -21,6 +21,7 @@ export interface PublishEventInput {
   type?: string | null;
   reply_to?: string | null;
   data: string; // JSON string, max 64KB
+  meta?: string | null;
 }
 
 export interface PollOptions {
@@ -44,6 +45,7 @@ export interface DOEvent {
   type: string | null;
   reply_to: string | null;
   data: string;
+  meta: string | null;
   created_at: string;
 }
 
@@ -146,14 +148,15 @@ export class ChannelDO extends DurableObject<Bindings> {
     const id = generateUlid();
 
     this.sql.exec(
-      `INSERT INTO events (id, publisher_id, publisher_name, type, reply_to, data)
-       VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO events (id, publisher_id, publisher_name, type, reply_to, data, meta)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
       id,
       input.publisher_id ?? null,
       input.publisher_name ?? null,
       input.type ?? null,
       input.reply_to ?? null,
       input.data,
+      input.meta ?? null,
     );
 
     // Populate closure table for threading.
@@ -409,6 +412,50 @@ export class ChannelDO extends DurableObject<Bindings> {
     ] as unknown as DOWebhook[];
   }
 
+  // ── Dev Seed ────────────────────────────────────────────────
+
+  /**
+   * Insert seed events with explicit IDs and timestamps.
+   * Skips validation, threading, webhooks, and broadcast.
+   * For local development only.
+   */
+  async seedEvents(
+    ctx: ChannelContext,
+    events: Array<{
+      id: string;
+      publisher_id?: string | null;
+      publisher_name?: string | null;
+      type?: string | null;
+      data: string;
+      meta?: string | null;
+      created_at: string;
+    }>,
+  ): Promise<number> {
+    await this.syncConfig(ctx);
+    let inserted = 0;
+    for (const e of events) {
+      // Skip if already exists (idempotent)
+      const existing = [
+        ...this.sql.exec('SELECT id FROM events WHERE id = ?', e.id),
+      ];
+      if (existing.length > 0) continue;
+
+      this.sql.exec(
+        `INSERT INTO events (id, publisher_id, publisher_name, type, data, meta, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        e.id,
+        e.publisher_id ?? null,
+        e.publisher_name ?? null,
+        e.type ?? null,
+        e.data,
+        e.meta ?? null,
+        e.created_at,
+      );
+      inserted++;
+    }
+    return inserted;
+  }
+
   // ── Lifecycle ───────────────────────────────────────────────
 
   async destroy(ctx: ChannelContext): Promise<void> {
@@ -500,6 +547,7 @@ export class ChannelDO extends DurableObject<Bindings> {
       type: row.type ?? null,
       reply_to: row.reply_to ?? null,
       data: row.data,
+      meta: row.meta ?? null,
       created_at: row.created_at,
     };
   }

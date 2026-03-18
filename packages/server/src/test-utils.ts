@@ -8,6 +8,7 @@ const SCHEMA_STATEMENTS = [
     tags TEXT,
     is_public INTEGER NOT NULL DEFAULT 1,
     config TEXT,
+    meta TEXT,
     strict INTEGER NOT NULL DEFAULT 0,
     max_subscribers INTEGER DEFAULT 100,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -19,6 +20,7 @@ const SCHEMA_STATEMENTS = [
     publisher_name TEXT,
     type TEXT,
     data TEXT NOT NULL,
+    meta TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (channel_id) REFERENCES channels(id)
   )`,

@@ -851,6 +851,162 @@ describe('Event routes', () => {
     });
   });
 
+  describe('meta field', () => {
+    it('should accept meta in publish and return it', async () => {
+      const meta = { component: 'trade-card@0.2' };
+      const res = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            data: { symbol: 'AAPL', side: 'buy' },
+            type: 'execution',
+            meta,
+          }),
+        },
+        'pub-channel',
+      );
+
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as { meta: string | null };
+      expect(body.meta).toBe(JSON.stringify(meta));
+    });
+
+    it('should return null meta when not provided', async () => {
+      const res = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            data: { body: 'hello' },
+          }),
+        },
+        'pub-channel',
+      );
+
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as { meta: string | null };
+      expect(body.meta).toBeNull();
+    });
+
+    it('should include meta in poll results', async () => {
+      const meta = { component: 'signal-card' };
+      await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            data: { body: 'test' },
+            meta,
+          }),
+        },
+        'pub-channel',
+      );
+
+      const pollRes = await app.request(
+        '/api/v1/channels/pub-channel/events',
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      const pollBody = (await pollRes.json()) as {
+        events: Array<{ meta: string | null }>;
+      };
+      expect(pollBody.events[0].meta).toBe(JSON.stringify(meta));
+    });
+
+    it('should include meta in get-by-id', async () => {
+      const meta = { component: 'card-v2' };
+      const pubRes = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            data: { body: 'test' },
+            meta,
+          }),
+        },
+        'pub-channel',
+      );
+      const { id } = (await pubRes.json()) as { id: string };
+
+      const getRes = await app.request(
+        `/api/v1/channels/pub-channel/events/${id}`,
+        {},
+        { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
+      );
+
+      const event = (await getRes.json()) as { meta: string | null };
+      expect(event.meta).toBe(JSON.stringify(meta));
+    });
+
+    it('should pass meta through in batch publish', async () => {
+      const res = await publishRequest(
+        '/api/v1/channels/pub-channel/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            events: [
+              { data: { body: 'one' }, meta: { component: 'a' } },
+              { data: { body: 'two' } },
+            ],
+          }),
+        },
+        'pub-channel',
+      );
+
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as {
+        events: Array<{ meta: string | null }>;
+      };
+      expect(body.events[0].meta).toBe(JSON.stringify({ component: 'a' }));
+      expect(body.events[1].meta).toBeNull();
+    });
+
+    it('should not validate meta against strict schema', async () => {
+      // Create a strict channel
+      await adminRequest('/api/v1/channels', {
+        method: 'POST',
+        body: JSON.stringify({
+          id: 'strict-meta-test',
+          name: 'Strict Meta Test',
+          config: {
+            strict_types: true,
+            types: {
+              alert: {
+                schema: {
+                  required: ['level'],
+                  properties: { level: { type: 'string' } },
+                },
+              },
+            },
+          },
+        }),
+      });
+
+      // Publish with valid data + arbitrary meta
+      const res = await publishRequest(
+        '/api/v1/channels/strict-meta-test/events',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            type: 'alert',
+            data: { level: 'info' },
+            meta: { anything: 'goes', nested: { deep: true } },
+          }),
+        },
+        'strict-meta-test',
+      );
+
+      expect(res.status).toBe(201);
+      const body = (await res.json()) as { meta: string };
+      expect(JSON.parse(body.meta)).toEqual({
+        anything: 'goes',
+        nested: { deep: true },
+      });
+    });
+  });
+
   // Threading requires DO-per-channel backend (V2).
   // D1 backend has no reply_to column or closure table.
   const describeThreading =

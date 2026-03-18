@@ -35,6 +35,7 @@ export class D1ChannelStorage implements ChannelStorage {
       publisherName: input.publisher_name,
       type: input.type,
       data: input.data,
+      meta: input.meta,
     });
   }
 
@@ -46,7 +47,7 @@ export class D1ChannelStorage implements ChannelStorage {
       // (batch publish uses a single publisher context)
       inputs[0]?.publisher_id ?? null,
       inputs[0]?.publisher_name ?? null,
-      inputs.map((i) => ({ type: i.type, data: i.data })),
+      inputs.map((i) => ({ type: i.type, data: i.data, meta: i.meta })),
     );
   }
 

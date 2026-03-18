@@ -264,7 +264,7 @@ channelCmd
   .option('--strict', 'Enable strict schema validation on publish')
   .option(
     '--config <file>',
-    'Path to channel config JSON file (display, types, storage)',
+    'Path to channel config JSON file (types, policies, storage)',
   )
   .option(
     '--schema <file>',
@@ -313,7 +313,7 @@ channelCmd
   .option('--no-strict', 'Disable strict schema validation')
   .option(
     '--config <file>',
-    'Path to channel config JSON file (display, types, storage)',
+    'Path to channel config JSON file (types, policies, storage)',
   )
   .option(
     '--schema <file>',

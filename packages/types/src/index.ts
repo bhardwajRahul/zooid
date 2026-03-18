@@ -19,6 +19,8 @@ export interface ZooidEvent {
   reply_to: string | null;
   /** JSON-serialized event payload (max 64 KB). */
   data: string;
+  /** JSON-serialized presentation directives, or `null` if not provided. */
+  meta: string | null;
   /** ISO 8601 timestamp when the event was created. */
   created_at: string;
 }
@@ -55,8 +57,10 @@ export interface ChannelListItem {
   tags: string[];
   /** Whether the channel is publicly accessible without a token. */
   is_public: boolean;
-  /** Optional channel config (types, storage, strict_types). */
+  /** Optional channel config (types, policies, storage, strict_types). */
   config: Record<string, unknown> | null;
+  /** Optional channel meta (display, runtime state). Never validated by the server. */
+  meta: Record<string, unknown> | null;
   /** Total number of events currently stored in this channel. */
   event_count: number;
   /** ISO 8601 timestamp of the most recent event, or `null` if empty. */

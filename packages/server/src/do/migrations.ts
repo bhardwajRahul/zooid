@@ -40,4 +40,8 @@ export const CHANNEL_MIGRATIONS: Migration[] = [
       CREATE UNIQUE INDEX IF NOT EXISTS idx_webhooks_url ON webhooks(url);
     `,
   },
+  {
+    version: 2,
+    sql: `ALTER TABLE events ADD COLUMN meta TEXT;`,
+  },
 ];

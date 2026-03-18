@@ -459,6 +459,97 @@ describe('ChannelDO: Threading', () => {
   });
 });
 
+// ─── Meta Column ────────────────────────────────────────────────
+
+describe('ChannelDO: Meta Column', () => {
+  it('stores and returns meta when provided', async () => {
+    const stub = getChannelStub('meta-store');
+    const ctx = makeCtx({ channel_id: 'meta-store' });
+
+    const meta = JSON.stringify({ component: 'trade-card@0.2' });
+    const event = await stub.publishEvent(ctx, {
+      publisher_id: 'user:alice',
+      publisher_name: 'Alice',
+      type: 'execution',
+      data: JSON.stringify({ symbol: 'AAPL', side: 'buy' }),
+      meta,
+    });
+
+    expect(event.meta).toBe(meta);
+
+    const fetched = await stub.getEvent(ctx, event.id);
+    expect(fetched?.meta).toBe(meta);
+  });
+
+  it('returns null meta when not provided', async () => {
+    const stub = getChannelStub('meta-null');
+    const ctx = makeCtx({ channel_id: 'meta-null' });
+
+    const event = await stub.publishEvent(ctx, {
+      data: JSON.stringify({ body: 'hello' }),
+    });
+
+    expect(event.meta).toBeNull();
+  });
+
+  it('includes meta in poll results', async () => {
+    const stub = getChannelStub('meta-poll');
+    const ctx = makeCtx({ channel_id: 'meta-poll' });
+
+    const meta = JSON.stringify({ component: 'signal-card' });
+    await stub.publishEvent(ctx, {
+      type: 'signal',
+      data: JSON.stringify({ body: 'buy AAPL' }),
+      meta,
+    });
+
+    const result = await stub.pollEvents(ctx, {});
+    expect(result.events[0].meta).toBe(meta);
+  });
+
+  it('includes meta in batch publish', async () => {
+    const stub = getChannelStub('meta-batch');
+    const ctx = makeCtx({ channel_id: 'meta-batch' });
+
+    const events = await stub.publishEvents(ctx, [
+      {
+        type: 'signal',
+        data: JSON.stringify({ body: 'one' }),
+        meta: JSON.stringify({ component: 'card-a' }),
+      },
+      {
+        type: 'signal',
+        data: JSON.stringify({ body: 'two' }),
+      },
+    ]);
+
+    expect(events[0].meta).toBe(JSON.stringify({ component: 'card-a' }));
+    expect(events[1].meta).toBeNull();
+  });
+
+  it('includes meta in thread/replies results', async () => {
+    const stub = getChannelStub('meta-thread');
+    const ctx = makeCtx({ channel_id: 'meta-thread' });
+
+    const parent = await stub.publishEvent(ctx, {
+      data: '{"text":"root"}',
+      meta: JSON.stringify({ component: 'parent-card' }),
+    });
+
+    await stub.publishEvent(ctx, {
+      reply_to: parent.id,
+      data: '{"text":"reply"}',
+      meta: JSON.stringify({ component: 'reply-card' }),
+    });
+
+    const thread = await stub.getThread(ctx, parent.id);
+    expect(thread[0].meta).toBe(JSON.stringify({ component: 'reply-card' }));
+
+    const replies = await stub.getReplies(ctx, parent.id);
+    expect(replies[0].meta).toBe(JSON.stringify({ component: 'reply-card' }));
+  });
+});
+
 // ─── Webhooks ───────────────────────────────────────────────────
 
 describe('ChannelDO: Webhooks', () => {
