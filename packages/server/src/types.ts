@@ -38,21 +38,10 @@ export interface Bindings {
   ZOOID_SCOPE_MAPPING?: string;
 }
 
-export interface ZooidJWT {
-  // New multi-scope claim: ["admin", "pub:channel-id", "sub:channel-id"]
-  scopes?: string[];
-  // Role names — inert metadata for channel policy evaluation
-  groups?: string[];
-  // Legacy fields (backward compat — normalized to scopes on verify)
-  scope?: 'admin' | 'publish' | 'subscribe';
-  channel?: string;
-  channels?: string[];
-  sub?: string; // Publisher ID (standard JWT subject claim)
-  name?: string; // Display name (used for auto-registering publishers)
-  aud?: string; // Audience — the Zooid server URL this token is bound to
-  iat: number;
-  exp?: number;
-}
+// Auth types from @zooid/auth
+export type { ZooidJWT, TrustedKeyRow } from '@zooid/auth';
+// Re-import for local use in this file
+import type { ZooidJWT } from '@zooid/auth';
 
 /** Raw DB row — is_public is stored as INTEGER (0/1) */
 export interface Channel {
@@ -64,18 +53,6 @@ export interface Channel {
   config: string | null;
   meta: string | null;
   max_subscribers: number;
-  created_at: string;
-}
-
-/** Raw DB row from the trusted_keys table. */
-export interface TrustedKeyRow {
-  kid: string;
-  kty: string;
-  crv: string;
-  x: string;
-  max_scopes: string | null; // JSON array of scope patterns, null = unrestricted
-  issuer: string | null;
-  jwks_url: string | null; // If set, this row is a JWKS source (x may be empty)
   created_at: string;
 }
 

@@ -2,152 +2,25 @@ import { sign, verify } from 'hono/jwt';
 import type { ZooidJWT, Bindings, TrustedKeyRow } from '../types';
 import { getTrustedKeysFromCache } from './key-cache';
 import { importPrivateKey } from './signing';
+import {
+  base64urlEncodeString,
+  base64urlEncodeBuffer,
+  base64urlDecodeString,
+  base64urlDecodeBuffer,
+  normalizeScopes,
+  enforceScopeCeiling,
+} from '@zooid/auth';
 
-// --- Base64url utilities ---
-
-function base64urlEncodeString(str: string): string {
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-}
-
-function base64urlEncodeBuffer(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary)
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/g, '');
-}
-
-function base64urlDecodeString(str: string): string {
-  const padded =
-    str.replace(/-/g, '+').replace(/_/g, '/') +
-    '='.repeat((4 - (str.length % 4)) % 4);
-  return atob(padded);
-}
-
-function base64urlDecodeBuffer(str: string): ArrayBuffer {
-  const binary = base64urlDecodeString(str);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
-}
-
-// --- Scope utilities ---
-
-/**
- * Normalize legacy JWT claims to the new `scopes` array format.
- *
- * Legacy: { scope: "admin" } → ["admin"]
- * Legacy: { scope: "publish", channels: ["foo"] } → ["pub:foo"]
- * Legacy: { scope: "subscribe", channel: "bar" } → ["sub:bar"]
- * New:    { scopes: ["pub:foo", "sub:bar"] } → as-is
- */
-export function normalizeScopes(payload: ZooidJWT): string[] {
-  if (payload.scopes) return payload.scopes;
-
-  // Legacy normalization
-  const scope = payload.scope;
-  if (!scope) return [];
-
-  if (scope === 'admin') return ['admin'];
-
-  const prefix = scope === 'publish' ? 'pub' : 'sub';
-  const channels =
-    payload.channels ?? (payload.channel ? [payload.channel] : []);
-
-  if (channels.length === 0) return [`${prefix}:*`];
-  return channels.map((ch) => `${prefix}:${ch}`);
-}
-
-/**
- * Check if a scope string matches a pattern.
- * Patterns: "admin", "pub:exact", "pub:prefix-*", "pub:*"
- */
-export function scopeMatchesPattern(scope: string, pattern: string): boolean {
-  if (pattern === scope) return true;
-
-  // "admin" pattern matches everything
-  if (pattern === 'admin') return true;
-
-  // Extract prefix and channel from both
-  const [scopePrefix, scopeChannel] = splitScope(scope);
-  const [patternPrefix, patternChannel] = splitScope(pattern);
-
-  // Prefixes must match (or pattern is admin)
-  if (scopePrefix !== patternPrefix) return false;
-
-  // No channel part means exact match only (already checked above)
-  if (!patternChannel || !scopeChannel) return false;
-
-  // Wildcard: "pub:*" matches any pub:xxx
-  if (patternChannel === '*') return true;
-
-  // Prefix wildcard: "pub:product-*" matches "pub:product-foo"
-  if (patternChannel.endsWith('*')) {
-    const prefix = patternChannel.slice(0, -1);
-    return scopeChannel.startsWith(prefix);
-  }
-
-  return false;
-}
-
-/** Split "pub:channel-id" into ["pub", "channel-id"]. "admin" → ["admin", undefined] */
-function splitScope(scope: string): [string, string | undefined] {
-  const idx = scope.indexOf(':');
-  if (idx === -1) return [scope, undefined];
-  return [scope.slice(0, idx), scope.slice(idx + 1)];
-}
-
-/**
- * Check if a token's scopes include a required scope.
- * "admin" in scopes grants everything.
- */
-export function hasScope(scopes: string[], required: string): boolean {
-  return scopes.some((s) => s === 'admin' || scopeMatchesPattern(required, s));
-}
-
-/**
- * Check if a token grants publish access to a specific channel.
- */
-export function canPublish(scopes: string[], channelId: string): boolean {
-  return hasScope(scopes, `pub:${channelId}`);
-}
-
-/**
- * Check if a token grants subscribe access to a specific channel.
- */
-export function canSubscribe(scopes: string[], channelId: string): boolean {
-  return hasScope(scopes, `sub:${channelId}`);
-}
-
-/**
- * Check if a token has admin scope.
- */
-export function isAdmin(scopes: string[]): boolean {
-  return scopes.includes('admin');
-}
-
-/**
- * Enforce a max_scopes ceiling on a set of token scopes.
- * Each token scope must be allowed by at least one ceiling pattern.
- * null ceiling = unrestricted.
- */
-export function enforceScopeCeiling(
-  scopes: string[],
-  maxScopes: string[] | null,
-): void {
-  if (!maxScopes) return; // unrestricted
-
-  for (const scope of scopes) {
-    const allowed = maxScopes.some((pattern) =>
-      scopeMatchesPattern(scope, pattern),
-    );
-    if (!allowed) {
-      throw new Error(`Scope "${scope}" exceeds key ceiling`);
-    }
-  }
-}
+// Re-export scope utilities from @zooid/auth for backward compat
+export {
+  normalizeScopes,
+  scopeMatchesPattern,
+  hasScope,
+  canPublish,
+  canSubscribe,
+  isAdmin,
+  enforceScopeCeiling,
+} from '@zooid/auth';
 
 // --- HS256 (legacy) ---
 

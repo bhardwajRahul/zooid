@@ -115,6 +115,8 @@ importers:
 
   examples/first-zooid: {}
 
+  packages/auth: {}
+
   packages/cli:
     dependencies:
       '@inquirer/checkbox':
@@ -202,6 +204,9 @@ importers:
       '@cfworker/json-schema':
         specifier: ^4.1.1
         version: 4.1.1
+      '@zooid/auth':
+        specifier: workspace:^
+        version: link:../auth
       '@zooid/types':
         specifier: workspace:^
         version: link:../types
