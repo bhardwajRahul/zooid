@@ -18,6 +18,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./storage": "./src/storage/index.ts",
+    "./routes": "./src/routes/index.ts",
     "./package.json": "./package.json"
   },
   "publishConfig": {

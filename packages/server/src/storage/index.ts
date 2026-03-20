@@ -7,6 +7,7 @@ import {
 } from './realtime-do';
 
 export { D1ChannelStorage } from './d1';
+export { DOChannelBackend } from './do-backend';
 export {
   DurableObjectRealtimeBroadcast,
   NoOpRealtimeBroadcast,

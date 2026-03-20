@@ -9,11 +9,16 @@
     "url": "https://github.com/zooid-ai/zooid",
     "directory": "packages/web"
   },
+  "exports": {
+    ".": "./dist/zooid-web.js",
+    "./App.svelte": "./src/App.svelte"
+  },
   "publishConfig": {
     "access": "public"
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "scripts": {
     "dev": "vite",

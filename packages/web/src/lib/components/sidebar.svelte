@@ -2,6 +2,14 @@
   import type { ChannelInfo } from '../api';
   import AdminDropdown from './admin-dropdown.svelte';
 
+  import type { Component } from 'svelte';
+
+  interface SettingsPageExtension {
+    slug: string;
+    label: string;
+    icon?: Component;
+  }
+
   let {
     channels,
     selectedId,
@@ -16,6 +24,8 @@
     onServerConfig,
     onKeysAndTokens,
     onCreateChannel,
+    extensionSettingsPages = [],
+    onExtensionSettings,
   }: {
     channels: ChannelInfo[];
     selectedId: string | null;
@@ -30,6 +40,8 @@
     onServerConfig: () => void;
     onKeysAndTokens: () => void;
     onCreateChannel: () => void;
+    extensionSettingsPages?: SettingsPageExtension[];
+    onExtensionSettings?: (slug: string) => void;
   } = $props();
 
   const statusColor: Record<string, string> = {
@@ -55,7 +67,7 @@
   <!-- Server header -->
   <div class="flex items-center justify-between px-3 h-12 border-b border-border shrink-0">
     {#if isAdmin}
-      <AdminDropdown {serverName} {onServerConfig} {onKeysAndTokens} />
+      <AdminDropdown {serverName} {onServerConfig} {onKeysAndTokens} {extensionSettingsPages} {onExtensionSettings} />
     {:else}
       <span class="font-semibold text-sm truncate">{serverName}</span>
     {/if}

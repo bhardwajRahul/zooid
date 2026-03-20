@@ -18,6 +18,21 @@
     type ZooidEvent,
     type TokenClaims,
   } from './lib/api';
+  import type { Component } from 'svelte';
+
+  interface SettingsPageExtension {
+    slug: string;
+    label: string;
+    icon?: Component;
+    component: Component;
+  }
+
+  interface WebExtension {
+    settingsPages?: SettingsPageExtension[];
+    headerActions?: Component[];
+  }
+
+  let { extensions }: { extensions?: WebExtension } = $props();
 
   const WS_POLL_THRESHOLD = 60;
   const RECONNECT_DELAYS = [0, 1000, 2000, 4000, 8000];
@@ -66,8 +81,8 @@
   let createChannelOpen = $state(false);
   let editChannelOpen = $state(false);
 
-  // Settings page routing
-  let currentView = $state<'channel' | 'keys-and-tokens' | 'server'>('channel');
+  // Settings page routing (built-in + extension slugs)
+  let currentView = $state<string>('channel');
 
   const seenIds = new Set<string>();
 
@@ -101,12 +116,17 @@
 
   // Parse initial route
   const path = window.location.pathname;
-  if (path === '/_settings/keys-and-tokens') {
-    currentView = 'keys-and-tokens';
-    document.title = 'Keys & Tokens — Zooid';
-  } else if (path === '/_settings/server') {
-    currentView = 'server';
-    document.title = 'Server Config — Zooid';
+  const settingsMatch = path.match(/^\/_settings\/(.+)$/);
+  if (settingsMatch) {
+    const slug = settingsMatch[1];
+    currentView = slug;
+    // Set title based on known pages or extension pages
+    if (slug === 'keys-and-tokens') document.title = 'Keys & Tokens — Zooid';
+    else if (slug === 'server') document.title = 'Server Config — Zooid';
+    else {
+      const ext = extensions?.settingsPages?.find(p => p.slug === slug);
+      if (ext) document.title = `${ext.label} — Zooid`;
+    }
   } else {
     const routeMatch = path.match(/^\/([a-z0-9][a-z0-9-]{1,62}[a-z0-9])$/);
     if (routeMatch) selectedId = routeMatch[1];
@@ -459,18 +479,18 @@
 
   window.addEventListener('popstate', () => {
     const p = window.location.pathname;
-    if (p === '/_settings/keys-and-tokens') {
-      currentView = 'keys-and-tokens';
+    const sm = p.match(/^\/_settings\/(.+)$/);
+    if (sm) {
+      currentView = sm[1];
       selectedId = null;
       channel = null;
       cleanup();
-      document.title = 'Keys & Tokens — Zooid';
-    } else if (p === '/_settings/server') {
-      currentView = 'server';
-      selectedId = null;
-      channel = null;
-      cleanup();
-      document.title = 'Server Config — Zooid';
+      if (sm[1] === 'keys-and-tokens') document.title = 'Keys & Tokens — Zooid';
+      else if (sm[1] === 'server') document.title = 'Server Config — Zooid';
+      else {
+        const ext = extensions?.settingsPages?.find(pg => pg.slug === sm[1]);
+        if (ext) document.title = `${ext.label} — Zooid`;
+      }
     } else {
       currentView = 'channel';
       const m = p.match(/^\/([a-z0-9][a-z0-9-]{1,62}[a-z0-9])$/);
@@ -504,6 +524,8 @@
       onServerConfig={() => navigateSettings('server', 'Server Config')}
       onKeysAndTokens={() => navigateSettings('keys-and-tokens', 'Keys & Tokens')}
       onCreateChannel={() => createChannelOpen = true}
+      extensionSettingsPages={extensions?.settingsPages?.map(p => ({ slug: p.slug, label: p.label, icon: p.icon })) ?? []}
+      onExtensionSettings={(slug) => { const ext = extensions?.settingsPages?.find(p => p.slug === slug); if (ext) navigateSettings(slug, ext.label); }}
     />
   </div>
 
@@ -525,6 +547,8 @@
         onServerConfig={() => navigateSettings('server', 'Server Config')}
         onKeysAndTokens={() => navigateSettings('keys-and-tokens', 'Keys & Tokens')}
         onCreateChannel={() => { sidebarOpen = false; createChannelOpen = true; }}
+        extensionSettingsPages={extensions?.settingsPages?.map(p => ({ slug: p.slug, label: p.label, icon: p.icon })) ?? []}
+        onExtensionSettings={(slug) => { const ext = extensions?.settingsPages?.find(p => p.slug === slug); if (ext) navigateSettings(slug, ext.label); }}
       />
     </div>
   {/if}
@@ -534,6 +558,9 @@
     <KeysAndTokensPage {client} onMenuClick={() => sidebarOpen = true} />
   {:else if currentView === 'server'}
     <ServerConfigPage {client} onMenuClick={() => sidebarOpen = true} onSaved={handleServerConfigSaved} />
+  {:else if extensions?.settingsPages?.some(p => p.slug === currentView)}
+    {@const extPage = extensions.settingsPages.find(p => p.slug === currentView)!}
+    <extPage.component {client} onMenuClick={() => sidebarOpen = true} />
   {:else}
   <div class="flex-1 flex flex-col min-w-0">
     {#if channel}

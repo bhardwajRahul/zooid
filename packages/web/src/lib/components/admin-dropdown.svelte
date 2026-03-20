@@ -1,12 +1,24 @@
 <script lang="ts">
+  import type { Component } from 'svelte';
+
+  interface SettingsPageExtension {
+    slug: string;
+    label: string;
+    icon?: Component;
+  }
+
   let {
     serverName,
     onServerConfig,
     onKeysAndTokens,
+    extensionSettingsPages = [],
+    onExtensionSettings,
   }: {
     serverName: string;
     onServerConfig: () => void;
     onKeysAndTokens: () => void;
+    extensionSettingsPages?: SettingsPageExtension[];
+    onExtensionSettings?: (slug: string) => void;
   } = $props();
 
   let open = $state(false);
@@ -61,6 +73,17 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/></svg>
         Keys & tokens
       </button>
+      {#each extensionSettingsPages as page}
+        <button
+          class="w-full text-left px-3 py-1.5 text-xs hover:bg-secondary transition-colors flex items-center gap-2"
+          onclick={() => { if (onExtensionSettings) select(() => onExtensionSettings(page.slug)); }}
+        >
+          {#if page.icon}
+            <svelte:component this={page.icon} size={14} />
+          {/if}
+          {page.label}
+        </button>
+      {/each}
     </div>
   {/if}
 </div>
