@@ -11,7 +11,8 @@
   },
   "exports": {
     ".": "./dist/zooid-web.js",
-    "./App.svelte": "./src/App.svelte"
+    "./App.svelte": "./src/App.svelte",
+    "./package.json": "./package.json"
   },
   "publishConfig": {
     "access": "public"
