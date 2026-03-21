@@ -31,8 +31,14 @@ export type WebhookResult = Webhook;
 export interface ZooidClientOptions {
   /** Base URL of the Zooid server (e.g. `"https://zooid.example.workers.dev"`). */
   server: string;
-  /** JWT token (admin, publish, or subscribe scoped). */
+  /** JWT token (admin, publish, or subscribe scoped). Mutually exclusive with `clientId`. */
   token?: string;
+  /** OAuth client ID for client_credentials flow. Mutually exclusive with `token`. */
+  clientId?: string;
+  /** OAuth client secret for client_credentials flow. Required when `clientId` is set. */
+  clientSecret?: string;
+  /** Override token endpoint URL. If omitted, auto-discovered from server's `/.well-known/zooid.json`. */
+  tokenEndpoint?: string;
   /** Custom fetch implementation (for testing or custom environments). */
   fetch?: typeof globalThis.fetch;
 }

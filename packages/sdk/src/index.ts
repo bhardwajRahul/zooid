@@ -1,5 +1,6 @@
 export { ZooidClient } from './client';
 export { ZooidError } from './error';
+export { OAuthTokenManager } from './oauth';
 export { verifyWebhook } from './verify';
 export type { VerifyWebhookOptions } from './verify';
 export type {

@@ -1024,6 +1024,103 @@ describe('ZooidClient', () => {
     });
   });
 
+  describe('OAuth client_credentials', () => {
+    it('makes authenticated requests using OAuth token manager', async () => {
+      const client = new ZooidClient({
+        server: 'https://beno.zoon.eco',
+        clientId: 'sa_test',
+        clientSecret: 'secret_test',
+        tokenEndpoint: 'https://accounts.zooid.dev/api/auth/oauth2/token',
+      });
+
+      // Token exchange
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ access_token: 'oauth_tok', expires_in: 300 }),
+      );
+      // Actual API call
+      mockFetch.mockResolvedValueOnce(jsonResponse({ channels: [] }));
+
+      await client.listChannels();
+
+      // First call: token exchange
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        'https://accounts.zooid.dev/api/auth/oauth2/token',
+      );
+      // Second call: API request with Bearer token
+      const [url, init] = mockFetch.mock.calls[1];
+      expect(url).toBe('https://beno.zoon.eco/api/v1/channels');
+      expect(init.headers['Authorization']).toBe('Bearer oauth_tok');
+    });
+
+    it('reuses cached token across multiple requests', async () => {
+      const client = new ZooidClient({
+        server: 'https://beno.zoon.eco',
+        clientId: 'sa_test',
+        clientSecret: 'secret_test',
+        tokenEndpoint: 'https://accounts.zooid.dev/api/auth/oauth2/token',
+      });
+
+      // Token exchange (once)
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ access_token: 'oauth_tok', expires_in: 300 }),
+      );
+      // Two API calls
+      mockFetch.mockResolvedValueOnce(jsonResponse({ channels: [] }));
+      mockFetch.mockResolvedValueOnce(jsonResponse({ channels: [] }));
+
+      await client.listChannels();
+      await client.listChannels();
+
+      // 1 token exchange + 2 API calls = 3
+      expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    it('throws when both token and clientId are provided', () => {
+      expect(
+        () =>
+          new ZooidClient({
+            server: 'https://example.com',
+            token: 'some-jwt',
+            clientId: 'sa_test',
+            clientSecret: 'secret',
+          }),
+      ).toThrow('Cannot provide both token and clientId');
+    });
+
+    it('discovers token endpoint when tokenEndpoint is omitted', async () => {
+      const client = new ZooidClient({
+        server: 'https://beno.zoon.eco',
+        clientId: 'sa_test',
+        clientSecret: 'secret_test',
+      });
+
+      // Discovery: well-known
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({
+          version: '0.1',
+          auth_url: 'https://accounts.zooid.dev/api/auth',
+        }),
+      );
+      // Discovery: OIDC config
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({
+          token_endpoint: 'https://accounts.zooid.dev/api/auth/oauth2/token',
+        }),
+      );
+      // Token exchange
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ access_token: 'discovered_tok', expires_in: 300 }),
+      );
+      // API call
+      mockFetch.mockResolvedValueOnce(jsonResponse({ channels: [] }));
+
+      await client.listChannels();
+
+      const apiCall = mockFetch.mock.calls[3];
+      expect(apiCall[1].headers['Authorization']).toBe('Bearer discovered_tok');
+    });
+  });
+
   describe('error handling', () => {
     it('throws ZooidError with status and message on API error', async () => {
       const client = new ZooidClient({

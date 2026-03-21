@@ -1,4 +1,5 @@
 import { ZooidError } from './error';
+import { OAuthTokenManager } from './oauth';
 import type {
   ZooidClientOptions,
   ServerDiscovery,
@@ -45,12 +46,28 @@ export class ZooidClient {
   /** Base URL of the Zooid server (trailing slashes stripped). */
   readonly server: string;
   private token?: string;
+  private tokenManager?: OAuthTokenManager;
   private _fetch: typeof globalThis.fetch;
 
   constructor(options: ZooidClientOptions) {
     this.server = options.server.replace(/\/+$/, '');
-    this.token = options.token;
     this._fetch = options.fetch ?? globalThis.fetch.bind(globalThis);
+
+    if (options.token && options.clientId) {
+      throw new Error('Cannot provide both token and clientId');
+    }
+
+    if (options.clientId && options.clientSecret) {
+      this.tokenManager = new OAuthTokenManager(
+        this.server,
+        options.clientId,
+        options.clientSecret,
+        this._fetch,
+        options.tokenEndpoint,
+      );
+    } else {
+      this.token = options.token;
+    }
   }
 
   private async request<T>(
@@ -60,8 +77,12 @@ export class ZooidClient {
   ): Promise<T> {
     const headers: Record<string, string> = {};
 
-    if (this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+    const token = this.tokenManager
+      ? await this.tokenManager.getToken()
+      : this.token;
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
 
     if (body !== undefined) {

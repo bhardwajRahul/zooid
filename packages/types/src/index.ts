@@ -110,6 +110,12 @@ export interface ServerDiscovery {
   poll_interval: number;
   /** Supported delivery mechanisms (e.g. `["polling", "webhooks", "rss"]`). */
   delivery: string[];
+  /** Human-readable server name. */
+  server_name?: string;
+  /** Server description. */
+  server_description?: string | null;
+  /** OIDC login URL (present when OIDC is configured). */
+  auth_url?: string;
 }
 
 /**
