@@ -24,6 +24,10 @@ export interface ChannelTokens {
 export interface ServerConfig {
   worker_url?: string;
   admin_token?: string;
+  /** Encrypted OIDC refresh token (opaque to CLI, only server can decrypt). */
+  refresh_token?: string;
+  /** How auth was obtained. Determines whether auto-refresh is attempted. */
+  auth_method?: 'oidc' | 'token';
   channels?: Record<string, ChannelTokens>;
 }
 

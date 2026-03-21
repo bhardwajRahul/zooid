@@ -20,6 +20,9 @@ import { runTokenMint } from './commands/token';
 import { runDev } from './commands/dev';
 import { runInit } from './commands/init';
 import { runDeploy } from './commands/deploy';
+import { runLogin } from './commands/login';
+import { runLogout } from './commands/logout';
+import { runWhoami } from './commands/whoami';
 import {
   runRoleCreate,
   runRoleList,
@@ -215,6 +218,53 @@ program
       await runDeploy();
     } catch (err) {
       handleError('deploy', err);
+    }
+  });
+
+// --- login ---
+program
+  .command('login')
+  .argument('[url]', 'Server URL (e.g., https://beno.zoon.eco)')
+  .description('Authenticate with Zoon or a specific server')
+  .action(async (url: string | undefined) => {
+    try {
+      await runLogin(url);
+    } catch (err) {
+      handleError('login', err);
+    }
+  });
+
+// --- logout ---
+program
+  .command('logout')
+  .option('--all', 'Log out of all servers')
+  .description('Clear authentication for the current server')
+  .action(async (opts: { all?: boolean }) => {
+    try {
+      await runLogout(opts);
+    } catch (err) {
+      handleError('logout', err);
+    }
+  });
+
+// --- whoami ---
+program
+  .command('whoami')
+  .description('Show current identity and auth status')
+  .action(async () => {
+    try {
+      const result = await runWhoami();
+      console.log(`Server: ${result.server}`);
+      console.log(`User: ${result.name || result.sub}`);
+      console.log(`Scopes: ${result.scopes.join(', ')}`);
+      if (result.authMethod) {
+        const expStr = result.exp
+          ? ` (expires ${new Date(result.exp * 1000).toISOString()})`
+          : '';
+        console.log(`Auth: ${result.authMethod}${expStr}`);
+      }
+    } catch (err) {
+      handleError('whoami', err);
     }
   });
 

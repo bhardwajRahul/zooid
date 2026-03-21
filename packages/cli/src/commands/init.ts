@@ -36,7 +36,7 @@ export function saveServerConfig(config: ZooidServerConfig): void {
 export async function runInit(options?: { template?: string }): Promise<void> {
   const configPath = getConfigPath();
 
-  // Fetch template if provided (before interactive config)
+  // Fetch template if provided
   if (options?.template) {
     printStep('Fetching template...');
     const result = await fetchTemplate(options.template, process.cwd());
@@ -46,6 +46,29 @@ export async function runInit(options?: { template?: string }): Promise<void> {
   }
 
   const existing = loadServerConfig();
+
+  // If zooid.json already has a URL (e.g. from `zooid login`), skip interactive prompts.
+  // The server already exists on Zoon — no need to configure metadata locally.
+  if (existing?.url && options?.template) {
+    // Template-only mode: workforce.json was fetched, zooid.json already configured
+    // Just ensure .zooid/workforce.json exists
+    const workforcePath = path.join(process.cwd(), '.zooid', 'workforce.json');
+    if (!fs.existsSync(workforcePath)) {
+      fs.mkdirSync(path.join(process.cwd(), '.zooid'), { recursive: true });
+      fs.writeFileSync(
+        workforcePath,
+        JSON.stringify({ channels: {}, roles: {} }, null, 2) + '\n',
+      );
+    }
+
+    console.log('');
+    printInfo('Server', existing.url);
+    printInfo('Workforce', '.zooid/workforce.json');
+    console.log('');
+    printSuccess('Ready to deploy. Run: npx zooid deploy');
+    console.log('');
+    return;
+  }
 
   if (existing) {
     printInfo('Found existing', configPath);

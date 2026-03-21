@@ -47,6 +47,15 @@ CREATE INDEX IF NOT EXISTS idx_events_channel_created ON events(channel_id, crea
 CREATE INDEX IF NOT EXISTS idx_events_channel_type ON events(channel_id, type);
 CREATE INDEX IF NOT EXISTS idx_webhooks_channel ON webhooks(channel_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_webhooks_channel_url ON webhooks(channel_id, url);
+CREATE TABLE IF NOT EXISTS cli_sessions (
+  id TEXT PRIMARY KEY,
+  token TEXT,
+  refresh_token TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS trusted_keys (
   kid              TEXT PRIMARY KEY,
   kty              TEXT NOT NULL DEFAULT 'OKP',
