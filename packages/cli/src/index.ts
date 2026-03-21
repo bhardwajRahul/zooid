@@ -514,7 +514,9 @@ channelCmd
 // --- pull ---
 program
   .command('pull')
-  .description('Pull channel and role definitions from server into .zooid/')
+  .description(
+    'Pull channel and role definitions from server into workforce.json',
+  )
   .action(async () => {
     try {
       await runPull();
@@ -812,7 +814,7 @@ tokenCmd
   )
   .option(
     '--role <roles...>',
-    'Mint with scopes from named roles (reads .zooid/roles/)',
+    'Mint with scopes from named roles (reads workforce.json)',
   )
   .option('--sub <sub>', 'Subject identifier (e.g. publisher ID)')
   .option('--name <name>', 'Display name (used for publisher identity)')
@@ -955,7 +957,7 @@ const roleCmd = program.command('role').description('Manage role definitions');
 
 roleCmd
   .command('create <id>')
-  .description('Create a role definition in .zooid/roles/')
+  .description('Create a role definition in workforce.json')
   .option('--name <name>', 'Display name')
   .option('--description <desc>', 'Role description')
   .argument('<scopes...>', 'Scopes to grant (e.g. pub:signals sub:market-data)')
@@ -974,7 +976,7 @@ roleCmd
         description: opts.description,
         scopes,
       });
-      printSuccess(`Created .zooid/roles/${id}.json`);
+      printSuccess(`Created role "${id}" in workforce.json`);
       printInfo('Next', 'Run `npx zooid deploy` to sync to server');
     } catch (err) {
       handleError('role create', err);
@@ -983,7 +985,7 @@ roleCmd
 
 roleCmd
   .command('list')
-  .description('List role definitions in .zooid/roles/')
+  .description('List role definitions in workforce.json')
   .action(() => {
     try {
       const ids = runRoleList();
@@ -1003,7 +1005,7 @@ roleCmd
 
 roleCmd
   .command('update <id>')
-  .description('Update a role definition in .zooid/roles/')
+  .description('Update a role definition in workforce.json')
   .option('--name <name>', 'Display name')
   .option('--description <desc>', 'Role description')
   .option('--scopes <scopes...>', 'Replace scopes')
@@ -1021,7 +1023,7 @@ roleCmd
       }
 
       runRoleUpdate(id, fields);
-      printSuccess(`Updated .zooid/roles/${id}.json`);
+      printSuccess(`Updated role "${id}" in workforce.json`);
       printInfo('Next', 'Run `npx zooid deploy` to sync to server');
     } catch (err) {
       handleError('role update', err);
@@ -1030,7 +1032,7 @@ roleCmd
 
 roleCmd
   .command('delete <id>')
-  .description('Delete a role definition from .zooid/roles/')
+  .description('Delete a role definition from workforce.json')
   .option('-y, --yes', 'Skip confirmation prompt')
   .action(async (id, opts) => {
     try {
@@ -1042,7 +1044,7 @@ roleCmd
         });
         const answer = await new Promise<string>((resolve) => {
           rl.question(
-            `Delete role "${id}" from .zooid/roles/? [y/N] `,
+            `Delete role "${id}" from workforce.json? [y/N] `,
             resolve,
           );
         });
@@ -1053,7 +1055,7 @@ roleCmd
         }
       }
       runRoleDelete(id);
-      printSuccess(`Deleted .zooid/roles/${id}.json`);
+      printSuccess(`Deleted role "${id}" from workforce.json`);
       printInfo('Next', 'Run `npx zooid deploy` to sync to server');
     } catch (err) {
       handleError('role delete', err);

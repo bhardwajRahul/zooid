@@ -26,7 +26,7 @@ async function defaultConfirmDelete(
   console.log('');
   printInfo(
     'Warning',
-    `${orphaned.length} channel(s) on server not in .zooid/channels/:`,
+    `${orphaned.length} channel(s) on server not in workforce.json:`,
   );
   for (const ch of orphaned) {
     printInfo('  -', `${ch.id}${ch.name ? ` (${ch.name})` : ''}`);
@@ -49,7 +49,7 @@ async function defaultConfirmDelete(
 }
 
 /**
- * Sync local .zooid/channels/ to the server.
+ * Sync local workforce.json channels to the server.
  * Creates new, updates existing, prompts to delete orphans.
  */
 export async function syncChannelsToServer(
