@@ -11,6 +11,12 @@ import type { ZooidJWT } from './types';
 export function normalizeScopes(payload: ZooidJWT): string[] {
   if (payload.scopes) return payload.scopes;
 
+  // OIDC JWT from external provider (e.g. Zoon accounts service)
+  const oidcScopes = (payload as unknown as Record<string, unknown>)[
+    'https://zooid.dev/scopes'
+  ];
+  if (Array.isArray(oidcScopes) && oidcScopes.length > 0) return oidcScopes;
+
   const scope = payload.scope;
   if (!scope) return [];
 
