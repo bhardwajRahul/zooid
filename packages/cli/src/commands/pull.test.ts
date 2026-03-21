@@ -20,11 +20,13 @@ beforeEach(() => {
   );
   origCwd = process.cwd();
   process.chdir(tmpDir);
+  process.env.ZOOID_CONFIG_DIR = tmpDir;
   fs.writeFileSync(path.join(tmpDir, 'zooid.json'), '{}');
 });
 
 afterEach(() => {
   process.chdir(origCwd);
+  delete process.env.ZOOID_CONFIG_DIR;
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
