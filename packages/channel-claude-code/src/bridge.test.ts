@@ -94,11 +94,13 @@ describe('zooidEventToNotification', () => {
 describe('createBridge', () => {
   const mockSubscribe = vi.fn();
   const mockPublish = vi.fn();
+  const mockPoll = vi.fn();
   const mockNotification = vi.fn();
 
   const mockClient = {
     subscribe: mockSubscribe,
     publish: mockPublish,
+    poll: mockPoll,
   };
 
   const mockMcpServer = {
@@ -107,6 +109,7 @@ describe('createBridge', () => {
 
   beforeEach(() => {
     vi.resetAllMocks();
+    mockPoll.mockResolvedValue({ events: [], cursor: null });
     mockSubscribe.mockResolvedValue(() => {});
   });
 
@@ -228,9 +231,12 @@ describe('createBridge', () => {
     expect(mockUnsub).toHaveBeenCalled();
   });
 
-  it('cleans up tracked event ID after filtering', async () => {
-    const publishedEvent = makeEvent({ id: 'once-only' });
-    mockPublish.mockResolvedValue(publishedEvent);
+  it('skips events at or before the high-water mark', async () => {
+    // Simulate initial poll returning events up to 'HWM-ID'
+    mockPoll.mockResolvedValue({
+      events: [makeEvent({ id: 'HWM-ID' })],
+      cursor: 'c1',
+    });
 
     const bridge = createBridge(
       { channel: 'tasks', transport: 'auto', pollInterval: 5000 },
@@ -239,16 +245,14 @@ describe('createBridge', () => {
     );
     await bridge.start();
 
-    await bridge.publish('hello');
-
     const callback = mockSubscribe.mock.calls[0][1];
 
-    // First time: filtered
-    await callback(makeEvent({ id: 'once-only' }));
+    // Event at the high-water mark: skipped
+    await callback(makeEvent({ id: 'HWM-ID' }));
     expect(mockNotification).not.toHaveBeenCalled();
 
-    // Second time with same ID: not filtered (already cleaned up)
-    await callback(makeEvent({ id: 'once-only' }));
+    // Event after the high-water mark: delivered
+    await callback(makeEvent({ id: 'NEWER-EVENT' }));
     expect(mockNotification).toHaveBeenCalledTimes(1);
   });
 });
