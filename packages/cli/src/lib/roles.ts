@@ -1,6 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { getZooidDir } from './project';
+import { loadWorkforce } from './workforce';
 
 export interface RoleDef {
   name?: string;
@@ -8,27 +6,10 @@ export interface RoleDef {
   scopes: string[];
 }
 
-/** Load all role definitions from .zooid/roles/ directory. */
+/** Load all role definitions from .zooid/workforce.json (includes compiled agents). */
 export function loadRoleDefs(): Map<string, RoleDef> {
-  let zooidDir: string;
-  try {
-    zooidDir = getZooidDir();
-  } catch {
-    return new Map();
-  }
-
-  const rolesDir = path.join(zooidDir, 'roles');
-  if (!fs.existsSync(rolesDir)) return new Map();
-
-  const defs = new Map<string, RoleDef>();
-  for (const file of fs.readdirSync(rolesDir)) {
-    if (!file.endsWith('.json')) continue;
-    const id = file.replace(/\.json$/, '');
-    const raw = fs.readFileSync(path.join(rolesDir, file), 'utf-8');
-    defs.set(id, JSON.parse(raw) as RoleDef);
-  }
-
-  return defs;
+  const wf = loadWorkforce();
+  return new Map(Object.entries(wf.roles));
 }
 
 /**

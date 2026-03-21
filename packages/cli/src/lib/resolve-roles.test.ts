@@ -8,7 +8,9 @@ let tmpDir: string;
 let origCwd: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-resolve-test-'));
+  tmpDir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-resolve-test-')),
+  );
   origCwd = process.cwd();
   process.chdir(tmpDir);
   fs.writeFileSync(path.join(tmpDir, 'zooid.json'), '{}');
@@ -19,23 +21,31 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-function writeRoleDef(id: string, def: Record<string, unknown>) {
-  const dir = path.join(tmpDir, '.zooid', 'roles');
+function writeWorkforce(data: Record<string, unknown>) {
+  const dir = path.join(tmpDir, '.zooid');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${id}.json`), JSON.stringify(def));
+  fs.writeFileSync(path.join(dir, 'workforce.json'), JSON.stringify(data));
 }
 
 describe('resolveRoleScopes', () => {
   it('expands a single role to its scopes', () => {
-    writeRoleDef('analyst', { scopes: ['sub:market-data', 'pub:signals'] });
+    writeWorkforce({
+      channels: {},
+      roles: { analyst: { scopes: ['sub:market-data', 'pub:signals'] } },
+    });
 
     const scopes = resolveRoleScopes(['analyst']);
     expect(scopes).toEqual(['sub:market-data', 'pub:signals']);
   });
 
   it('unions scopes from multiple roles', () => {
-    writeRoleDef('analyst', { scopes: ['sub:market-data', 'pub:signals'] });
-    writeRoleDef('reviewer', { scopes: ['sub:*'] });
+    writeWorkforce({
+      channels: {},
+      roles: {
+        analyst: { scopes: ['sub:market-data', 'pub:signals'] },
+        reviewer: { scopes: ['sub:*'] },
+      },
+    });
 
     const scopes = resolveRoleScopes(['analyst', 'reviewer']);
     expect(scopes).toContain('sub:market-data');
@@ -44,8 +54,13 @@ describe('resolveRoleScopes', () => {
   });
 
   it('deduplicates scopes across roles', () => {
-    writeRoleDef('role-a', { scopes: ['sub:data', 'pub:signals'] });
-    writeRoleDef('role-b', { scopes: ['sub:data', 'pub:alerts'] });
+    writeWorkforce({
+      channels: {},
+      roles: {
+        'role-a': { scopes: ['sub:data', 'pub:signals'] },
+        'role-b': { scopes: ['sub:data', 'pub:alerts'] },
+      },
+    });
 
     const scopes = resolveRoleScopes(['role-a', 'role-b']);
     const dataCount = scopes.filter((s) => s === 'sub:data').length;
@@ -53,6 +68,8 @@ describe('resolveRoleScopes', () => {
   });
 
   it('throws for unknown role', () => {
+    writeWorkforce({ channels: {}, roles: {} });
+
     expect(() => resolveRoleScopes(['nonexistent'])).toThrow(
       'Role "nonexistent" not found',
     );

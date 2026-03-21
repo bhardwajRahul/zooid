@@ -13,7 +13,7 @@ import {
   getStatePath,
   saveConfig,
 } from '../lib/config';
-import { writeChannelFile, deleteChannelFile } from '../lib/channel-files';
+import { loadWorkforce, saveWorkforce } from '../lib/workforce';
 import { findProjectRoot } from '../lib/project';
 
 export interface ChannelCreateOptions {
@@ -50,17 +50,19 @@ export async function runChannelCreate(
     saveConfig({ channels });
   }
 
-  // Write local .zooid/channels/ file (best-effort — skip if not in a project)
+  // Write to .zooid/workforce.json (best-effort — skip if not in a project)
   if (findProjectRoot()) {
     try {
-      writeChannelFile(id, {
+      const wf = loadWorkforce();
+      wf.channels[id] = {
         visibility: options.public === false ? 'private' : 'public',
         ...(options.name && { name: options.name }),
         ...(options.description && { description: options.description }),
         ...(config && { config }),
-      });
+      };
+      saveWorkforce(wf);
     } catch {
-      // Not in a zooid project or .zooid/ doesn't exist — skip silently
+      // Not in a zooid project — skip silently
     }
   }
 
@@ -82,15 +84,17 @@ export async function runChannelUpdate(
   const c = client ?? createClient();
   const result = await c.updateChannel(channelId, options);
 
-  // Update local .zooid/channels/ file (best-effort)
+  // Update .zooid/workforce.json (best-effort)
   if (findProjectRoot()) {
     try {
-      writeChannelFile(channelId, {
+      const wf = loadWorkforce();
+      wf.channels[channelId] = {
         visibility: result.is_public ? 'public' : 'private',
         ...(result.name && result.name !== channelId && { name: result.name }),
         ...(result.description && { description: result.description }),
         ...(result.config && { config: result.config }),
-      });
+      };
+      saveWorkforce(wf);
     } catch {
       // Skip silently
     }
@@ -117,12 +121,14 @@ export async function runChannelDelete(
     }
   }
 
-  // Delete local .zooid/channels/ file (best-effort)
+  // Remove from .zooid/workforce.json (best-effort)
   if (findProjectRoot()) {
     try {
-      deleteChannelFile(channelId);
+      const wf = loadWorkforce();
+      delete wf.channels[channelId];
+      saveWorkforce(wf);
     } catch {
-      // File may not exist locally — skip silently
+      // Skip silently
     }
   }
 }

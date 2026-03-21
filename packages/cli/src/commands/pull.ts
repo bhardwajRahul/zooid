@@ -1,29 +1,23 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { ZooidClient } from '@zooid/sdk';
 import { createClient } from '../lib/client';
-import { getZooidDir } from '../lib/project';
+import { loadWorkforce, saveWorkforce } from '../lib/workforce';
 import { printSuccess, printInfo, printStep } from '../lib/output';
 import type { ChannelDef } from '../lib/channels';
 import type { RoleDef } from '../lib/roles';
 
-/** Pull remote channel and role definitions into .zooid/ files. */
+/** Pull remote channel and role definitions into .zooid/workforce.json. */
 export async function runPull(client?: ZooidClient): Promise<string[]> {
   const c = client ?? createClient();
-  const zooidDir = getZooidDir();
+  const wf = loadWorkforce();
   const written: string[] = [];
 
   // Pull channels
   const channels = await c.listChannels();
 
   if (channels.length > 0) {
-    const channelsDir = path.join(zooidDir, 'channels');
-    fs.mkdirSync(channelsDir, { recursive: true });
-
     printStep('Pulling channels...');
 
     for (const ch of channels) {
-      const filePath = path.join(channelsDir, `${ch.id}.json`);
       const def: ChannelDef = {
         visibility: ch.is_public ? 'public' : 'private',
       };
@@ -31,38 +25,36 @@ export async function runPull(client?: ZooidClient): Promise<string[]> {
       if (ch.description) def.description = ch.description;
       if (ch.config) def.config = ch.config;
 
-      fs.writeFileSync(filePath, JSON.stringify(def, null, 2) + '\n');
-      printSuccess(`.zooid/channels/${ch.id}.json`);
+      wf.channels[ch.id] = def;
       written.push(ch.id);
     }
-
-    printSuccess(`Pulled ${written.length} channel(s) into .zooid/channels/`);
-  } else {
-    printInfo('Nothing to pull', 'no channels on server');
   }
 
   // Pull roles
   try {
     const roles = await c.listRoles();
     if (roles.length > 0) {
-      const rolesDir = path.join(zooidDir, 'roles');
-      fs.mkdirSync(rolesDir, { recursive: true });
-
       printStep('Pulling roles...');
 
       for (const role of roles) {
-        const filePath = path.join(rolesDir, `${role.id}.json`);
         const def: RoleDef = { scopes: role.scopes };
         if (role.name) def.name = role.name;
         if (role.description) def.description = role.description;
-        fs.writeFileSync(filePath, JSON.stringify(def, null, 2) + '\n');
-        printSuccess(`.zooid/roles/${role.id}.json`);
+        wf.roles[role.id] = def;
       }
-
-      printSuccess(`Pulled ${roles.length} role(s) into .zooid/roles/`);
     }
   } catch {
     // Server may not support roles endpoint yet — skip silently
+  }
+
+  saveWorkforce(wf);
+
+  if (written.length > 0 || Object.keys(wf.roles).length > 0) {
+    printSuccess(
+      `Pulled ${written.length} channel(s) and ${Object.keys(wf.roles).length} role(s) into .zooid/workforce.json`,
+    );
+  } else {
+    printInfo('Nothing to pull', 'no channels or roles on server');
   }
 
   return written;

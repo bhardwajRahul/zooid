@@ -2,7 +2,7 @@ import { loadRoleDefs } from './roles';
 
 /**
  * Resolve role names to a deduplicated array of scopes
- * by reading .zooid/roles/*.json locally.
+ * by reading .zooid/workforce.json locally.
  */
 export function resolveRoleScopes(roleNames: string[]): string[] {
   const roles = loadRoleDefs();
@@ -12,7 +12,7 @@ export function resolveRoleScopes(roleNames: string[]): string[] {
     const role = roles.get(name);
     if (!role) {
       throw new Error(
-        `Role "${name}" not found in .zooid/roles/. Available: ${[...roles.keys()].join(', ') || '(none)'}`,
+        `Role "${name}" not found in .zooid/workforce.json. Available: ${[...roles.keys()].join(', ') || '(none)'}`,
       );
     }
     for (const scope of role.scopes) {

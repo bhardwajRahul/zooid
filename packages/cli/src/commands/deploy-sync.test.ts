@@ -21,10 +21,10 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-function writeChannelDef(id: string, def: Record<string, unknown>) {
-  const dir = path.join(tmpDir, '.zooid', 'channels');
+function writeWorkforce(data: Record<string, unknown>) {
+  const dir = path.join(tmpDir, '.zooid');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${id}.json`), JSON.stringify(def));
+  fs.writeFileSync(path.join(dir, 'workforce.json'), JSON.stringify(data));
 }
 
 function makeMockClient() {
@@ -38,7 +38,10 @@ function makeMockClient() {
 
 describe('syncChannelsToServer', () => {
   it('creates channels that exist locally but not on server', async () => {
-    writeChannelDef('signals', { name: 'Signals', visibility: 'private' });
+    writeWorkforce({
+      channels: { signals: { name: 'Signals', visibility: 'private' } },
+      roles: {},
+    });
 
     const client = makeMockClient();
     const result = await syncChannelsToServer(client as any);
@@ -50,7 +53,10 @@ describe('syncChannelsToServer', () => {
   });
 
   it('updates channels that exist in both', async () => {
-    writeChannelDef('signals', { name: 'Updated', visibility: 'public' });
+    writeWorkforce({
+      channels: { signals: { name: 'Updated', visibility: 'public' } },
+      roles: {},
+    });
 
     const client = makeMockClient();
     client.listChannels.mockResolvedValueOnce([
@@ -67,7 +73,10 @@ describe('syncChannelsToServer', () => {
   });
 
   it('reports orphaned channels for deletion', async () => {
-    writeChannelDef('kept', { visibility: 'public' });
+    writeWorkforce({
+      channels: { kept: { visibility: 'public' } },
+      roles: {},
+    });
 
     const client = makeMockClient();
     client.listChannels.mockResolvedValueOnce([
@@ -84,7 +93,10 @@ describe('syncChannelsToServer', () => {
   });
 
   it('skips deletion when user declines', async () => {
-    writeChannelDef('kept', { visibility: 'public' });
+    writeWorkforce({
+      channels: { kept: { visibility: 'public' } },
+      roles: {},
+    });
 
     const client = makeMockClient();
     client.listChannels.mockResolvedValueOnce([
@@ -101,6 +113,8 @@ describe('syncChannelsToServer', () => {
   });
 
   it('does nothing when no local channels', async () => {
+    writeWorkforce({ channels: {}, roles: {} });
+
     const client = makeMockClient();
     const result = await syncChannelsToServer(client as any);
 

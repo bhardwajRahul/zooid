@@ -99,15 +99,14 @@ export async function runInit(options?: { template?: string }): Promise<void> {
 
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
-    // Provision .zooid/channels/ and .zooid/roles/ directories
-    const channelsDir = path.join(process.cwd(), '.zooid', 'channels');
-    const rolesDir = path.join(process.cwd(), '.zooid', 'roles');
-
-    for (const dir of [channelsDir, rolesDir]) {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(path.join(dir, '.gitkeep'), '');
-      }
+    // Provision .zooid/workforce.json
+    const workforcePath = path.join(process.cwd(), '.zooid', 'workforce.json');
+    if (!fs.existsSync(workforcePath)) {
+      fs.mkdirSync(path.join(process.cwd(), '.zooid'), { recursive: true });
+      fs.writeFileSync(
+        workforcePath,
+        JSON.stringify({ channels: {}, roles: {} }, null, 2) + '\n',
+      );
     }
 
     console.log('');
@@ -123,8 +122,7 @@ export async function runInit(options?: { template?: string }): Promise<void> {
       config.tags.length > 0 ? config.tags.join(', ') : '(none)',
     );
     printInfo('URL', config.url || '(not set)');
-    printInfo('Channels', '.zooid/channels/');
-    printInfo('Roles', '.zooid/roles/');
+    printInfo('Workforce', '.zooid/workforce.json');
     console.log('');
   } finally {
     rl.close();

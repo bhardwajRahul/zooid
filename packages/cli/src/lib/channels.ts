@@ -1,6 +1,4 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { getZooidDir } from './project';
+import { loadWorkforce } from './workforce';
 
 export interface ChannelDef {
   name?: string;
@@ -9,25 +7,8 @@ export interface ChannelDef {
   config?: Record<string, unknown>;
 }
 
-/** Load all channel definitions from .zooid/channels/ directory. */
+/** Load all channel definitions from .zooid/workforce.json */
 export function loadChannelDefs(): Map<string, ChannelDef> {
-  let zooidDir: string;
-  try {
-    zooidDir = getZooidDir();
-  } catch {
-    return new Map();
-  }
-
-  const channelsDir = path.join(zooidDir, 'channels');
-  if (!fs.existsSync(channelsDir)) return new Map();
-
-  const defs = new Map<string, ChannelDef>();
-  for (const file of fs.readdirSync(channelsDir)) {
-    if (!file.endsWith('.json')) continue;
-    const id = file.replace(/\.json$/, '');
-    const raw = fs.readFileSync(path.join(channelsDir, file), 'utf-8');
-    defs.set(id, JSON.parse(raw) as ChannelDef);
-  }
-
-  return defs;
+  const wf = loadWorkforce();
+  return new Map(Object.entries(wf.channels));
 }

@@ -8,7 +8,9 @@ let tmpDir: string;
 let origCwd: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-deploy-test-'));
+  tmpDir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-deploy-test-')),
+  );
   origCwd = process.cwd();
   process.chdir(tmpDir);
   fs.writeFileSync(path.join(tmpDir, 'zooid.json'), '{}');
@@ -19,36 +21,39 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-function writeChannelDef(id: string, def: Record<string, unknown>) {
-  const dir = path.join(tmpDir, '.zooid', 'channels');
+function writeWorkforce(data: Record<string, unknown>) {
+  const dir = path.join(tmpDir, '.zooid');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${id}.json`), JSON.stringify(def));
+  fs.writeFileSync(path.join(dir, 'workforce.json'), JSON.stringify(data));
 }
 
 describe('loadChannelDefs()', () => {
-  it('returns empty map when .zooid/channels/ does not exist', () => {
+  it('returns empty map when workforce.json does not exist', () => {
     const defs = loadChannelDefs();
     expect(defs.size).toBe(0);
   });
 
-  it('returns empty map when .zooid/channels/ has no JSON files', () => {
-    const dir = path.join(tmpDir, '.zooid', 'channels');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, '.gitkeep'), '');
+  it('returns empty map when workforce.json has no channels', () => {
+    writeWorkforce({ channels: {}, roles: {} });
     const defs = loadChannelDefs();
     expect(defs.size).toBe(0);
   });
 
-  it('loads channel definitions from JSON files', () => {
-    writeChannelDef('signals', {
-      name: 'Trading Signals',
-      description: 'Processed signals',
-      visibility: 'private',
-      config: { strict_types: true },
-    });
-    writeChannelDef('market-data', {
-      name: 'Market Data',
-      visibility: 'public',
+  it('loads channel definitions from workforce.json', () => {
+    writeWorkforce({
+      channels: {
+        signals: {
+          name: 'Trading Signals',
+          description: 'Processed signals',
+          visibility: 'private',
+          config: { strict_types: true },
+        },
+        'market-data': {
+          name: 'Market Data',
+          visibility: 'public',
+        },
+      },
+      roles: {},
     });
 
     const defs = loadChannelDefs();
@@ -64,17 +69,20 @@ describe('loadChannelDefs()', () => {
     expect(market.visibility).toBe('public');
   });
 
-  it('uses filename without .json as channel ID', () => {
-    writeChannelDef('my-channel', { visibility: 'public' });
+  it('uses workforce.json channel keys as IDs', () => {
+    writeWorkforce({
+      channels: { 'my-channel': { visibility: 'public' } },
+      roles: {},
+    });
     const defs = loadChannelDefs();
     expect(defs.has('my-channel')).toBe(true);
   });
 
-  it('ignores non-JSON files', () => {
-    const dir = path.join(tmpDir, '.zooid', 'channels');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, 'README.md'), '# Channels');
-    writeChannelDef('signals', { visibility: 'public' });
+  it('only loads channels, ignoring roles', () => {
+    writeWorkforce({
+      channels: { signals: { visibility: 'public' } },
+      roles: { admin: { scopes: ['admin'] } },
+    });
     const defs = loadChannelDefs();
     expect(defs.size).toBe(1);
   });

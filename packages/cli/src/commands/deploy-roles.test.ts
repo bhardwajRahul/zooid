@@ -10,7 +10,9 @@ let tmpDir: string;
 let origCwd: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-deploy-roles-'));
+  tmpDir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-deploy-roles-')),
+  );
   origCwd = process.cwd();
   process.chdir(tmpDir);
   fs.writeFileSync(path.join(tmpDir, 'zooid.json'), '{}');
@@ -21,27 +23,28 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-describe('deploy role sync (integration)', () => {
-  it('end-to-end: loads roles from .zooid/, builds mapping, writes to wrangler.toml', () => {
-    // Set up .zooid/roles/
-    const rolesDir = path.join(tmpDir, '.zooid', 'roles');
-    fs.mkdirSync(rolesDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(rolesDir, 'analyst.json'),
-      JSON.stringify({
-        name: 'Analyst',
-        scopes: ['sub:market-data', 'pub:signals'],
-      }),
-    );
-    fs.writeFileSync(
-      path.join(rolesDir, 'executor.json'),
-      JSON.stringify({
-        name: 'Executor',
-        scopes: ['sub:signals', 'pub:trades'],
-      }),
-    );
+function writeWorkforce(data: Record<string, unknown>) {
+  const dir = path.join(tmpDir, '.zooid');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'workforce.json'), JSON.stringify(data));
+}
 
-    // Set up wrangler.toml
+describe('deploy role sync (integration)', () => {
+  it('end-to-end: loads roles from workforce.json, builds mapping, writes to wrangler.toml', () => {
+    writeWorkforce({
+      channels: {},
+      roles: {
+        analyst: {
+          name: 'Analyst',
+          scopes: ['sub:market-data', 'pub:signals'],
+        },
+        executor: {
+          name: 'Executor',
+          scopes: ['sub:signals', 'pub:trades'],
+        },
+      },
+    });
+
     const tomlPath = path.join(tmpDir, 'wrangler.toml');
     fs.writeFileSync(
       tomlPath,
@@ -54,14 +57,12 @@ describe('deploy role sync (integration)', () => {
       ].join('\n'),
     );
 
-    // Simulate what deploy does
     const roles = loadRoleDefs();
     expect(roles.size).toBe(2);
 
     const mapping = rolesToScopeMapping(roles);
     setWranglerVar(tomlPath, 'ZOOID_SCOPE_MAPPING', mapping);
 
-    // Verify wrangler.toml
     const result = fs.readFileSync(tomlPath, 'utf-8');
     expect(result).toContain('ZOOID_SCOPE_MAPPING');
 
@@ -72,13 +73,11 @@ describe('deploy role sync (integration)', () => {
     expect(parsed.executor).toEqual(['sub:signals', 'pub:trades']);
   });
 
-  it('loads channels from .zooid/channels/', () => {
-    const channelsDir = path.join(tmpDir, '.zooid', 'channels');
-    fs.mkdirSync(channelsDir, { recursive: true });
-    fs.writeFileSync(
-      path.join(channelsDir, 'signals.json'),
-      JSON.stringify({ name: 'Signals', visibility: 'private' }),
-    );
+  it('loads channels from workforce.json', () => {
+    writeWorkforce({
+      channels: { signals: { name: 'Signals', visibility: 'private' } },
+      roles: {},
+    });
 
     const defs = loadChannelDefs();
     expect(defs.size).toBe(1);
@@ -86,6 +85,8 @@ describe('deploy role sync (integration)', () => {
   });
 
   it('removes ZOOID_SCOPE_MAPPING when no roles defined', () => {
+    writeWorkforce({ channels: {}, roles: {} });
+
     const tomlPath = path.join(tmpDir, 'wrangler.toml');
     fs.writeFileSync(
       tomlPath,

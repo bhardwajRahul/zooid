@@ -54,7 +54,7 @@ export async function fetchTemplate(
 
   if (buffer.byteLength === 0) {
     throw new Error(
-      "This doesn't look like a Zooid template (no .zooid/channels/ or .zooid/roles/ found)",
+      "This doesn't look like a Zooid template (no .zooid/workforce.json found)",
     );
   }
 
@@ -90,29 +90,25 @@ export async function fetchTemplate(
       );
     }
 
-    // Copy .zooid/ if it exists
-    const sourceZooid = path.join(sourceRoot, '.zooid');
+    // Copy .zooid/workforce.json if it exists
+    const sourceWorkforce = path.join(sourceRoot, '.zooid', 'workforce.json');
     const targetZooid = path.join(targetDir, '.zooid');
 
     let channelCount = 0;
     let roleCount = 0;
 
-    if (fs.existsSync(sourceZooid)) {
-      copyDirSync(sourceZooid, targetZooid);
+    if (fs.existsSync(sourceWorkforce)) {
+      fs.mkdirSync(targetZooid, { recursive: true });
+      fs.copyFileSync(
+        sourceWorkforce,
+        path.join(targetZooid, 'workforce.json'),
+      );
 
-      const channelsDir = path.join(targetZooid, 'channels');
-      if (fs.existsSync(channelsDir)) {
-        channelCount = fs
-          .readdirSync(channelsDir)
-          .filter((f) => f.endsWith('.json')).length;
-      }
-
-      const rolesDir = path.join(targetZooid, 'roles');
-      if (fs.existsSync(rolesDir)) {
-        roleCount = fs
-          .readdirSync(rolesDir)
-          .filter((f) => f.endsWith('.json')).length;
-      }
+      const wf = JSON.parse(fs.readFileSync(sourceWorkforce, 'utf-8'));
+      channelCount = Object.keys(wf.channels ?? {}).length;
+      roleCount =
+        Object.keys(wf.roles ?? {}).length +
+        Object.keys(wf.agents ?? {}).length;
     }
 
     // Copy zooid.json if it exists and target doesn't have one
@@ -127,25 +123,12 @@ export async function fetchTemplate(
 
     if (channelCount === 0 && roleCount === 0) {
       throw new Error(
-        "This doesn't look like a Zooid template (no .zooid/channels/ or .zooid/roles/ found)",
+        "This doesn't look like a Zooid template (no .zooid/workforce.json found)",
       );
     }
 
     return { channelCount, roleCount };
   } finally {
     fs.rmSync(tmpTarball, { force: true });
-  }
-}
-
-function copyDirSync(src: string, dest: string): void {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      copyDirSync(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
   }
 }

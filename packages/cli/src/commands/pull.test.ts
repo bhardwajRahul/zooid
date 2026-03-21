@@ -15,7 +15,9 @@ function makeMockClient() {
 }
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-pull-test-'));
+  tmpDir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-pull-test-')),
+  );
   origCwd = process.cwd();
   process.chdir(tmpDir);
   fs.writeFileSync(path.join(tmpDir, 'zooid.json'), '{}');
@@ -26,6 +28,12 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+function readWorkforce(): Record<string, unknown> {
+  return JSON.parse(
+    fs.readFileSync(path.join(tmpDir, '.zooid', 'workforce.json'), 'utf-8'),
+  );
+}
+
 describe('runPull()', () => {
   it('returns empty array when server has no channels', async () => {
     const client = makeMockClient();
@@ -33,7 +41,7 @@ describe('runPull()', () => {
     expect(result).toEqual([]);
   });
 
-  it('writes channel definitions to .zooid/channels/ directory', async () => {
+  it('writes channel definitions to .zooid/workforce.json', async () => {
     const client = makeMockClient();
     client.listChannels.mockResolvedValueOnce([
       {
@@ -62,27 +70,19 @@ describe('runPull()', () => {
 
     expect(result).toEqual(['signals', 'market-data']);
 
-    const signalsPath = path.join(tmpDir, '.zooid', 'channels', 'signals.json');
-    const signals = JSON.parse(fs.readFileSync(signalsPath, 'utf-8'));
-    expect(signals.visibility).toBe('private');
-    expect(signals.name).toBe('Trading Signals');
-    expect(signals.description).toBe('Processed signals');
-    expect(signals.config).toEqual({ strict_types: true });
+    const wf = readWorkforce() as {
+      channels: Record<string, Record<string, unknown>>;
+    };
+    expect(wf.channels.signals.visibility).toBe('private');
+    expect(wf.channels.signals.name).toBe('Trading Signals');
+    expect(wf.channels.signals.description).toBe('Processed signals');
+    expect(wf.channels.signals.config).toEqual({ strict_types: true });
 
-    const marketPath = path.join(
-      tmpDir,
-      '.zooid',
-      'channels',
-      'market-data.json',
-    );
-    const market = JSON.parse(fs.readFileSync(marketPath, 'utf-8'));
-    expect(market.visibility).toBe('public');
-    expect(market.name).toBeUndefined(); // name === id, omitted
-    expect(market.description).toBeUndefined(); // null, omitted
-    expect(market.config).toBeUndefined(); // null, omitted
+    expect(wf.channels['market-data'].visibility).toBe('public');
+    expect(wf.channels['market-data'].name).toBeUndefined(); // name === id, omitted
   });
 
-  it('creates .zooid/channels/ directory if it does not exist', async () => {
+  it('creates .zooid/workforce.json if it does not exist', async () => {
     const client = makeMockClient();
     client.listChannels.mockResolvedValueOnce([
       {
@@ -99,12 +99,12 @@ describe('runPull()', () => {
 
     await runPull(client as any);
 
-    expect(
-      fs.existsSync(path.join(tmpDir, '.zooid', 'channels', 'test.json')),
-    ).toBe(true);
+    expect(fs.existsSync(path.join(tmpDir, '.zooid', 'workforce.json'))).toBe(
+      true,
+    );
   });
 
-  it('pulls roles from server into .zooid/roles/', async () => {
+  it('pulls roles from server into .zooid/workforce.json', async () => {
     const client = makeMockClient();
     client.listChannels.mockResolvedValueOnce([]);
     client.listRoles.mockResolvedValueOnce([
@@ -114,14 +114,12 @@ describe('runPull()', () => {
 
     await runPull(client as any);
 
-    const analystPath = path.join(tmpDir, '.zooid', 'roles', 'analyst.json');
-    const analyst = JSON.parse(fs.readFileSync(analystPath, 'utf-8'));
-    expect(analyst.scopes).toEqual(['sub:market-data', 'pub:signals']);
-
-    const reviewerPath = path.join(tmpDir, '.zooid', 'roles', 'reviewer.json');
-    const reviewer = JSON.parse(fs.readFileSync(reviewerPath, 'utf-8'));
-    expect(reviewer.name).toBe('Reviewer');
-    expect(reviewer.scopes).toEqual(['sub:*']);
+    const wf = readWorkforce() as {
+      roles: Record<string, Record<string, unknown>>;
+    };
+    expect(wf.roles.analyst.scopes).toEqual(['sub:market-data', 'pub:signals']);
+    expect(wf.roles.reviewer.name).toBe('Reviewer');
+    expect(wf.roles.reviewer.scopes).toEqual(['sub:*']);
   });
 
   it('silently skips roles if server does not support roles endpoint', async () => {
