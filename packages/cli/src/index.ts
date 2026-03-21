@@ -1091,8 +1091,9 @@ credentialsCmd
         return;
       }
       for (const c of creds) {
+        const roleNames = c.roles.map((r: any) => r.name ?? r).join(', ');
         console.log(
-          `  ${c.name.padEnd(20)} roles: ${c.roles.join(', ').padEnd(30)} ${c.created_at ?? ''}`,
+          `  ${c.name.padEnd(20)} ${c.client_id.padEnd(35)} roles: ${roleNames}`,
         );
       }
     } catch (err) {
@@ -1101,11 +1102,11 @@ credentialsCmd
   });
 
 credentialsCmd
-  .command('rotate <client-id>')
+  .command('rotate <name>')
   .description('Rotate credential secret (outputs .env to stdout)')
-  .action(async (clientId: string) => {
+  .action(async (name: string) => {
     try {
-      const env = await runCredentialsRotate(clientId);
+      const env = await runCredentialsRotate(name);
       process.stdout.write(env + '\n');
     } catch (err) {
       handleError('credentials rotate', err);
@@ -1113,11 +1114,11 @@ credentialsCmd
   });
 
 credentialsCmd
-  .command('revoke <client-id>')
+  .command('revoke <name>')
   .description('Revoke (delete) a credential')
-  .action(async (clientId: string) => {
+  .action(async (name: string) => {
     try {
-      await runCredentialsRevoke(clientId);
+      await runCredentialsRevoke(name);
     } catch (err) {
       handleError('credentials revoke', err);
     }

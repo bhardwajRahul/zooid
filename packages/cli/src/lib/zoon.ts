@@ -137,8 +137,7 @@ export async function listCredentials(
     headers: authHeaders(token),
   });
   if (!res.ok) throw new Error(`Failed to list credentials: ${res.status}`);
-  const data = (await res.json()) as { credentials: CredentialListItem[] };
-  return data.credentials;
+  return (await res.json()) as CredentialListItem[];
 }
 
 export async function rotateCredential(

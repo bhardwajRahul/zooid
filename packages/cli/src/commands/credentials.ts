@@ -80,18 +80,38 @@ export async function runCredentialsList(): Promise<
   return listCredentials(server, platformToken);
 }
 
-export async function runCredentialsRotate(clientId: string): Promise<string> {
+/** Resolve a credential name to its client_id. Accepts either name or client_id. */
+async function resolveClientId(
+  nameOrId: string,
+): Promise<{ clientId: string; name: string }> {
   const { server, platformToken } = requireZoonServer();
+  const creds = await listCredentials(server, platformToken);
+  // Try matching by name first, then by client_id
+  const match =
+    creds.find((c) => c.name === nameOrId) ||
+    creds.find((c) => c.client_id === nameOrId);
+  if (!match) {
+    throw new Error(
+      `Credential "${nameOrId}" not found. Run: npx zooid credentials list`,
+    );
+  }
+  return { clientId: match.client_id, name: match.name };
+}
+
+export async function runCredentialsRotate(nameOrId: string): Promise<string> {
+  const { server, platformToken } = requireZoonServer();
+  const { clientId, name } = await resolveClientId(nameOrId);
   const result = await rotateCredential(server, platformToken, clientId);
 
-  process.stderr.write(`\n  Rotated credential "${clientId}" on ${server}\n\n`);
+  process.stderr.write(`\n  Rotated credential "${name}" on ${server}\n\n`);
 
   return formatEnv(server, result.client_id, result.client_secret);
 }
 
-export async function runCredentialsRevoke(clientId: string): Promise<void> {
+export async function runCredentialsRevoke(nameOrId: string): Promise<void> {
   const { server, platformToken } = requireZoonServer();
+  const { clientId, name } = await resolveClientId(nameOrId);
   await revokeCredential(server, platformToken, clientId);
 
-  process.stderr.write(`\n  Revoked credential "${clientId}" on ${server}\n`);
+  process.stderr.write(`\n  Revoked credential "${name}" on ${server}\n`);
 }
