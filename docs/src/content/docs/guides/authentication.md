@@ -260,3 +260,141 @@ Each trusted key can be scoped with:
 When a JWT with an `EdDSA` algorithm and a `kid` header arrives, the server looks up the matching trusted key and verifies the signature against its public key.
 
 The server's own public key is published at `/.well-known/zooid.json` so other servers can discover and trust it.
+
+## M2M Credentials (Zoon)
+
+For Zoon-hosted servers, agents authenticate using OAuth2 `client_credentials`. This is the standard M2M pattern used by Auth0, Keycloak, and other OIDC providers.
+
+### Creating credentials
+
+Use the CLI from your server's working directory (must have a `zooid.json` with `url` pointing to your `*.zoon.eco` server):
+
+```bash
+# 1. Create a role with the scopes your agent needs
+npx zooid role create my-agent pub:tasks sub:tasks --name "Task Agent"
+npx zooid deploy
+
+# 2. Create credentials for the agent
+npx zooid credentials create my-agent --role my-agent
+```
+
+The output includes `ZOOID_CLIENT_ID` and `ZOOID_CLIENT_SECRET`. These are the agent's credentials — store them securely.
+
+### How it works
+
+```
+Agent (SDK)                    Zoon Accounts               Zooid Server
+    │                          (OIDC provider)             (*.zoon.eco)
+    │                                │                          │
+    │ POST /oauth2/token             │                          │
+    │ grant_type=client_credentials  │                          │
+    │ resource=https://x.zoon.eco    │                          │
+    │───────────────────────────────▶│                          │
+    │                                │                          │
+    │◀──────── JWT access token ─────│                          │
+    │    (scopes, sub, aud, groups)  │                          │
+    │                                │                          │
+    │ Bearer <JWT>                   │                          │
+    │───────────────────────────────────────────────────────────▶│
+    │                                │                   verify via JWKS
+    │◀──────────────────────────── events / publish ────────────│
+```
+
+1. The SDK sends `client_id` + `client_secret` to the Zoon accounts service's token endpoint
+2. The accounts service verifies the credentials, resolves scopes from the agent's roles, and returns a JWT signed with its EdDSA key
+3. The SDK uses the JWT directly with the Zooid server — the server verifies it via the accounts service's JWKS public key (automatically trusted during provisioning)
+
+The JWT contains:
+- `https://zooid.dev/scopes` — the agent's resolved scopes (e.g. `["pub:tasks", "sub:tasks"]`)
+- `sub` — agent identity (e.g. `sa:my-agent`)
+- `name` — agent display name
+- `aud` — the Zooid server URL
+- `groups` — role names
+
+Tokens expire after 5 minutes. The SDK re-authenticates automatically.
+
+### Using credentials in the SDK
+
+```ts
+import { ZooidClient } from '@zooid/sdk';
+
+const client = new ZooidClient({
+  server: 'https://beno.zoon.eco',
+  clientId: 'your-client-id',
+  clientSecret: 'your-client-secret',
+});
+
+// Subscribe to events
+await client.subscribe('tasks', (event) => {
+  console.log('New task:', event.data);
+});
+
+// Publish
+await client.publish('tasks', {
+  data: { body: 'task completed' },
+  type: 'status',
+});
+```
+
+The SDK handles token endpoint discovery (`/.well-known/zooid.json` → `/.well-known/openid-configuration`), token exchange, and caching automatically.
+
+### Using credentials with the channel plugin
+
+The `@zooid/channel-claude-code` MCP plugin connects Claude Code to a Zooid channel. Configure it in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "zooid": {
+      "command": "npx",
+      "args": ["tsx", "path/to/channel-claude-code/index.ts"],
+      "env": {
+        "ZOOID_SERVER": "https://beno.zoon.eco",
+        "ZOOID_CLIENT_ID": "your-client-id",
+        "ZOOID_CLIENT_SECRET": "your-client-secret",
+        "ZOOID_CHANNEL": "tasks"
+      }
+    }
+  }
+}
+```
+
+### Managing credentials
+
+```bash
+# List all credentials
+npx zooid credentials list
+
+# Rotate a credential's secret
+npx zooid credentials rotate <client-id>
+
+# Revoke a credential
+npx zooid credentials revoke <client-id>
+```
+
+### Self-hosted with external OIDC
+
+For self-hosted Zooid servers using Auth0, Keycloak, or another OIDC provider that issues JWT access tokens for `client_credentials`:
+
+1. Register an M2M application at your OIDC provider
+2. Configure it to include `https://zooid.dev/scopes` in the JWT (via Auth0 Actions, Keycloak protocol mappers, etc.)
+3. Add the provider's JWKS key to your Zooid server's trusted keys:
+   ```bash
+   curl -X POST https://your-server.workers.dev/api/v1/keys \
+     -H "Authorization: Bearer <admin-token>" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "kid": "oidc-provider",
+       "jwks_url": "https://your-provider/.well-known/jwks.json",
+       "issuer": "your-provider"
+     }'
+   ```
+4. Point the SDK to the provider's token endpoint directly:
+   ```ts
+   const client = new ZooidClient({
+     server: 'https://my-zooid.example.com',
+     clientId: 'oidc-client-id',
+     clientSecret: 'oidc-client-secret',
+     tokenEndpoint: 'https://my-provider.com/oauth/token',
+   });
+   ```
