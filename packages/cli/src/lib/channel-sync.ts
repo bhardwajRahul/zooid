@@ -5,6 +5,8 @@ import { printSuccess, printInfo } from './output';
 import { ask } from './prompts';
 
 export interface SyncOptions {
+  /** If true, delete server resources not in local definitions. Default: false (warn only). */
+  prune?: boolean;
   /** Override the delete confirmation prompt (for testing). */
   confirmDelete?: (
     orphaned: Array<{ id: string; name?: string }>,
@@ -92,19 +94,34 @@ export async function syncChannelsToServer(
     }
   }
 
-  // Prompt to delete orphaned channels
+  // Handle orphaned channels (on server but not in local defs)
   const orphaned = remoteChannels.filter((ch) => !localIds.has(ch.id));
   if (orphaned.length > 0) {
-    const confirmFn = options.confirmDelete ?? defaultConfirmDelete;
-    const confirmed = await confirmFn(orphaned);
-    if (confirmed) {
+    if (options.prune) {
       for (const ch of orphaned) {
         await client.deleteChannel(ch.id);
         printSuccess(`Channel deleted: ${ch.id}`);
         deleted++;
       }
+    } else if (options.confirmDelete) {
+      const confirmed = await options.confirmDelete(orphaned);
+      if (confirmed) {
+        for (const ch of orphaned) {
+          await client.deleteChannel(ch.id);
+          printSuccess(`Channel deleted: ${ch.id}`);
+          deleted++;
+        }
+      } else {
+        printInfo('Skipped', 'Remote-only channels left unchanged');
+      }
     } else {
-      printInfo('Skipped', 'Remote-only channels left unchanged');
+      printInfo(
+        'Warning',
+        `${orphaned.length} channel(s) on server not in workforce.json (use --prune to remove)`,
+      );
+      for (const ch of orphaned) {
+        printInfo('  -', `${ch.id}${ch.name ? ` (${ch.name})` : ''}`);
+      }
     }
   }
 

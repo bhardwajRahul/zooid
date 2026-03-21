@@ -24,6 +24,13 @@ import { runLogin } from './commands/login';
 import { runLogout } from './commands/logout';
 import { runWhoami } from './commands/whoami';
 import {
+  runCredentialsCreate,
+  runCredentialsList,
+  runCredentialsRotate,
+  runCredentialsRevoke,
+} from './commands/credentials';
+import { maybeRefreshToken } from './lib/auto-refresh';
+import {
   runRoleCreate,
   runRoleList,
   runRoleUpdate,
@@ -42,7 +49,13 @@ import {
   flushInBackground,
   getInstallId,
 } from './lib/telemetry';
-import { loadConfig, loadConfigFile, recordTailHistory } from './lib/config';
+import {
+  loadConfig,
+  loadConfigFile,
+  resolveServer,
+  saveConfig,
+  recordTailHistory,
+} from './lib/config';
 import { resolveChannel, type ResolveChannelResult } from './lib/client';
 import type { TelemetryEvent } from './lib/telemetry';
 
@@ -131,10 +144,24 @@ function handleError(commandName: string, err: unknown): never {
   process.exit(1);
 }
 
-program.hook('preAction', () => {
+program.hook('preAction', async () => {
   telemetryCtx.startTime = Date.now();
   if (telemetryEnabled()) {
     showNoticeIfNeeded();
+  }
+
+  // Auto-refresh OIDC tokens near expiry
+  try {
+    const file = loadConfigFile();
+    const server = resolveServer();
+    if (server && file.servers?.[server]) {
+      const entry = file.servers[server];
+      await maybeRefreshToken(entry, server, {
+        save: (partial) => saveConfig(partial, server),
+      });
+    }
+  } catch {
+    // Non-fatal — proceed with existing token
   }
 });
 
@@ -213,9 +240,10 @@ program
 program
   .command('deploy')
   .description('Deploy Zooid server to Cloudflare Workers')
-  .action(async () => {
+  .option('--prune', 'Delete server resources not in workforce.json')
+  .action(async (opts: { prune?: boolean }) => {
     try {
-      await runDeploy();
+      await runDeploy(opts);
     } catch (err) {
       handleError('deploy', err);
     }
@@ -1011,6 +1039,67 @@ roleCmd
       printInfo('Next', 'Run `npx zooid deploy` to sync to server');
     } catch (err) {
       handleError('role delete', err);
+    }
+  });
+
+// --- credentials ---
+const credentialsCmd = program
+  .command('credentials')
+  .description('Manage M2M agent credentials');
+
+credentialsCmd
+  .command('create <name>')
+  .option('--role <role...>', 'Role names to assign')
+  .description('Create a new credential (outputs .env to stdout)')
+  .action(async (name: string, opts: { role?: string[] }) => {
+    try {
+      const env = await runCredentialsCreate(name, opts);
+      process.stdout.write(env + '\n');
+    } catch (err) {
+      handleError('credentials create', err);
+    }
+  });
+
+credentialsCmd
+  .command('list')
+  .description('List all credentials for the current server')
+  .action(async () => {
+    try {
+      const creds = await runCredentialsList();
+      if (creds.length === 0) {
+        printInfo('No credentials', 'found for this server');
+        return;
+      }
+      for (const c of creds) {
+        console.log(
+          `  ${c.name.padEnd(20)} roles: ${c.roles.join(', ').padEnd(30)} ${c.created_at ?? ''}`,
+        );
+      }
+    } catch (err) {
+      handleError('credentials list', err);
+    }
+  });
+
+credentialsCmd
+  .command('rotate <client-id>')
+  .description('Rotate credential secret (outputs .env to stdout)')
+  .action(async (clientId: string) => {
+    try {
+      const env = await runCredentialsRotate(clientId);
+      process.stdout.write(env + '\n');
+    } catch (err) {
+      handleError('credentials rotate', err);
+    }
+  });
+
+credentialsCmd
+  .command('revoke <client-id>')
+  .description('Revoke (delete) a credential')
+  .action(async (clientId: string) => {
+    try {
+      await runCredentialsRevoke(clientId);
+    } catch (err) {
+      handleError('credentials revoke', err);
     }
   });
 

@@ -24,6 +24,8 @@ export interface ChannelTokens {
 export interface ServerConfig {
   worker_url?: string;
   admin_token?: string;
+  /** Zoon platform session token (Better Auth). Used for platform API calls (roles, credentials). */
+  platform_token?: string;
   /** Encrypted OIDC refresh token (opaque to CLI, only server can decrypt). */
   refresh_token?: string;
   /** How auth was obtained. Determines whether auto-refresh is attempted. */

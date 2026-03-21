@@ -9,6 +9,8 @@ import {
   base64urlDecodeBuffer,
   normalizeScopes,
   enforceScopeCeiling,
+  canPublish,
+  canSubscribe,
 } from '@zooid/auth';
 
 // Re-export scope utilities from @zooid/auth for backward compat

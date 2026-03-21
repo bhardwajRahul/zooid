@@ -1,6 +1,8 @@
 import { ZooidClient } from '@zooid/sdk';
 import { createClient } from '../lib/client';
 import { loadWorkforce, saveWorkforce } from '../lib/workforce';
+import { loadConfigFile, resolveServer } from '../lib/config';
+import { isZoonHosted, listRolesFromZoon } from '../lib/zoon';
 import { printSuccess, printInfo, printStep } from '../lib/output';
 import type { ChannelDef } from '../lib/channels';
 import type { RoleDef } from '../lib/roles';
@@ -30,9 +32,26 @@ export async function runPull(client?: ZooidClient): Promise<string[]> {
     }
   }
 
-  // Pull roles
+  // Pull roles — from platform API if Zoon-hosted, from tenant if self-hosted
   try {
-    const roles = await c.listRoles();
+    const server = resolveServer();
+    const file = loadConfigFile();
+    const entry = server ? file.servers?.[server] : undefined;
+    let roles: Array<{
+      id: string;
+      name?: string;
+      description?: string;
+      scopes: string[];
+    }>;
+
+    if (server && isZoonHosted(server) && entry?.platform_token) {
+      // Zoon-hosted: roles live on the platform
+      roles = await listRolesFromZoon(server, entry.platform_token);
+    } else {
+      // Self-hosted: roles live on the tenant
+      roles = await c.listRoles();
+    }
+
     if (roles.length > 0) {
       printStep('Pulling roles...');
 

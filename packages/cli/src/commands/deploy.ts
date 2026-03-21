@@ -6,7 +6,7 @@ import path from 'node:path';
 import readline from 'node:readline/promises';
 import { createRequire } from 'node:module';
 import { ZooidClient } from '@zooid/sdk';
-import { loadConfig, saveConfig } from '../lib/config';
+import { loadConfig, loadConfigFile, saveConfig } from '../lib/config';
 import { createEdDSAAdminToken } from '../lib/crypto';
 import { printSuccess, printError, printInfo, printStep } from '../lib/output';
 import { loadServerConfig, saveServerConfig, runInit } from './init';
@@ -14,6 +14,11 @@ import { loadChannelDefs } from '../lib/channels';
 import { loadRoleDefs, rolesToScopeMapping } from '../lib/roles';
 import { setWranglerVar } from '../lib/wrangler-vars';
 import { syncChannelsToServer } from '../lib/channel-sync';
+import {
+  isZoonHosted,
+  syncRolesToZoon,
+  type RoleDef as ZoonRoleDef,
+} from '../lib/zoon';
 
 const require = createRequire(import.meta.url);
 
@@ -276,7 +281,7 @@ async function getCfCredentials(): Promise<CfCredentials> {
   }
 }
 
-export async function runDeploy(): Promise<void> {
+export async function runDeploy(opts?: { prune?: boolean }): Promise<void> {
   // 1. Load zooid.json (run init if missing)
   let config = loadServerConfig();
 
@@ -290,6 +295,13 @@ export async function runDeploy(): Promise<void> {
   if (!config) {
     printError('Failed to load zooid.json after init');
     process.exit(1);
+  }
+
+  // Check if this is a Zoon-hosted server — different deploy path
+  const serverUrl = config.url;
+  if (serverUrl && isZoonHosted(serverUrl)) {
+    await deployZoonHosted(config, serverUrl, opts);
+    return;
   }
 
   // 2. Prepare staging directory from npm packages
@@ -671,7 +683,9 @@ export async function runDeploy(): Promise<void> {
           server: canonicalUrl,
           token: adminToken,
         });
-        const result = await syncChannelsToServer(client);
+        const result = await syncChannelsToServer(client, {
+          prune: opts?.prune,
+        });
         if (result.created || result.updated || result.deleted) {
           printSuccess(
             `Channels synced (${result.created} created, ${result.updated} updated, ${result.deleted} deleted)`,
@@ -719,4 +733,83 @@ function cleanup(dir: string): void {
   } catch {
     // Best effort
   }
+}
+
+/**
+ * Zoon-hosted deploy: sync channels to tenant + roles to platform API.
+ * No wrangler deploy needed — the tenant is managed by Zoon.
+ */
+async function deployZoonHosted(
+  config: ReturnType<typeof loadServerConfig> & object,
+  serverUrl: string,
+  opts?: { prune?: boolean },
+): Promise<void> {
+  const file = loadConfigFile();
+  const entry = file.servers?.[serverUrl];
+  const adminToken = entry?.admin_token;
+  const platformToken = entry?.platform_token;
+
+  if (!platformToken) {
+    printError('Not authenticated with Zoon platform. Run: npx zooid login');
+    process.exit(1);
+  }
+
+  console.log('');
+  printInfo('Deploy type', `Zoon-hosted (${serverUrl})`);
+  console.log('');
+
+  // Sync roles to platform API
+  const roles = loadRoleDefs();
+  if (roles.size > 0) {
+    printStep('Syncing roles to Zoon...');
+    const roleDefs: ZoonRoleDef[] = Array.from(roles.entries()).map(
+      ([id, def]) => ({
+        name: id,
+        scopes: def.scopes,
+        ...(def.description ? { description: def.description } : {}),
+      }),
+    );
+    try {
+      const result = await syncRolesToZoon(serverUrl, platformToken, roleDefs);
+      printSuccess(
+        `Roles synced (${result.synced} synced, ${result.deleted} deleted)`,
+      );
+    } catch (err) {
+      printError(
+        `Failed to sync roles: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  // Sync channels to tenant (uses Zooid JWT, not platform token)
+  if (adminToken) {
+    const channelDefs = loadChannelDefs();
+    if (channelDefs.size > 0) {
+      printStep('Syncing channels to server...');
+      try {
+        const client = new ZooidClient({
+          server: serverUrl,
+          token: adminToken,
+        });
+        const result = await syncChannelsToServer(client, {
+          prune: opts?.prune,
+        });
+        if (result.created || result.updated || result.deleted) {
+          printSuccess(
+            `Channels synced (${result.created} created, ${result.updated} updated, ${result.deleted} deleted)`,
+          );
+        } else {
+          printSuccess('Channels up to date');
+        }
+      } catch (err) {
+        printError(
+          `Failed to sync channels: ${err instanceof Error ? err.message : err}`,
+        );
+      }
+    }
+  }
+
+  console.log('');
+  printSuccess('Deploy complete (Zoon-hosted — no wrangler deploy needed)');
+  console.log('');
 }

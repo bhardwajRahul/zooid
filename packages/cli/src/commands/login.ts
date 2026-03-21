@@ -78,11 +78,12 @@ async function loginToZoon(_fetch: typeof globalThis.fetch): Promise<void> {
 
   const tenantResult = await cliLogin(targetServer, { fetch: _fetch });
 
-  // Save the Zooid JWT (for tenant operations)
+  // Save the Zooid JWT (for tenant operations) + platform token (for platform API)
   saveConfig(
     {
       admin_token: tenantResult.token,
       refresh_token: tenantResult.refreshToken,
+      platform_token: platformResult.token,
       auth_method: 'oidc' as const,
     },
     targetServer,
@@ -93,6 +94,7 @@ async function loginToZoon(_fetch: typeof globalThis.fetch): Promise<void> {
   for (let i = 1; i < servers.length; i++) {
     saveConfig(
       {
+        platform_token: platformResult.token,
         auth_method: 'oidc' as const,
       },
       servers[i].url,
