@@ -20,6 +20,7 @@ import { runTokenMint } from './commands/token';
 import { runDev } from './commands/dev';
 import { runInit } from './commands/init';
 import { runDeploy } from './commands/deploy';
+import { runDestroy } from './commands/destroy';
 import { runLogin } from './commands/login';
 import { runLogout } from './commands/logout';
 import { runWhoami } from './commands/whoami';
@@ -246,6 +247,23 @@ program
       await runDeploy(opts);
     } catch (err) {
       handleError('deploy', err);
+    }
+  });
+
+// --- destroy ---
+program
+  .command('destroy')
+  .description('Destroy a deployed Zooid server and all its data')
+  .option('--force', 'Skip confirmation prompt')
+  .option('--keep-local', 'Keep wrangler.toml and state entries')
+  .action(async (options) => {
+    try {
+      await runDestroy({
+        force: options.force,
+        keepLocal: options.keepLocal,
+      });
+    } catch (err) {
+      handleError('destroy', err);
     }
   });
 

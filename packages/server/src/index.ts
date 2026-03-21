@@ -37,6 +37,7 @@ import { rss } from './routes/rss';
 import { feed } from './routes/feed';
 import { opml } from './routes/opml';
 import { devSeed } from './routes/dev-seed';
+import { adminDestroy } from './routes/admin-destroy';
 
 type Env = { Bindings: Bindings; Variables: Variables };
 
@@ -165,6 +166,9 @@ api.route('', ws);
 api.route('', rss);
 api.route('', feed);
 api.route('', opml);
+
+// Admin destroy — tear down all channels and DOs
+api.route('/admin/destroy', adminDestroy);
 
 // Dev-only seed route (seeds DO storage with test data)
 api.route('', devSeed);
