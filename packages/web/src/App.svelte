@@ -27,12 +27,25 @@
     component: Component;
   }
 
+  interface ChannelConfigDefaults {
+    storage?: { retention_days?: number };
+    strict_types?: boolean;
+    types?: Record<string, unknown>;
+  }
+
+  type MaybeAsync<T> = T | (() => Promise<T>);
+
   interface WebExtension {
     settingsPages?: SettingsPageExtension[];
     headerActions?: Component[];
+    defaults?: {
+      channelConfig?: MaybeAsync<ChannelConfigDefaults>;
+    };
   }
 
   let { extensions }: { extensions?: WebExtension } = $props();
+
+  let channelConfigDefaults = $state<ChannelConfigDefaults | undefined>(undefined);
 
   const WS_POLL_THRESHOLD = 60;
   const RECONNECT_DELAYS = [0, 1000, 2000, 4000, 8000];
@@ -147,6 +160,14 @@
     serverName = meta.server_name;
     pollInterval = meta.poll_interval;
     authUrl = meta.auth_url;
+
+    // Resolve channel config defaults (static or async)
+    const cfgDefault = extensions?.defaults?.channelConfig;
+    if (typeof cfgDefault === 'function') {
+      cfgDefault().then((d) => { channelConfigDefaults = d; }).catch(() => {});
+    } else if (cfgDefault) {
+      channelConfigDefaults = cfgDefault;
+    }
 
     // Start token refresh loop if we have a token with expiry
     if (claims?.exp) {
@@ -630,6 +651,7 @@
 <CreateChannelModal
   open={createChannelOpen}
   {client}
+  defaultConfig={channelConfigDefaults}
   onClose={() => createChannelOpen = false}
   onCreated={handleChannelCreated}
 />
@@ -638,6 +660,7 @@
   open={editChannelOpen}
   {channel}
   {client}
+  defaultConfig={channelConfigDefaults}
   onClose={() => editChannelOpen = false}
   onSaved={handleChannelEdited}
   onDeleted={handleChannelDeleted}

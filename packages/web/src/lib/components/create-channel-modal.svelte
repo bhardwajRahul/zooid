@@ -6,11 +6,13 @@
   let {
     open,
     client,
+    defaultConfig,
     onClose,
     onCreated,
   }: {
     open: boolean;
     client: ZooidClient;
+    defaultConfig?: { storage?: { retention_days?: number } };
     onClose: () => void;
     onCreated: (id: string) => void;
   } = $props();
@@ -19,6 +21,7 @@
   let name = $state('');
   let description = $state('');
   let isPublic = $state(true);
+  let retentionDays = $state('');
   let creating = $state(false);
   let error = $state('');
 
@@ -28,6 +31,7 @@
       name = '';
       description = '';
       isPublic = true;
+      retentionDays = defaultConfig?.storage?.retention_days ? String(defaultConfig.storage.retention_days) : '';
       error = '';
     }
   });
@@ -51,11 +55,14 @@
     error = '';
 
     try {
+      const days = parseInt(retentionDays, 10);
+      const config = !isNaN(days) && days > 0 ? { storage: { retention_days: days } } : undefined;
       await client.createChannel({
         id: id.trim(),
         name: name.trim(),
         description: description.trim() || undefined,
         is_public: isPublic,
+        config,
       });
       onCreated(id.trim());
       onClose();
@@ -108,6 +115,10 @@
         <label class="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" bind:checked={isPublic} class="rounded border-border" />
           <span class="text-xs text-muted-foreground">Public channel</span>
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-xs text-muted-foreground">Retention (days)</span>
+          <Input bind:value={retentionDays} type="number" placeholder="Default ({defaultConfig?.storage?.retention_days ?? 7})" />
         </label>
 
         {#if error}

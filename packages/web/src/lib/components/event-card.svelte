@@ -21,6 +21,7 @@
 
   let rawData = $derived(formatRaw(event.data));
   let prettyEntries = $derived(parsePretty(event.data));
+  let messageBody = $derived(extractMessageBody(event));
   let relativeTime = $derived(formatRelative(event.created_at));
   let fullTime = $derived(formatFull(event.created_at));
   let publisherLabel = $derived(formatPublisher(event));
@@ -43,6 +44,15 @@
       el.classList.add('bg-primary/10');
       setTimeout(() => el.classList.remove('bg-primary/10'), 1500);
     }
+  }
+
+  function extractMessageBody(e: ZooidEvent): string | null {
+    if (e.type !== 'message') return null;
+    try {
+      const obj = JSON.parse(e.data);
+      if (typeof obj?.body === 'string') return obj.body;
+    } catch {}
+    return null;
   }
 
   function formatPublisher(e: ZooidEvent): string | null {
@@ -147,7 +157,9 @@
   </div>
 
   <!-- Body -->
-  {#if viewMode === 'pretty' && prettyEntries}
+  {#if viewMode === 'pretty' && messageBody}
+    <div class="text-sm text-foreground/80 prose-block">{@html renderMarkdown(messageBody)}</div>
+  {:else if viewMode === 'pretty' && prettyEntries}
     <div class="text-sm text-foreground/80 flex flex-col gap-0.5 pl-0">
       {#each prettyEntries as node}
         {@render prettyNode(node, 0)}

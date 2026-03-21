@@ -8,6 +8,7 @@
     open,
     channel,
     client,
+    defaultConfig,
     onClose,
     onSaved,
     onDeleted,
@@ -15,6 +16,7 @@
     open: boolean;
     channel: ChannelInfo | null;
     client: ZooidClient;
+    defaultConfig?: { storage?: { retention_days?: number } };
     onClose: () => void;
     onSaved: () => void;
     onDeleted: () => void;
@@ -32,7 +34,7 @@
   let isPublic = $state(true);
 
   // Config fields
-  let storage = $state('');
+  let retentionDays = $state('');
   let strictTypes = $state(false);
   let typesJson = $state('');
 
@@ -47,7 +49,8 @@
       isPublic = channel.is_public;
 
       const cfg = channel.config as Record<string, unknown> | null;
-      storage = cfg?.storage != null ? String(cfg.storage) : '';
+      const storageCfg = cfg?.storage as Record<string, unknown> | null;
+      retentionDays = storageCfg?.retention_days != null ? String(storageCfg.retention_days) : '';
       strictTypes = !!cfg?.strict_types;
       typesJson = cfg?.types ? JSON.stringify(cfg.types, null, 2) : '';
     }
@@ -62,13 +65,13 @@
 
     // Build config
     let config: Record<string, unknown> | null = null;
-    const hasConfig = storage || typesJson || strictTypes;
+    const hasConfig = retentionDays || typesJson || strictTypes;
 
     if (hasConfig) {
       config = {};
-      if (storage) {
-        const num = parseInt(storage, 10);
-        if (!isNaN(num) && num > 0) config.storage = num;
+      if (retentionDays) {
+        const num = parseInt(retentionDays, 10);
+        if (!isNaN(num) && num > 0) config.storage = { retention_days: num };
       }
       if (typesJson.trim()) {
         try {
@@ -173,8 +176,8 @@
 
           <div class="flex flex-col gap-3">
             <label class="flex flex-col gap-1">
-              <span class="text-xs text-muted-foreground">Storage (max events)</span>
-              <Input bind:value={storage} type="number" placeholder="Default (unlimited)" />
+              <span class="text-xs text-muted-foreground">Retention (days)</span>
+              <Input bind:value={retentionDays} type="number" placeholder="Default ({defaultConfig?.storage?.retention_days ?? 7})" />
             </label>
 
             <label class="flex flex-col gap-1">
