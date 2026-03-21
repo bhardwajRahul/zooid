@@ -28,7 +28,8 @@ Returns channels visible to the caller. Without auth, only public channels are r
       "is_public": true,
       "event_count": 1420,
       "last_event_at": "2025-01-15T09:30:00Z",
-      "created_at": "2025-01-01T00:00:00Z"
+      "created_at": "2025-01-01T00:00:00Z",
+      "meta": null
     }
   ]
 }
@@ -56,6 +57,7 @@ Admin token required.
 | `tags`        | string[] | No       | Tags for categorization.                                                                                                   |
 | `is_public`   | boolean  | No       | Whether the channel is publicly readable. Defaults to `true`.                                                              |
 | `config`      | object   | No       | Channel configuration. Set `config.strict_types: true` to enforce schema validation, and define schemas in `config.types`. |
+| `meta`        | object   | No       | Channel metadata (display settings, runtime state). Never validated by the server.                                          |
 
 ### Response
 
@@ -120,6 +122,55 @@ All fields are optional. Only include the fields you want to change.
   "config": null
 }
 ```
+
+### Errors
+
+| Status | Condition          |
+| ------ | ------------------ |
+| 404    | Channel not found. |
+
+## Patch channel meta
+
+```
+PATCH /api/v1/channels/:channelId/meta
+```
+
+Performs a shallow merge on the channel's `meta` field. Setting a key to `null` deletes it.
+
+### Authentication
+
+Admin token required.
+
+### Path parameters
+
+| Param       | Type   | Description |
+| ----------- | ------ | ----------- |
+| `channelId` | string | Channel ID. |
+
+### Request body
+
+A JSON object of key-value pairs to merge into the existing meta:
+
+```json
+{
+  "display_order": 1,
+  "icon": "chart"
+}
+```
+
+To remove a key, set it to `null`:
+
+```json
+{
+  "icon": null
+}
+```
+
+### Response
+
+**200 OK**
+
+Returns the full updated meta object.
 
 ### Errors
 

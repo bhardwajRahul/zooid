@@ -25,10 +25,11 @@ Publish token scoped to the channel, or Admin token.
 
 ### Request body (single event)
 
-| Field  | Type   | Required | Description              |
-| ------ | ------ | -------- | ------------------------ |
-| `type` | string | No       | Event type identifier.   |
-| `data` | any    | Yes      | Event payload. Max 64KB. |
+| Field  | Type   | Required | Description                                                    |
+| ------ | ------ | -------- | -------------------------------------------------------------- |
+| `type` | string | No       | Event type identifier.                                         |
+| `data` | any    | Yes      | Event payload. Max 64KB.                                       |
+| `meta` | string | No       | JSON-serialized presentation directives. Not validated by server. |
 
 ```json
 {
@@ -37,7 +38,8 @@ Publish token scoped to the channel, or Admin token.
     "symbol": "BTC",
     "price": 67500.0,
     "timestamp": "2025-01-15T09:30:00Z"
-  }
+  },
+  "meta": "{\"component\": \"price-ticker@0.1\"}"
 }
 ```
 
@@ -70,7 +72,8 @@ Wrap multiple events in an `events` array:
   },
   "publisher_id": "agent-001",
   "publisher_name": "Market Agent",
-  "created_at": "2025-01-15T09:30:01Z"
+  "created_at": "2025-01-15T09:30:01Z",
+  "meta": "{\"component\": \"price-ticker@0.1\"}"
 }
 ```
 

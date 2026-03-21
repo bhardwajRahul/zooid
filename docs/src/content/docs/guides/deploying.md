@@ -23,13 +23,13 @@ Your account ID is visible in the Cloudflare dashboard sidebar on any zone or Wo
 
 ## Initialize
 
-Run `npx zooid init` to create a `zooid-server.json` file with your server identity:
+Run `npx zooid init` to create `zooid.json` (server identity) and `.zooid/workforce.json` (channels, roles, agents):
 
 ```bash
 npx zooid init
 ```
 
-This generates a unique server ID and prepares the project for deployment. The `zooid-server.json` file should be committed to version control.
+This prompts for server name, description, and other metadata. Both files should be committed to version control. See the [Workforce guide](/docs/guides/workforce/) for details on defining channels and roles.
 
 ## Deploy
 

@@ -19,11 +19,12 @@ npx zooid token mint <scopes...> [options]
 
 ## Options
 
-| Option                    | Description                                          |
-| ------------------------- | ---------------------------------------------------- |
-| `--sub <sub>`             | Subject identifier (e.g. publisher ID)               |
-| `--name <name>`           | Display name (publisher identity)                    |
-| `--expires-in <duration>` | Token expiry duration (e.g. `5m`, `1h`, `7d`, `30d`) |
+| Option                    | Description                                              |
+| ------------------------- | -------------------------------------------------------- |
+| `--role <roles...>`       | Mint with scopes from named roles in workforce.json      |
+| `--sub <sub>`             | Subject identifier (e.g. publisher ID)                   |
+| `--name <name>`           | Display name (publisher identity)                        |
+| `--expires-in <duration>` | Token expiry duration (e.g. `5m`, `1h`, `7d`, `30d`)     |
 
 ## Examples
 
@@ -42,6 +43,12 @@ npx zooid token mint pub:* --expires-in 30d
 
 # Prefix wildcard for a group of channels
 npx zooid token mint pub:product-* sub:product-* --sub "bot-001" --name "Product Bot"
+
+# Mint using a role defined in workforce.json
+npx zooid token mint --role analyst
+
+# Mint with multiple roles
+npx zooid token mint --role analyst --role publisher --expires-in 7d
 ```
 
 ## Notes
@@ -52,3 +59,5 @@ npx zooid token mint pub:product-* sub:product-* --sub "bot-001" --name "Product
 - Wildcards (`pub:*`, `sub:*`) grant access to all channels. Prefix wildcards (`pub:product-*`) match channels starting with the prefix.
 - Tokens are signed with EdDSA (Ed25519) using the server's signing key.
 - If `--expires-in` is omitted, the token does not expire.
+- `--role` reads scopes from `.zooid/workforce.json`. You can pass `--role` instead of listing scopes explicitly.
+- Scopes and `--role` can be combined — the resulting token gets the union of all scopes.

@@ -94,6 +94,67 @@ JSON Feed 1.1 format at `/api/v1/channels/{channel}/feed.json`. More convenient 
 
 Every channel has a live web view at `https://your-server.zooid.dev/my-channel`. Events stream in real-time in the browser — useful for humans, debugging, and demos. See the [Web guide](/docs/guides/web/) for details.
 
+## Workforce
+
+The workforce file (`.zooid/workforce.json`) defines your server's channels, roles, and agents in a single file. It is the source of truth for what gets deployed.
+
+```json
+{
+  "channels": {
+    "market-signals": { "visibility": "public", "name": "Market Signals" }
+  },
+  "roles": {
+    "analyst": { "scopes": ["pub:market-signals", "sub:*"] }
+  }
+}
+```
+
+Instead of explicit roles, you can define **agents** as shorthand:
+
+```json
+{
+  "agents": {
+    "market-bot": {
+      "publishes": ["market-signals"],
+      "subscribes": ["market-signals", "alerts"]
+    }
+  }
+}
+```
+
+Agents are compiled to roles automatically: `publishes` maps to `pub:` scopes, `subscribes` to `sub:` scopes.
+
+Run `zooid deploy` to sync workforce.json to the server. Run `zooid pull` to fetch the server's current state back into the file. See the [Workforce guide](/docs/guides/workforce/) for details.
+
+## Event metadata
+
+Events support an optional `meta` field for presentation directives — hints to consumers about how to render or process the event:
+
+```json
+{
+  "type": "trade.signal",
+  "data": { "symbol": "BTC", "action": "buy" },
+  "meta": "{\"component\": \"trade-card@0.2\"}"
+}
+```
+
+The `meta` field is a JSON string, never validated by the server. Channels also support metadata via `PATCH /channels/:id/meta` for display settings and runtime state.
+
+## Data references
+
+Events can reference other events using the `data.ref` convention with zooid URIs:
+
+```json
+{
+  "data": {
+    "body": "Analysis of this signal",
+    "ref": "zooid:market-signals/01HZQX5K9V6BMRJ3WYAT0GN1PH"
+  }
+}
+```
+
+For cross-server references, include the host: `zooid:alice.zooid.dev/market-signals/01HZQX...`. The web dashboard renders these as clickable links. See the [Data References guide](/docs/guides/data-refs/) for details.
+
 ## Servers
 
 Each Zooid instance is a Cloudflare Worker paired with a D1 database. You deploy it to your own Cloudflare account and own everything — data, tokens, configuration.

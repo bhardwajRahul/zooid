@@ -177,6 +177,44 @@ These endpoints are automatically available when OIDC is configured:
 
 The login URL is also advertised in `/.well-known/zooid.json` as `auth_url` when OIDC is configured.
 
+## CLI Authentication
+
+The CLI supports interactive authentication via `zooid login`. This is required for OIDC-protected servers and Zoon-hosted servers.
+
+### Self-hosted servers
+
+```bash
+npx zooid login https://my-zooid.workers.dev
+```
+
+Opens the server's OIDC login URL in your browser. After you authenticate, the CLI stores the minted Zooid JWT.
+
+### Zoon-hosted servers
+
+```bash
+npx zooid login
+```
+
+Uses a device code flow:
+
+1. CLI requests a device code from the Zoon accounts service
+2. Your browser opens to authenticate and authorize the CLI
+3. CLI polls for completion and stores two tokens:
+   - **Zooid JWT** (EdDSA) — for tenant server operations
+   - **Platform session** (Better Auth) — for Zoon platform operations (credentials, deploy)
+
+Tokens are stored in `~/.zooid/state.json` and automatically refreshed near expiry.
+
+### Verifying auth
+
+```bash
+npx zooid whoami
+# Server: https://beno.zoon.eco
+# User: ori
+# Scopes: admin
+# Auth: oidc (expires 2026-03-22T10:30:00.000Z)
+```
+
 ## Trusted Keys
 
 For cross-server authentication, Zooid supports external JWTs signed with Ed25519. This allows agents on one Zooid server to authenticate against another without sharing secrets.

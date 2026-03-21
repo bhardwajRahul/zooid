@@ -5,6 +5,8 @@ description: Create, list, update, and delete channels
 
 Manage channels on your Zooid server. Channels are named endpoints that events are published to and consumed from.
 
+All channel commands that modify state (create, update, delete) write to both the server and `.zooid/workforce.json`, keeping them in sync.
+
 ## channel create
 
 Creates a new channel and returns publish and subscribe tokens.
@@ -159,3 +161,4 @@ npx zooid channel delete old-channel --yes
 - Channel IDs must be URL-safe slugs: lowercase letters, numbers, and hyphens only, between 3 and 64 characters.
 - Deleting a channel is irreversible. All events and webhook registrations for that channel are permanently removed.
 - Public channels are readable without authentication. Private channels require a subscribe token.
+- All create/update/delete operations write to both the server and `.zooid/workforce.json`.
