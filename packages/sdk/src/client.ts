@@ -471,9 +471,9 @@ export class ZooidClient {
       }, delay);
     };
 
-    const connectWs = (attempt: number) => {
+    const connectWs = async (attempt: number) => {
       if (stopped) return;
-      const url = this.buildWsUrl(channelId, options);
+      const url = await this.buildWsUrl(channelId, options);
       const ws = new globalThis.WebSocket(url);
       activeWs = ws;
 
@@ -497,14 +497,14 @@ export class ZooidClient {
       };
 
       ws.onerror = () => {
-        ws.close();
+        // Don't call ws.close() — onclose fires automatically after onerror
       };
     };
 
     // Initial connection: retry once on failure, then fallback (auto) or reject (ws)
-    const tryWs = (retryOnFail: boolean): Promise<() => void> => {
+    const tryWs = async (retryOnFail: boolean): Promise<() => void> => {
+      const url = await this.buildWsUrl(channelId, options);
       return new Promise<() => void>((resolve, reject) => {
-        const url = this.buildWsUrl(channelId, options);
         const ws = new globalThis.WebSocket(url);
         activeWs = ws;
 
@@ -526,14 +526,14 @@ export class ZooidClient {
           };
 
           ws.onerror = () => {
-            ws.close();
+            // Don't call ws.close() — onclose fires automatically after onerror
           };
 
           resolve(unsubscribe);
         };
 
         ws.onerror = () => {
-          ws.close();
+          // Don't call ws.close() — onclose fires automatically after onerror
           if (retryOnFail) {
             // Retry once after 1s
             setTimeout(() => {
@@ -556,12 +556,18 @@ export class ZooidClient {
     return tryWs(true);
   }
 
-  private buildWsUrl(channelId: string, options?: SubscribeOptions): string {
+  private async buildWsUrl(
+    channelId: string,
+    options?: SubscribeOptions,
+  ): Promise<string> {
     const base = this.server
       .replace(/^http:\/\//, 'ws://')
       .replace(/^https:\/\//, 'wss://');
     const params = new URLSearchParams();
-    if (this.token) params.set('token', this.token);
+    const token = this.tokenManager
+      ? await this.tokenManager.getToken()
+      : this.token;
+    if (token) params.set('token', token);
     if (options?.type) params.set('types', options.type);
     const qs = params.toString();
     return `${base}/api/v1/channels/${channelId}/ws${qs ? `?${qs}` : ''}`;

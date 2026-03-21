@@ -34,6 +34,9 @@ class MockWebSocket {
   }
   simulateError() {
     this.onerror?.();
+    // Real WebSocket fires onclose after onerror
+    this.closed = true;
+    this.onclose?.();
   }
   simulateClose() {
     this.closed = true;
@@ -299,6 +302,7 @@ describe('ZooidClient.subscribe() — ws mode', () => {
       mode: 'ws',
       type: 'alert',
     });
+    await vi.advanceTimersByTimeAsync(0); // flush async buildWsUrl
 
     expect(MockWebSocket.instances).toHaveLength(1);
     const ws = MockWebSocket.instances[0];
@@ -316,6 +320,7 @@ describe('ZooidClient.subscribe() — ws mode', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
 
     const ws = MockWebSocket.instances[0];
     expect(ws.url).toBe('ws://localhost:8787/api/v1/channels/ch/ws');
@@ -330,6 +335,7 @@ describe('ZooidClient.subscribe() — ws mode', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
 
     const ws = MockWebSocket.instances[0];
     ws.simulateOpen();
@@ -346,6 +352,7 @@ describe('ZooidClient.subscribe() — ws mode', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
 
     const ws = MockWebSocket.instances[0];
     ws.simulateOpen();
@@ -370,6 +377,7 @@ describe('ZooidClient.subscribe() — ws mode', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
 
     // First attempt fails
     MockWebSocket.instances[0].simulateError();
@@ -388,6 +396,7 @@ describe('ZooidClient.subscribe() — ws mode', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
 
     // First WS attempt fails
     MockWebSocket.instances[0].simulateError();
@@ -416,6 +425,7 @@ describe('ZooidClient.subscribe() — ws reconnection', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
     const ws1 = MockWebSocket.instances[0];
     ws1.simulateOpen();
     await promise;
@@ -450,6 +460,7 @@ describe('ZooidClient.subscribe() — ws reconnection', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
     const ws1 = MockWebSocket.instances[0];
     ws1.simulateOpen();
     await promise;
@@ -489,6 +500,7 @@ describe('ZooidClient.subscribe() — ws reconnection', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback, { mode: 'ws' });
+    await vi.advanceTimersByTimeAsync(0);
     const ws1 = MockWebSocket.instances[0];
     ws1.simulateOpen();
     const unsub = await promise;
@@ -516,6 +528,7 @@ describe('ZooidClient.subscribe() — auto mode', () => {
     const callback = vi.fn();
 
     const promise = client.subscribe('ch', callback); // auto by default
+    await vi.advanceTimersByTimeAsync(0);
 
     const ws = MockWebSocket.instances[0];
     ws.simulateOpen();
@@ -536,6 +549,7 @@ describe('ZooidClient.subscribe() — auto mode', () => {
     );
 
     const promise = client.subscribe('ch', callback);
+    await vi.advanceTimersByTimeAsync(0);
 
     // First attempt fails
     MockWebSocket.instances[0].simulateError();

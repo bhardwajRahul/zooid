@@ -1,8 +1,12 @@
 /**
- * Manages OAuth client_credentials token exchange for M2M authentication.
+ * Manages OAuth client_credentials authentication for M2M agents.
  *
- * Handles token endpoint discovery (via /.well-known/zooid.json → OIDC discovery),
- * credential exchange, caching, and automatic refresh before expiry.
+ * Standard OAuth2 flow: sends client_id + client_secret + resource to the
+ * OIDC provider's token endpoint, gets back a JWT access token with scopes.
+ * The Zooid server verifies the JWT directly via JWKS.
+ *
+ * Token endpoint is discovered via:
+ * /.well-known/zooid.json → auth_url origin → /.well-known/openid-configuration
  */
 export class OAuthTokenManager {
   private accessToken: string | null = null;
@@ -20,19 +24,18 @@ export class OAuthTokenManager {
   }
 
   /**
-   * Get a valid access token. Returns a cached token if still fresh,
-   * or exchanges credentials for a new one.
+   * Get a valid access token (JWT). Returns a cached token if still fresh,
+   * or re-authenticates with client credentials.
    */
   async getToken(): Promise<string> {
     if (this.accessToken && Date.now() < this.expiresAt - 30_000) {
       return this.accessToken;
     }
-    return this.refresh();
+    return this.authenticate();
   }
 
   /**
-   * Discover the token endpoint from the server's well-known metadata
-   * and the OIDC provider's openid-configuration.
+   * Discover the token endpoint from the server's well-known metadata.
    */
   private async discover(): Promise<string> {
     const wellKnownRes = await this._fetch(
@@ -51,8 +54,8 @@ export class OAuthTokenManager {
     return oidcConfig.token_endpoint as string;
   }
 
-  /** Exchange client credentials for a new access token. */
-  private async refresh(): Promise<string> {
+  /** Exchange client credentials for a JWT access token. */
+  private async authenticate(): Promise<string> {
     if (!this.tokenEndpoint) {
       this.tokenEndpoint = await this.discover();
     }
@@ -60,6 +63,7 @@ export class OAuthTokenManager {
       grant_type: 'client_credentials',
       client_id: this.clientId,
       client_secret: this.clientSecret,
+      resource: this.serverUrl,
     });
     const res = await this._fetch(this.tokenEndpoint, {
       method: 'POST',
