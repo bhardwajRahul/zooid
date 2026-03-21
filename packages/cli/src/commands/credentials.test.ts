@@ -133,7 +133,7 @@ describe('runCredentialsList', () => {
       {
         name: 'bot-1',
         client_id: 'sa_1',
-        roles: ['analyst'],
+        roles: [{ id: 'role_1', name: 'analyst' }],
         created_at: '2026-03-20',
       },
     ]);
@@ -145,21 +145,42 @@ describe('runCredentialsList', () => {
 });
 
 describe('runCredentialsRotate', () => {
-  it('rotates and outputs new .env', async () => {
+  it('rotates by name and outputs new .env', async () => {
+    mockList.mockResolvedValueOnce([
+      {
+        name: 'bot-1',
+        client_id: 'sa_1',
+        roles: [{ id: 'r1', name: 'analyst' }],
+        created_at: '2026-03-20',
+      },
+    ]);
     mockRotate.mockResolvedValueOnce({
       client_id: 'sa_1',
       client_secret: 'new_secret',
     });
 
-    const output = await runCredentialsRotate('sa_1');
+    const output = await runCredentialsRotate('bot-1');
     expect(output).toContain('ZOOID_CLIENT_SECRET=new_secret');
+    expect(mockRotate).toHaveBeenCalledWith(
+      'https://beno.zoon.eco',
+      'plat_test',
+      'sa_1',
+    );
   });
 });
 
 describe('runCredentialsRevoke', () => {
-  it('revokes credential', async () => {
+  it('revokes by name', async () => {
+    mockList.mockResolvedValueOnce([
+      {
+        name: 'bot-1',
+        client_id: 'sa_1',
+        roles: [{ id: 'r1', name: 'analyst' }],
+        created_at: '2026-03-20',
+      },
+    ]);
     mockRevoke.mockResolvedValueOnce(undefined);
-    await runCredentialsRevoke('sa_1');
+    await runCredentialsRevoke('bot-1');
     expect(mockRevoke).toHaveBeenCalledWith(
       'https://beno.zoon.eco',
       'plat_test',

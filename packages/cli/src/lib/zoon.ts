@@ -1,3 +1,9 @@
+import type {
+  CredentialCreateResult,
+  CredentialListItem,
+  CredentialRotateResult,
+} from '@zooid/types';
+
 /** Platform API lives at api.zooid.dev (not app.zooid.dev which is the dashboard). */
 const DEFAULT_PLATFORM_URL = 'https://api.zooid.dev';
 
@@ -71,11 +77,12 @@ export async function syncRolesToZoon(
   return res.json() as Promise<SyncRolesResult>;
 }
 
-export interface CredentialResult {
-  name: string;
-  client_id: string;
-  client_secret: string;
-}
+// Re-export for backward compat
+export type {
+  CredentialCreateResult,
+  CredentialListItem,
+  CredentialRotateResult,
+} from '@zooid/types';
 
 export async function createCredential(
   serverUrl: string,
@@ -83,7 +90,7 @@ export async function createCredential(
   name: string,
   roleNames: string[],
   options?: FetchOptions,
-): Promise<CredentialResult> {
+): Promise<CredentialCreateResult> {
   const subdomain = extractSubdomain(serverUrl)!;
   const _fetch = options?.fetch ?? globalThis.fetch;
 
@@ -116,14 +123,7 @@ export async function createCredential(
     );
   }
 
-  return res.json() as Promise<CredentialResult>;
-}
-
-export interface CredentialListItem {
-  name: string;
-  client_id: string;
-  roles: string[];
-  created_at?: string;
+  return res.json() as Promise<CredentialCreateResult>;
 }
 
 export async function listCredentials(

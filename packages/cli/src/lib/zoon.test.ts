@@ -162,9 +162,14 @@ describe('createCredential', () => {
 describe('listCredentials', () => {
   it('GETs credentials from platform API', async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce(
-      jsonResponse({
-        credentials: [{ name: 'bot-1', client_id: 'sa_1', roles: ['analyst'] }],
-      }),
+      jsonResponse([
+        {
+          name: 'bot-1',
+          client_id: 'sa_1',
+          roles: [{ id: 'role_1', name: 'analyst' }],
+          created_at: '2026-03-21T00:00:00.000Z',
+        },
+      ]),
     );
 
     const result = await listCredentials('https://beno.zoon.eco', 'jwt_token', {
@@ -173,6 +178,71 @@ describe('listCredentials', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('bot-1');
+    expect(result[0].client_id).toBe('sa_1');
+  });
+
+  it('returns empty array when no credentials', async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(jsonResponse([]));
+
+    const result = await listCredentials('https://beno.zoon.eco', 'jwt_token', {
+      fetch: mockFetch,
+    });
+
+    expect(result).toHaveLength(0);
+  });
+
+  it('throws on API error', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'unauthorized' }, 401));
+
+    await expect(
+      listCredentials('https://beno.zoon.eco', 'jwt_token', {
+        fetch: mockFetch,
+      }),
+    ).rejects.toThrow('Failed to list credentials: 401');
+  });
+});
+
+describe('createCredential', () => {
+  it('throws when no matching roles found', async () => {
+    const mockFetch = vi.fn();
+    // GET roles returns empty
+    mockFetch.mockResolvedValueOnce(jsonResponse([]));
+
+    await expect(
+      createCredential(
+        'https://beno.zoon.eco',
+        'jwt_token',
+        'bot',
+        ['nonexistent'],
+        {
+          fetch: mockFetch,
+        },
+      ),
+    ).rejects.toThrow('No matching roles');
+  });
+
+  it('throws when credential creation fails', async () => {
+    const mockFetch = vi.fn();
+    // GET roles
+    mockFetch.mockResolvedValueOnce(
+      jsonResponse([{ id: 'role_1', name: 'analyst', scopes: ['pub:*'] }]),
+    );
+    // POST credential — 500
+    mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'internal' }, 500));
+
+    await expect(
+      createCredential(
+        'https://beno.zoon.eco',
+        'jwt_token',
+        'bot',
+        ['analyst'],
+        {
+          fetch: mockFetch,
+        },
+      ),
+    ).rejects.toThrow();
   });
 });
 
@@ -196,6 +266,18 @@ describe('rotateCredential', () => {
       'https://api.zooid.dev/api/v1/servers/beno/credentials/sa_1/rotate',
     );
   });
+
+  it('throws on 404', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'not_found' }, 404));
+
+    await expect(
+      rotateCredential('https://beno.zoon.eco', 'jwt_token', 'nonexistent', {
+        fetch: mockFetch,
+      }),
+    ).rejects.toThrow('Failed to rotate credential');
+  });
 });
 
 describe('revokeCredential', () => {
@@ -213,5 +295,17 @@ describe('revokeCredential', () => {
       'https://api.zooid.dev/api/v1/servers/beno/credentials/sa_1',
     );
     expect(init.method).toBe('DELETE');
+  });
+
+  it('throws on 404', async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'not_found' }, 404));
+
+    await expect(
+      revokeCredential('https://beno.zoon.eco', 'jwt_token', 'nonexistent', {
+        fetch: mockFetch,
+      }),
+    ).rejects.toThrow('Failed to revoke credential');
   });
 });

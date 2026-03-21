@@ -68,14 +68,7 @@ export async function runCredentialsCreate(
   return formatEnv(server, result.client_id, result.client_secret);
 }
 
-export async function runCredentialsList(): Promise<
-  Array<{
-    name: string;
-    client_id: string;
-    roles: string[];
-    created_at?: string;
-  }>
-> {
+export async function runCredentialsList() {
   const { server, platformToken } = requireZoonServer();
   return listCredentials(server, platformToken);
 }

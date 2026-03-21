@@ -141,6 +141,36 @@ export interface ServerIdentity {
   updated_at: string;
 }
 
+// --- Credential API types (Zoon platform) ---
+
+/** Role reference in a credential listing. */
+export interface CredentialRole {
+  id: string;
+  name: string | null;
+  warning?: string;
+}
+
+/** Response from `POST /credentials` (create). */
+export interface CredentialCreateResult {
+  name: string;
+  client_id: string;
+  client_secret: string;
+}
+
+/** Item in the `GET /credentials` response (list). */
+export interface CredentialListItem {
+  name: string;
+  client_id: string;
+  roles: CredentialRole[];
+  created_at: string;
+}
+
+/** Response from `POST /credentials/:id/rotate`. */
+export interface CredentialRotateResult {
+  client_id: string;
+  client_secret: string;
+}
+
 // Deprecated aliases for backward compatibility
 
 /** @deprecated Use {@link ServerDiscovery} instead. */
