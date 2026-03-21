@@ -8,10 +8,11 @@ let tmpDir: string;
 let origCwd: string;
 
 beforeEach(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-roles-test-'));
+  tmpDir = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'zooid-roles-test-')),
+  );
   origCwd = process.cwd();
   process.chdir(tmpDir);
-  // Create project marker
   fs.writeFileSync(path.join(tmpDir, 'zooid.json'), '{}');
 });
 
@@ -20,27 +21,32 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-function writeRoleDef(id: string, def: Record<string, unknown>) {
-  const dir = path.join(tmpDir, '.zooid', 'roles');
+function writeWorkforce(data: Record<string, unknown>) {
+  const dir = path.join(tmpDir, '.zooid');
   fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, `${id}.json`), JSON.stringify(def));
+  fs.writeFileSync(path.join(dir, 'workforce.json'), JSON.stringify(data));
 }
 
-describe('loadRoleDefs', () => {
-  it('returns empty map when .zooid/roles/ does not exist', () => {
+describe('loadRoleDefs (from .zooid/workforce.json)', () => {
+  it('returns empty map when workforce.json does not exist', () => {
     const defs = loadRoleDefs();
     expect(defs.size).toBe(0);
   });
 
-  it('loads role definitions from .zooid/roles/*.json', () => {
-    writeRoleDef('analyst', {
-      name: 'Analyst',
-      description: 'Reads market data',
-      scopes: ['sub:market-data', 'pub:signals'],
-    });
-    writeRoleDef('reviewer', {
-      name: 'Reviewer',
-      scopes: ['sub:*'],
+  it('loads role definitions from workforce.json', () => {
+    writeWorkforce({
+      channels: {},
+      roles: {
+        analyst: {
+          name: 'Analyst',
+          description: 'Reads market data',
+          scopes: ['sub:market-data', 'pub:signals'],
+        },
+        reviewer: {
+          name: 'Reviewer',
+          scopes: ['sub:*'],
+        },
+      },
     });
 
     const defs = loadRoleDefs();
@@ -52,26 +58,24 @@ describe('loadRoleDefs', () => {
     expect(defs.get('reviewer')!.scopes).toEqual(['sub:*']);
   });
 
-  it('ignores non-JSON files', () => {
-    const dir = path.join(tmpDir, '.zooid', 'roles');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(path.join(dir, '.gitkeep'), '');
-    fs.writeFileSync(path.join(dir, 'README.md'), '# Roles');
-    writeRoleDef('analyst', { name: 'Analyst', scopes: ['sub:*'] });
+  it('includes agent-derived roles', () => {
+    writeWorkforce({
+      channels: { data: { visibility: 'public' } },
+      agents: {
+        writer: { publishes: ['data'] },
+      },
+    });
 
     const defs = loadRoleDefs();
     expect(defs.size).toBe(1);
+    expect(defs.get('writer')!.scopes).toEqual(['pub:data']);
   });
 
-  it('uses filename (without .json) as role ID', () => {
-    writeRoleDef('market-feed-publisher', { scopes: ['pub:market-data'] });
-
-    const defs = loadRoleDefs();
-    expect(defs.has('market-feed-publisher')).toBe(true);
-  });
-
-  it('finds .zooid/roles/ from a subdirectory', () => {
-    writeRoleDef('analyst', { scopes: ['sub:*'] });
+  it('finds workforce.json from a subdirectory', () => {
+    writeWorkforce({
+      channels: {},
+      roles: { analyst: { scopes: ['sub:*'] } },
+    });
     const sub = path.join(tmpDir, 'src', 'agents');
     fs.mkdirSync(sub, { recursive: true });
     process.chdir(sub);

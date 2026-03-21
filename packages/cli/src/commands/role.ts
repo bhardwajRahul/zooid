@@ -1,20 +1,15 @@
-import {
-  writeRoleFile,
-  readRoleFile,
-  deleteRoleFile,
-  listRoleFiles,
-} from '../lib/role-files';
+import { loadWorkforce, saveWorkforce } from '../lib/workforce';
 import type { RoleDef } from '../lib/roles';
 
-/** Create a role definition file in .zooid/roles/<id>.json */
+/** Create a role definition in .zooid/workforce.json */
 export function runRoleCreate(
   id: string,
   options: { name?: string; description?: string; scopes: string[] },
 ): void {
-  const existing = readRoleFile(id);
-  if (existing) {
+  const wf = loadWorkforce();
+  if (id in wf.roles) {
     throw new Error(
-      `Role "${id}" already exists in .zooid/roles/. Use "zooid role update" to modify it.`,
+      `Role "${id}" already exists. Use "zooid role update" to modify it.`,
     );
   }
 
@@ -22,15 +17,17 @@ export function runRoleCreate(
   if (options.name) def.name = options.name;
   if (options.description) def.description = options.description;
 
-  writeRoleFile(id, def);
+  wf.roles[id] = def;
+  saveWorkforce(wf);
 }
 
-/** List all local role IDs from .zooid/roles/ */
+/** List all local role IDs from .zooid/workforce.json */
 export function runRoleList(): string[] {
-  return listRoleFiles();
+  const wf = loadWorkforce();
+  return Object.keys(wf.roles);
 }
 
-/** Update fields in an existing .zooid/roles/<id>.json */
+/** Update fields in an existing role in .zooid/workforce.json */
 export function runRoleUpdate(
   id: string,
   fields: {
@@ -39,11 +36,10 @@ export function runRoleUpdate(
     scopes?: string[];
   },
 ): RoleDef {
-  const existing = readRoleFile(id);
+  const wf = loadWorkforce();
+  const existing = wf.roles[id];
   if (!existing) {
-    throw new Error(
-      `Role "${id}" not found in .zooid/roles/. Use "zooid role create" first.`,
-    );
+    throw new Error(`Role "${id}" not found. Use "zooid role create" first.`);
   }
 
   if (fields.name !== undefined) {
@@ -64,11 +60,17 @@ export function runRoleUpdate(
     existing.scopes = fields.scopes;
   }
 
-  writeRoleFile(id, existing);
+  wf.roles[id] = existing;
+  saveWorkforce(wf);
   return existing;
 }
 
-/** Delete .zooid/roles/<id>.json */
+/** Delete a role from .zooid/workforce.json */
 export function runRoleDelete(id: string): void {
-  deleteRoleFile(id);
+  const wf = loadWorkforce();
+  if (!(id in wf.roles)) {
+    throw new Error(`Role "${id}" not found in .zooid/workforce.json`);
+  }
+  delete wf.roles[id];
+  saveWorkforce(wf);
 }
