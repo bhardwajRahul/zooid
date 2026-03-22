@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://zooid.dev/schemas/workforce.json",
+  "title": "Zooid Workforce",
+  "description": "Defines channels, roles, and agents for a Zooid workforce",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema URL for IDE support"
+    },
+    "meta": {
+      "type": "object",
+      "description": "Template/project metadata",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable name"
+        },
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$",
+          "description": "Directory name when used as a template (lowercase alphanumeric + hyphens, 3-64 chars)"
+        },
+        "description": {
+          "type": "string",
+          "description": "What this workforce does"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Discovery tags"
+        }
+      },
+      "additionalProperties": false
+    },
+    "include": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Relative paths to other workforce files within .zooid/"
+    },
+    "channels": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["visibility"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "What this channel carries"
+          },
+          "visibility": {
+            "type": "string",
+            "enum": ["public", "private"],
+            "description": "Public channels are CDN-cached and openly readable"
+          },
+          "config": {
+            "type": "object",
+            "description": "Channel config: types, policies, strict"
+          }
+        }
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$"
+      },
+      "description": "Channel definitions keyed by slug"
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["scopes"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "What this role does"
+          },
+          "scopes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Array of Zooid scopes: pub:<channel>, sub:<channel>, pub:*, sub:*, admin"
+          }
+        }
+      },
+      "propertyNames": {
+        "pattern": "^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$"
+      },
+      "description": "Role definitions keyed by slug"
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Human-readable display name"
+          },
+          "description": {
+            "type": "string",
+            "description": "What this agent does"
+          },
+          "publishes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Channel IDs this agent publishes to (compiled to pub: scopes)"
+          },
+          "subscribes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Channel IDs this agent subscribes to (compiled to sub: scopes)"
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "Agent shorthand that compiles to roles"
+    }
+  },
+  "additionalProperties": false
+}

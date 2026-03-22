@@ -3,7 +3,7 @@ import path from 'node:path';
 import readline from 'node:readline/promises';
 import { printSuccess, printError, printInfo, printStep } from '../lib/output';
 import { ask } from '../lib/prompts';
-import { fetchTemplate } from '../lib/template';
+import { runUse } from './use';
 
 export interface ZooidServerConfig {
   name: string;
@@ -33,25 +33,14 @@ export function saveServerConfig(config: ZooidServerConfig): void {
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 }
 
-export async function runInit(options?: { template?: string }): Promise<void> {
+export async function runInit(options?: { use?: string }): Promise<void> {
   const configPath = getConfigPath();
-
-  // Fetch template if provided
-  if (options?.template) {
-    printStep('Fetching template...');
-    const result = await fetchTemplate(options.template, process.cwd());
-    printSuccess(
-      `Template loaded (${result.channelCount} channel(s), ${result.roleCount} role(s))`,
-    );
-  }
-
   const existing = loadServerConfig();
 
   // If zooid.json already has a URL (e.g. from `zooid login`), skip interactive prompts.
   // The server already exists on Zoon — no need to configure metadata locally.
-  if (existing?.url && options?.template) {
-    // Template-only mode: workforce.json was fetched, zooid.json already configured
-    // Just ensure .zooid/workforce.json exists
+  if (existing?.url && options?.use) {
+    // Ensure .zooid/workforce.json exists before running use
     const workforcePath = path.join(process.cwd(), '.zooid', 'workforce.json');
     if (!fs.existsSync(workforcePath)) {
       fs.mkdirSync(path.join(process.cwd(), '.zooid'), { recursive: true });
@@ -60,6 +49,8 @@ export async function runInit(options?: { template?: string }): Promise<void> {
         JSON.stringify({ channels: {}, roles: {} }, null, 2) + '\n',
       );
     }
+
+    await runUse(options.use);
 
     console.log('');
     printInfo('Server', existing.url);
@@ -149,5 +140,10 @@ export async function runInit(options?: { template?: string }): Promise<void> {
     console.log('');
   } finally {
     rl.close();
+  }
+
+  // Run use after init if --use was provided
+  if (options?.use) {
+    await runUse(options.use);
   }
 }

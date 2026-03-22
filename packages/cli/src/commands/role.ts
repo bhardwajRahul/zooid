@@ -1,4 +1,9 @@
-import { loadWorkforce, saveWorkforce } from '../lib/workforce';
+import {
+  loadWorkforce,
+  saveWorkforce,
+  updateInFile,
+  removeFromFile,
+} from '../lib/workforce';
 import type { RoleDef } from '../lib/roles';
 
 /** Create a role definition in .zooid/workforce.json */
@@ -60,8 +65,14 @@ export function runRoleUpdate(
     existing.scopes = fields.scopes;
   }
 
-  wf.roles[id] = existing;
-  saveWorkforce(wf);
+  // Write to the file that owns this role (provenance-aware)
+  const targetFile = wf.provenance.roles[id];
+  if (targetFile) {
+    updateInFile(targetFile, 'roles', id, existing);
+  } else {
+    wf.roles[id] = existing;
+    saveWorkforce(wf);
+  }
   return existing;
 }
 
@@ -71,6 +82,13 @@ export function runRoleDelete(id: string): void {
   if (!(id in wf.roles)) {
     throw new Error(`Role "${id}" not found in .zooid/workforce.json`);
   }
-  delete wf.roles[id];
-  saveWorkforce(wf);
+
+  // Remove from the file that owns this role (provenance-aware)
+  const targetFile = wf.provenance.roles[id];
+  if (targetFile) {
+    removeFromFile(targetFile, 'roles', id);
+  } else {
+    delete wf.roles[id];
+    saveWorkforce(wf);
+  }
 }

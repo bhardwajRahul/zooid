@@ -11,15 +11,11 @@ Creates a `zooid.json` file with server identity and a `.zooid/workforce.json` f
 npx zooid init [options]
 ```
 
-## Arguments
-
-None.
-
 ## Options
 
-| Option              | Description                            |
-| ------------------- | -------------------------------------- |
-| `--template <url>`  | Initialize from a GitHub template URL  |
+| Option         | Description                                     |
+| -------------- | ----------------------------------------------- |
+| `--use <url>`  | Include a template from a GitHub URL            |
 
 ## Examples
 
@@ -27,21 +23,23 @@ None.
 # Interactive setup — prompts for server name, description, etc.
 npx zooid init
 
-# Initialize from a GitHub template
-npx zooid init --template https://github.com/zooid-ai/trading-desk
+# Initialize with a template
+npx zooid init --use https://github.com/zooid-ai/templates/tree/master/chat
 
-# Template with a specific path in the repo
-npx zooid init --template https://github.com/org/repo/tree/main/examples/my-template
+# Same thing, two steps
+npx zooid init
+npx zooid use https://github.com/zooid-ai/templates/tree/master/chat
 ```
 
-## Templates
+## With `--use`
 
-When using `--template`, the CLI downloads the repository and copies:
+When using `--use`, the CLI runs `zooid init` then `zooid use` in sequence:
 
-- `.zooid/workforce.json` — channel and role definitions (required in template)
-- `zooid.json` — server identity (copied only if you don't already have one)
+1. Creates `zooid.json` and `.zooid/workforce.json` (the normal init flow).
+2. Fetches the template's `.zooid/` directory into `.zooid/<slug>/`.
+3. Adds the template to `include` in workforce.json.
 
-Templates must contain a `.zooid/workforce.json` with at least one channel or role.
+See [`zooid use`](/docs/cli/use/) for details on how templates are fetched and included.
 
 ## Notes
 

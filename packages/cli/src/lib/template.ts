@@ -90,25 +90,25 @@ export async function fetchTemplate(
       );
     }
 
-    // Copy .zooid/workforce.json if it exists
-    const sourceWorkforce = path.join(sourceRoot, '.zooid', 'workforce.json');
+    // Copy entire .zooid/ directory if it exists
+    const sourceZooid = path.join(sourceRoot, '.zooid');
     const targetZooid = path.join(targetDir, '.zooid');
 
     let channelCount = 0;
     let roleCount = 0;
 
-    if (fs.existsSync(sourceWorkforce)) {
-      fs.mkdirSync(targetZooid, { recursive: true });
-      fs.copyFileSync(
-        sourceWorkforce,
-        path.join(targetZooid, 'workforce.json'),
-      );
+    if (fs.existsSync(sourceZooid)) {
+      fs.cpSync(sourceZooid, targetZooid, { recursive: true });
 
-      const wf = JSON.parse(fs.readFileSync(sourceWorkforce, 'utf-8'));
-      channelCount = Object.keys(wf.channels ?? {}).length;
-      roleCount =
-        Object.keys(wf.roles ?? {}).length +
-        Object.keys(wf.agents ?? {}).length;
+      // Count channels and roles from workforce.json
+      const wfPath = path.join(sourceZooid, 'workforce.json');
+      if (fs.existsSync(wfPath)) {
+        const wf = JSON.parse(fs.readFileSync(wfPath, 'utf-8'));
+        channelCount = Object.keys(wf.channels ?? {}).length;
+        roleCount =
+          Object.keys(wf.roles ?? {}).length +
+          Object.keys(wf.agents ?? {}).length;
+      }
     }
 
     // Copy zooid.json if it exists and target doesn't have one

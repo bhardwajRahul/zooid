@@ -1,6 +1,6 @@
 import { ZooidClient } from '@zooid/sdk';
 import { createClient } from '../lib/client';
-import { loadWorkforce, saveWorkforce } from '../lib/workforce';
+import { loadWorkforce, saveWorkforce, updateInFile } from '../lib/workforce';
 import { loadConfigFile, resolveServer } from '../lib/config';
 import { isZoonHosted, listRolesFromZoon } from '../lib/zoon';
 import { printSuccess, printInfo, printStep } from '../lib/output';
@@ -12,6 +12,7 @@ export async function runPull(client?: ZooidClient): Promise<string[]> {
   const c = client ?? createClient();
   const wf = loadWorkforce();
   const written: string[] = [];
+  let newChannelsAdded = false;
 
   // Pull channels
   const channels = await c.listChannels();
@@ -27,12 +28,20 @@ export async function runPull(client?: ZooidClient): Promise<string[]> {
       if (ch.description) def.description = ch.description;
       if (ch.config) def.config = ch.config;
 
-      wf.channels[ch.id] = def;
+      // Write to the file that owns this channel, or root for new ones
+      const targetFile = wf.provenance.channels[ch.id];
+      if (targetFile) {
+        updateInFile(targetFile, 'channels', ch.id, def);
+      } else {
+        wf.channels[ch.id] = def;
+        newChannelsAdded = true;
+      }
       written.push(ch.id);
     }
   }
 
   // Pull roles — from platform API if Zoon-hosted, from tenant if self-hosted
+  let newRolesAdded = false;
   try {
     const server = resolveServer();
     const file = loadConfigFile();
@@ -59,14 +68,24 @@ export async function runPull(client?: ZooidClient): Promise<string[]> {
         const def: RoleDef = { scopes: role.scopes };
         if (role.name) def.name = role.name;
         if (role.description) def.description = role.description;
-        wf.roles[role.id] = def;
+
+        const targetFile = wf.provenance.roles[role.id];
+        if (targetFile) {
+          updateInFile(targetFile, 'roles', role.id, def);
+        } else {
+          wf.roles[role.id] = def;
+          newRolesAdded = true;
+        }
       }
     }
   } catch {
     // Server may not support roles endpoint yet — skip silently
   }
 
-  saveWorkforce(wf);
+  // Save root workforce.json for any new resources
+  if (newChannelsAdded || newRolesAdded) {
+    saveWorkforce(wf);
+  }
 
   if (written.length > 0 || Object.keys(wf.roles).length > 0) {
     printSuccess(

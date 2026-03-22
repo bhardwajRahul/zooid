@@ -19,6 +19,7 @@ import { runServerGet, runServerSet } from './commands/server';
 import { runTokenMint } from './commands/token';
 import { runDev } from './commands/dev';
 import { runInit } from './commands/init';
+import { runUse } from './commands/use';
 import { runDeploy } from './commands/deploy';
 import { runDestroy } from './commands/destroy';
 import { runLogin } from './commands/login';
@@ -228,12 +229,24 @@ program
 program
   .command('init')
   .description('Create zooid.json with server identity')
-  .option('--template <url>', 'Initialize from a GitHub template URL')
+  .option('--use <url>', 'Include a template from a GitHub URL')
   .action(async (opts) => {
     try {
-      await runInit({ template: opts.template });
+      await runInit({ use: opts.use });
     } catch (err) {
       handleError('init', err);
+    }
+  });
+
+// --- use ---
+program
+  .command('use <url>')
+  .description('Add a template to your workforce via include')
+  .action(async (url: string) => {
+    try {
+      await runUse(url);
+    } catch (err) {
+      handleError('use', err);
     }
   });
 

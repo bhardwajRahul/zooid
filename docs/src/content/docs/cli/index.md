@@ -27,6 +27,7 @@ When you pass `--token` on first use for a given server, the CLI saves the token
 | Command                                   | Description                                         |
 | ----------------------------------------- | --------------------------------------------------- |
 | [`zooid init`](/docs/cli/init/)            | Create zooid.json and .zooid/workforce.json          |
+| [`zooid use`](/docs/cli/use/)              | Add a template to your workforce via include         |
 | [`zooid deploy`](/docs/cli/deploy/)        | Deploy to Cloudflare Workers or sync to Zoon         |
 | [`zooid destroy`](/docs/cli/destroy/)      | Destroy a deployed server and all its data           |
 | [`zooid dev`](/docs/cli/dev/)              | Start local dev server                               |

@@ -13,7 +13,12 @@ import {
   getStatePath,
   saveConfig,
 } from '../lib/config';
-import { loadWorkforce, saveWorkforce } from '../lib/workforce';
+import {
+  loadWorkforce,
+  saveWorkforce,
+  updateInFile,
+  removeFromFile,
+} from '../lib/workforce';
 import { findProjectRoot } from '../lib/project';
 
 export interface ChannelCreateOptions {
@@ -84,17 +89,25 @@ export async function runChannelUpdate(
   const c = client ?? createClient();
   const result = await c.updateChannel(channelId, options);
 
-  // Update .zooid/workforce.json (best-effort)
+  // Update .zooid/workforce.json (best-effort, provenance-aware)
   if (findProjectRoot()) {
     try {
       const wf = loadWorkforce();
-      wf.channels[channelId] = {
-        visibility: result.is_public ? 'public' : 'private',
+      const def = {
+        visibility: (result.is_public ? 'public' : 'private') as
+          | 'public'
+          | 'private',
         ...(result.name && result.name !== channelId && { name: result.name }),
         ...(result.description && { description: result.description }),
         ...(result.config && { config: result.config }),
       };
-      saveWorkforce(wf);
+      const targetFile = wf.provenance.channels[channelId];
+      if (targetFile) {
+        updateInFile(targetFile, 'channels', channelId, def);
+      } else {
+        wf.channels[channelId] = def;
+        saveWorkforce(wf);
+      }
     } catch {
       // Skip silently
     }
@@ -121,12 +134,17 @@ export async function runChannelDelete(
     }
   }
 
-  // Remove from .zooid/workforce.json (best-effort)
+  // Remove from .zooid/workforce.json (best-effort, provenance-aware)
   if (findProjectRoot()) {
     try {
       const wf = loadWorkforce();
-      delete wf.channels[channelId];
-      saveWorkforce(wf);
+      const targetFile = wf.provenance.channels[channelId];
+      if (targetFile) {
+        removeFromFile(targetFile, 'channels', channelId);
+      } else {
+        delete wf.channels[channelId];
+        saveWorkforce(wf);
+      }
     } catch {
       // Skip silently
     }
