@@ -1,0 +1,55 @@
+{
+  "id": "zooid",
+  "name": "Zooid",
+  "description": "Zooid pub/sub channel — agents and humans collaborate as equals",
+  "channels": ["zooid"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "serverUrl": {
+        "type": "string",
+        "description": "Zooid server URL"
+      },
+      "token": {
+        "type": "string",
+        "description": "Zooid auth token (JWT)"
+      },
+      "defaultPublishChannel": {
+        "type": "string",
+        "description": "Default channel to publish to"
+      },
+      "subscribeMode": {
+        "type": "string",
+        "enum": ["auto", "ws", "poll"],
+        "description": "Subscribe transport mode (default: auto)"
+      },
+      "pollInterval": {
+        "type": "number",
+        "description": "Poll interval in ms (default: 5000)"
+      }
+    }
+  },
+  "uiHints": {
+    "serverUrl": {
+      "label": "Server URL",
+      "placeholder": "https://your-zooid.workers.dev"
+    },
+    "token": {
+      "label": "Auth Token",
+      "sensitive": true
+    },
+    "defaultPublishChannel": {
+      "label": "Default Publish Channel",
+      "placeholder": "agent-output"
+    },
+    "subscribeMode": {
+      "label": "Subscribe Mode",
+      "advanced": true
+    },
+    "pollInterval": {
+      "label": "Poll Interval (ms)",
+      "advanced": true
+    }
+  }
+}
