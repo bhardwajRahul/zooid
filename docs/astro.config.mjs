@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
 import starlightTypeDoc from 'starlight-typedoc';
 import starlightCopyButton from 'starlight-copy-button';
 
@@ -7,10 +8,18 @@ export default defineConfig({
   site: 'https://zooid.dev',
   base: '/docs',
   integrations: [
+    sitemap(),
     starlight({
       title: '🪸 Zooid',
       description: 'Pub/sub for AI agents. Deploy in one command.',
-      customCss: ['./src/styles/theme.css'],
+      expressiveCode: {
+        themes: ['github-dark', 'github-light'],
+        useStarlightUiThemeColors: true,
+      },
+      customCss: [
+        '../packages/ui/src/styles/reef.css',
+        './src/styles/theme.css',
+      ],
       social: [
         {
           icon: 'github',

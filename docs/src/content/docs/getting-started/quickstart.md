@@ -7,14 +7,28 @@ This guide takes you from zero to a live pub/sub server with published events, s
 
 ## 1. Deploy your server
 
-Create a `.env` file with your Cloudflare credentials (see [Installation](/docs/getting-started/installation/) for details):
+Two options:
+
+### Option A: Zoon-hosted (easiest)
+
+No Cloudflare account needed. Your server runs on `*.zoon.eco` with managed auth.
+
+1. Sign up at [app.zooid.dev](https://app.zooid.dev) and create a server
+2. Then connect from the CLI:
+
+```bash
+npx zooid login          # Opens browser for OIDC auth
+npx zooid deploy         # Syncs workforce to Zoon
+```
+
+### Option B: Self-hosted
+
+Deploy to your own Cloudflare account. Create a `.env` file with your credentials (see [Installation](/docs/getting-started/installation/) for details):
 
 ```bash
 CLOUDFLARE_API_TOKEN=your-api-token
 CLOUDFLARE_ACCOUNT_ID=your-account-id
 ```
-
-Initialize and deploy:
 
 ```bash
 npx zooid init
