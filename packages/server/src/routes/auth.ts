@@ -14,8 +14,6 @@ import { mintServerToken } from '../lib/jwt';
 type Env = { Bindings: Bindings; Variables: Variables };
 
 const ZOOID_JWT_TTL = 15 * 60; // 15 minutes
-const CLI_JWT_TTL = 24 * 60 * 60; // 24 hours (CLI tokens are long-lived, refreshed by CLI)
-const CLI_SESSION_TTL = 5 * 60; // 5 minutes (polling window)
 const REFRESH_COOKIE_TTL = 7 * 24 * 60 * 60; // 7 days
 const REFRESH_COOKIE_NAME = 'zooid_refresh';
 const STATE_COOKIE_NAME = 'zooid_auth_state';
@@ -116,6 +114,7 @@ async function decryptRefreshToken(
 // --- GET /auth/login ---
 // Initiates OIDC authorization code flow with PKCE.
 // Redirects browser to the OIDC provider's authorize endpoint.
+// Used by the web dashboard only.
 
 auth.get('/auth/login', async (c) => {
   const issuer = c.env.ZOOID_OIDC_ISSUER;
@@ -142,29 +141,10 @@ auth.get('/auth/login', async (c) => {
     .replace(/\//g, '_')
     .replace(/=+$/g, '');
 
-  // CLI session: if cli_session param is present, store it for the callback
-  const cliSession = c.req.query('cli_session');
-  if (cliSession) {
-    // Validate UUID format (loose check)
-    if (!/^[a-f0-9-]{32,64}$/i.test(cliSession)) {
-      return c.json({ error: 'Invalid cli_session format' }, 400);
-    }
-    // Create pending session row with 5-minute TTL
-    const expiresAt = new Date(
-      Date.now() + CLI_SESSION_TTL * 1000,
-    ).toISOString();
-    await c.env.DB.prepare(
-      'INSERT OR IGNORE INTO cli_sessions (id, status, expires_at) VALUES (?, ?, ?)',
-    )
-      .bind(cliSession, 'pending', expiresAt)
-      .run();
-  }
-
-  // Store verifier + state + cli_session in an HttpOnly cookie (short-lived, for the callback)
+  // Store verifier + state in an HttpOnly cookie (short-lived, for the callback)
   const stateData = JSON.stringify({
     v: codeVerifier,
     s: state,
-    ...(cliSession && { cli: cliSession }),
   });
   const encrypted = await encryptRefreshToken(
     stateData,
@@ -191,6 +171,7 @@ auth.get('/auth/login', async (c) => {
 // --- GET /auth/callback ---
 // Handles the OIDC authorization code callback.
 // Exchanges code for tokens, extracts claims, mints Zooid JWT, sets refresh cookie.
+// Used by the web dashboard only.
 
 auth.get('/auth/callback', async (c) => {
   const issuer = c.env.ZOOID_OIDC_ISSUER;
@@ -227,7 +208,7 @@ auth.get('/auth/callback', async (c) => {
     );
   }
 
-  let stateData: { v: string; s: string; cli?: string };
+  let stateData: { v: string; s: string };
   try {
     const decrypted = await decryptRefreshToken(
       stateCookie,
@@ -304,45 +285,7 @@ auth.get('/auth/callback', async (c) => {
     { append: true },
   );
 
-  // CLI session: store the token in cli_sessions and show success page
-  if (stateData.cli) {
-    // Encrypt refresh token for CLI storage
-    let encryptedCliRefresh: string | null = null;
-    if (tokens.refresh_token) {
-      encryptedCliRefresh = await encryptRefreshToken(
-        tokens.refresh_token,
-        getCookieSecret(c.env),
-      );
-    }
-
-    // Mint a longer-lived JWT for CLI use
-    const cliToken = await mintServerToken(
-      {
-        scopes: resolved.scopes,
-        sub: resolved.sub,
-        name: resolved.name,
-        groups: resolved.groups,
-      },
-      c.env,
-      { expiresIn: CLI_JWT_TTL },
-    );
-
-    await c.env.DB.prepare(
-      'UPDATE cli_sessions SET token = ?, refresh_token = ?, status = ? WHERE id = ? AND status = ?',
-    )
-      .bind(cliToken, encryptedCliRefresh, 'complete', stateData.cli, 'pending')
-      .run();
-
-    // Clear state cookie
-    c.header(
-      'Set-Cookie',
-      `${STATE_COOKIE_NAME}=; Path=/api/v1/auth; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
-    );
-
-    return c.html(cliSuccessPage());
-  }
-
-  // Set refresh cookie if we got one (web dashboard flow)
+  // Set refresh cookie if we got one
   if (tokens.refresh_token) {
     const encryptedRefresh = await encryptRefreshToken(
       tokens.refresh_token,
@@ -471,143 +414,6 @@ auth.get('/auth/session', async (c) => {
   return c.json({ authenticated: hasRefresh });
 });
 
-// --- GET /auth/cli/:id ---
-// Polling endpoint for CLI login. Returns the token once the OIDC flow completes.
-
-auth.get('/auth/cli/:id', async (c) => {
-  const id = c.req.param('id');
-
-  // Lazy cleanup: delete all expired sessions (keeps table small)
-  await c.env.DB.prepare(
-    "DELETE FROM cli_sessions WHERE expires_at < datetime('now')",
-  ).run();
-
-  const row = await c.env.DB.prepare('SELECT * FROM cli_sessions WHERE id = ?')
-    .bind(id)
-    .first<{
-      id: string;
-      token: string | null;
-      refresh_token: string | null;
-      status: string;
-      expires_at: string;
-    }>();
-
-  if (!row) {
-    return c.json({ error: 'session_not_found' }, 404);
-  }
-
-  // Check expiry
-  if (new Date(row.expires_at) < new Date()) {
-    await c.env.DB.prepare('DELETE FROM cli_sessions WHERE id = ?')
-      .bind(id)
-      .run();
-    return c.json({ error: 'session_not_found' }, 404);
-  }
-
-  if (row.status === 'pending') {
-    return c.json({ status: 'pending' }, 202);
-  }
-
-  if (row.status === 'complete' && row.token) {
-    // One-time retrieval — delete after returning
-    await c.env.DB.prepare('DELETE FROM cli_sessions WHERE id = ?')
-      .bind(id)
-      .run();
-
-    return c.json({
-      status: 'complete',
-      token: row.token,
-      refresh_token: row.refresh_token,
-    });
-  }
-
-  return c.json({ error: 'session_not_found' }, 404);
-});
-
-// --- POST /auth/cli-refresh ---
-// Refresh a CLI token using the encrypted OIDC refresh token.
-
-auth.post('/auth/cli-refresh', async (c) => {
-  const issuer = c.env.ZOOID_OIDC_ISSUER;
-  const clientId = c.env.ZOOID_OIDC_CLIENT_ID;
-  const clientSecret = c.env.ZOOID_OIDC_CLIENT_SECRET;
-
-  if (!issuer || !clientId || !clientSecret) {
-    return c.json({ error: 'OIDC not configured' }, 503);
-  }
-
-  const body = await c.req.json<{ refresh_token: string }>();
-  if (!body.refresh_token) {
-    return c.json({ error: 'Missing refresh_token' }, 400);
-  }
-
-  let refreshToken: string;
-  try {
-    refreshToken = await decryptRefreshToken(
-      body.refresh_token,
-      getCookieSecret(c.env),
-    );
-  } catch {
-    return c.json({ error: 'Invalid refresh token' }, 401);
-  }
-
-  const config = await discoverOIDC(issuer);
-
-  let tokens;
-  try {
-    tokens = await refreshAccessToken(config.token_endpoint, {
-      refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
-    });
-  } catch {
-    return c.json({ error: 'refresh_failed' }, 401);
-  }
-
-  const userInfo = await fetchUserInfo(
-    config.userinfo_endpoint,
-    tokens.access_token,
-  );
-
-  const oidcClaims: OIDCClaims = {
-    sub: (userInfo.sub as string) || 'unknown',
-    name: userInfo.name as string | undefined,
-    email: userInfo.email as string | undefined,
-    preferred_username: userInfo.preferred_username as string | undefined,
-    groups: userInfo.groups as string[] | undefined,
-    'https://zooid.dev/scopes': userInfo['https://zooid.dev/scopes'] as
-      | string[]
-      | undefined,
-  };
-
-  const resolved = resolveScopes(oidcClaims, c.env);
-
-  const zooidToken = await mintServerToken(
-    {
-      scopes: resolved.scopes,
-      sub: resolved.sub,
-      name: resolved.name,
-      groups: resolved.groups,
-    },
-    c.env,
-    { expiresIn: CLI_JWT_TTL },
-  );
-
-  // Return new encrypted refresh token if provider rotated it
-  let newEncryptedRefresh: string | undefined;
-  if (tokens.refresh_token) {
-    newEncryptedRefresh = await encryptRefreshToken(
-      tokens.refresh_token,
-      getCookieSecret(c.env),
-    );
-  }
-
-  return c.json({
-    token: zooidToken,
-    ...(newEncryptedRefresh && { refresh_token: newEncryptedRefresh }),
-  });
-});
-
 // --- Helpers ---
 
 function parseCookies(header: string): Record<string, string> {
@@ -665,21 +471,6 @@ try {
 }
 </script>
 </body></html>`;
-}
-
-function cliSuccessPage(): string {
-  return `<!DOCTYPE html>
-<html>
-<head><title>CLI Authorized</title><style>
-body { font-family: system-ui; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #0a0a0a; color: #fafafa; }
-.card { text-align: center; max-width: 400px; padding: 2rem; }
-h1 { font-size: 1.25rem; margin-bottom: 0.5rem; }
-p { color: #888; font-size: 0.875rem; }
-</style></head>
-<body><div class="card">
-<h1>✓ CLI Authorized</h1>
-<p>You can close this tab and return to the terminal.</p>
-</div></body></html>`;
 }
 
 export { auth };

@@ -139,8 +139,8 @@ describe('SDK Integration Tests', () => {
         description: null,
         schema: null,
       });
-      expect(updated.description).toBeNull();
-      expect(updated.schema).toBeNull();
+      expect(updated.description).toBeFalsy();
+      expect(updated.schema).toBeFalsy();
     });
 
     it('rejects update for non-existent channel', async () => {

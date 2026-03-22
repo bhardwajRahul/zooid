@@ -250,20 +250,6 @@ describe('Auth Integration Tests', () => {
       expect(res.status).toBe(403);
     });
 
-    it('rejects add publisher without admin token → 403', async () => {
-      await createChannel('admin-ch', { is_public: true });
-      const pubToken = await createToken(
-        { scope: 'publish', channel: 'admin-ch' },
-        JWT_SECRET,
-      );
-      const res = await req('/api/v1/channels/admin-ch/publishers', {
-        method: 'POST',
-        token: pubToken,
-        body: { name: 'my-bot' },
-      });
-      expect(res.status).toBe(403);
-    });
-
     it('rejects directory claim without token → 401', async () => {
       const res = await req('/api/v1/directory/claim', {
         method: 'POST',

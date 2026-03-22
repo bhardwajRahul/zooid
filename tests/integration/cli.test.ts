@@ -17,7 +17,15 @@ vi.mock('node:fs', () => ({
     readFileSync: vi.fn(() => '{}'),
     writeFileSync: vi.fn(),
     mkdirSync: vi.fn(),
+    realpathSync: vi.fn((p: string) => p),
+    existsSync: vi.fn(() => false),
+    createReadStream: vi.fn(),
   },
+}));
+
+vi.mock('node:readline', () => ({
+  default: { createInterface: vi.fn() },
+  createInterface: vi.fn(),
 }));
 
 const JWT_SECRET = 'test-jwt-secret';
