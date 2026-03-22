@@ -47,6 +47,7 @@ export function createBridge(
   mcpServer: Server,
 ) {
   const ownEventIds = new Set<string>();
+  let ownPublisherId: string | null = null;
   let unsubscribe: (() => void) | null = null;
   // Track last delivered event ID — events at or before this are skipped.
   // ULIDs are lexicographically ordered, so string comparison works.
@@ -67,9 +68,13 @@ export function createBridge(
           return;
         }
 
-        // Echo filter — skip events we published ourselves
+        // Echo filter — skip events we published ourselves (by event ID or publisher ID)
         if (ownEventIds.has(event.id)) {
           ownEventIds.delete(event.id);
+          lastDeliveredId = event.id;
+          return;
+        }
+        if (ownPublisherId && event.publisher_id === ownPublisherId) {
           lastDeliveredId = event.id;
           return;
         }
@@ -96,6 +101,7 @@ export function createBridge(
       type: type ?? 'message',
     });
     ownEventIds.add(event.id);
+    if (event.publisher_id) ownPublisherId = event.publisher_id;
   }
 
   function stop() {
