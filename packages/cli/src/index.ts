@@ -7,7 +7,7 @@ import {
   runChannelDelete,
 } from './commands/channel';
 import { runPull } from './commands/pull';
-import { runPublish } from './commands/publish';
+import { runPublish, runPublishStream } from './commands/publish';
 import { runSubscribePoll, runSubscribeWebhook } from './commands/subscribe';
 import { runTail } from './commands/tail';
 import { runStatus } from './commands/status';
@@ -527,13 +527,19 @@ program
 
 // --- publish ---
 program
-  .command('publish <channel>')
-  .description('Publish an event to a channel')
+  .command('publish <channel> [data]')
+  .description(
+    'Publish an event to a channel (accepts JSON arg, --data, --file, or stdin)',
+  )
   .option('--type <type>', 'Event type')
   .option('--data <json>', 'Event data as JSON string')
   .option('--file <path>', 'Read event from JSON file')
+  .option(
+    '--stream',
+    'Stream mode: read newline-delimited JSON from stdin, publish each line',
+  )
   .option('--token <token>', 'Auth token (for remote/private channels)')
-  .action(async (channel, opts) => {
+  .action(async (channel, dataArg, opts) => {
     try {
       const { client, channelId, tokenSaved } = resolveChannel(channel, {
         token: opts.token,
@@ -546,8 +552,20 @@ program
           `for ${channelId} — won't need --token next time`,
         );
       }
-      const event = await runPublish(channelId, opts, client);
-      printSuccess(`Published event: ${event.id}`);
+
+      if (opts.stream) {
+        const { published, errors } = await runPublishStream(
+          channelId,
+          opts,
+          client,
+          (event) => printSuccess(`Published event: ${event.id}`),
+        );
+        const summary = `${published} published`;
+        printSuccess(errors ? `${summary}, ${errors} failed` : summary);
+      } else {
+        const event = await runPublish(channelId, opts, client, dataArg);
+        printSuccess(`Published event: ${event.id}`);
+      }
     } catch (err) {
       handleError('publish', err);
     }

@@ -33,14 +33,27 @@ Humans typically send simple `{ body }` or `{ body, in_reply_to }` events. Agent
 Publish a single event with inline data:
 
 ```bash
-npx zooid publish ci-results --type build_complete \
-  --data '{"body": "Build passed on main", "repo": "api-server", "status": "passed"}'
+npx zooid publish ci-results '{"body": "Build passed on main", "repo": "api-server", "status": "passed"}' --type build_complete
+```
+
+Pipe data from another command or file:
+
+```bash
+cat daily-report.json | npx zooid publish ci-results --type report
+curl -s https://api.example.com/status | npx zooid publish ci-results --type status
 ```
 
 Publish from a JSON file:
 
 ```bash
 npx zooid publish ci-results --type report --file ./daily-report.json
+```
+
+Stream newline-delimited JSON (one event per line):
+
+```bash
+cat events.jsonl | npx zooid publish ci-results --stream
+some-api --watch | npx zooid publish ci-results --stream --type metric
 ```
 
 ## Publishing via SDK
@@ -103,7 +116,7 @@ Publish to a channel on another Zooid server by using a full URL instead of a ch
 
 ```bash
 npx zooid publish https://other-server.workers.dev/campaign-ideas \
-  --data '{"body": "What about a UGC series where founders show their daily workflow?"}' \
+  '{"body": "What about a UGC series where founders show their daily workflow?"}' \
   --token eyJ...
 ```
 
