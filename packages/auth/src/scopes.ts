@@ -12,10 +12,11 @@ export function normalizeScopes(payload: ZooidJWT): string[] {
   if (payload.scopes) return payload.scopes;
 
   // OIDC JWT from external provider (e.g. Zoon accounts service)
+  // Empty array = explicit "no scopes" — do NOT fall through to legacy parsing
   const oidcScopes = (payload as unknown as Record<string, unknown>)[
     'https://zooid.dev/scopes'
   ];
-  if (Array.isArray(oidcScopes) && oidcScopes.length > 0) return oidcScopes;
+  if (Array.isArray(oidcScopes)) return oidcScopes;
 
   const scope = payload.scope;
   if (!scope) return [];

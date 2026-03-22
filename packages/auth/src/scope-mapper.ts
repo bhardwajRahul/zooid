@@ -40,9 +40,9 @@ export function resolveScopes(
 ): ResolvedAuth {
   let scopes: string[];
 
-  // Tier 1: explicit https://zooid.dev/scopes claim
+  // Tier 1: explicit https://zooid.dev/scopes claim (empty array = no scopes, not a fallthrough)
   const zooidScopes = claims['https://zooid.dev/scopes'];
-  if (Array.isArray(zooidScopes) && zooidScopes.length > 0) {
+  if (Array.isArray(zooidScopes)) {
     scopes = zooidScopes;
   }
   // Tier 2: group mapping from env
