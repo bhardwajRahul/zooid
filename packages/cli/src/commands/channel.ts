@@ -43,7 +43,7 @@ export async function runChannelCreate(
     id,
     name: options.name ?? id,
     description: options.description,
-    is_public: options.public ?? true,
+    is_public: options.public ?? false,
     config,
   });
 
@@ -60,7 +60,7 @@ export async function runChannelCreate(
     try {
       const wf = loadWorkforce();
       wf.channels[id] = {
-        visibility: options.public === false ? 'private' : 'public',
+        visibility: options.public ? 'public' : 'private',
         ...(options.name && { name: options.name }),
         ...(options.description && { description: options.description }),
         ...(config && { config }),
