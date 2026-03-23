@@ -47,17 +47,18 @@ export async function runPull(client?: ZooidClient): Promise<string[]> {
     const file = loadConfigFile();
     const entry = server ? file.servers?.[server] : undefined;
     let roles: Array<{
-      id: string;
-      name?: string;
+      slug?: string;
+      id?: string;
+      name?: string | null;
       description?: string;
       scopes: string[];
     }>;
 
     if (server && isZoonHosted(server) && entry?.platform_token) {
-      // Zoon-hosted: roles live on the platform
+      // Zoon-hosted: platform API returns slug
       roles = await listRolesFromZoon(server, entry.platform_token);
     } else {
-      // Self-hosted: roles live on the tenant
+      // Self-hosted: tenant API returns id (which is the slug)
       roles = await c.listRoles();
     }
 
@@ -65,15 +66,17 @@ export async function runPull(client?: ZooidClient): Promise<string[]> {
       printStep('Pulling roles...');
 
       for (const role of roles) {
+        // Zoon returns slug, self-hosted returns id — both are the role key
+        const roleKey = role.slug ?? role.id!;
         const def: RoleDef = { scopes: role.scopes };
         if (role.name) def.name = role.name;
         if (role.description) def.description = role.description;
 
-        const targetFile = wf.provenance.roles[role.id];
+        const targetFile = wf.provenance.roles[roleKey];
         if (targetFile) {
-          updateInFile(targetFile, 'roles', role.id, def);
+          updateInFile(targetFile, 'roles', roleKey, def);
         } else {
-          wf.roles[role.id] = def;
+          wf.roles[roleKey] = def;
           newRolesAdded = true;
         }
       }

@@ -760,15 +760,25 @@ async function deployZoonHosted(
 
   // Sync roles to platform API
   const roles = loadRoleDefs();
-  if (roles.size > 0) {
-    printStep('Syncing roles to Zoon...');
-    const roleDefs: ZoonRoleDef[] = Array.from(roles.entries()).map(
-      ([id, def]) => ({
-        name: id,
+  // Filter out owner — Zoon manages it automatically. Map public → authenticated.
+  const roleDefs: ZoonRoleDef[] = Array.from(roles.entries())
+    .filter(([id]) => id !== 'owner')
+    .map(([id, def]) => {
+      if (id === 'public') {
+        printInfo(
+          'Deprecation',
+          'The "public" role has been renamed to "authenticated". Please update your workforce.json.',
+        );
+      }
+      return {
+        slug: id === 'public' ? 'authenticated' : id,
+        ...(def.name ? { name: def.name } : {}),
         scopes: def.scopes,
         ...(def.description ? { description: def.description } : {}),
-      }),
-    );
+      };
+    });
+  if (roleDefs.length > 0) {
+    printStep('Syncing roles to Zoon...');
     try {
       const result = await syncRolesToZoon(serverUrl, platformToken, roleDefs);
       printSuccess(

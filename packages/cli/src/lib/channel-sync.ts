@@ -87,7 +87,7 @@ export async function syncChannelsToServer(
         name: def.name,
         description: def.description,
         is_public: def.visibility === 'public',
-        config: def.config,
+        config: def.config ?? {},
       });
       printSuccess(`Channel updated: ${id}`);
       updated++;

@@ -41,7 +41,8 @@ function platformUrl(subdomain: string, path: string): string {
 }
 
 export interface RoleDef {
-  name: string;
+  slug: string;
+  name?: string;
   scopes: string[];
   description?: string;
 }
@@ -94,26 +95,26 @@ export async function createCredential(
   const subdomain = extractSubdomain(serverUrl)!;
   const _fetch = options?.fetch ?? globalThis.fetch;
 
-  // Resolve role names to IDs
+  // Resolve role names to slugs
   const rolesRes = await _fetch(platformUrl(subdomain, '/roles'), {
     headers: authHeaders(token),
   });
   const roles = (await rolesRes.json()) as Array<{
-    id: string;
-    name: string;
+    slug: string;
+    name: string | null;
   }>;
-  const roleIds = roleNames
-    .map((n) => roles.find((r) => r.name === n)?.id)
+  const roleSlugs = roleNames
+    .map((n) => roles.find((r) => r.slug === n || r.name === n)?.slug)
     .filter(Boolean) as string[];
 
-  if (roleIds.length === 0) {
+  if (roleSlugs.length === 0) {
     throw new Error(`No matching roles found for: ${roleNames.join(', ')}`);
   }
 
   const res = await _fetch(platformUrl(subdomain, '/credentials'), {
     method: 'POST',
     headers: authHeaders(token),
-    body: JSON.stringify({ name, role_ids: roleIds }),
+    body: JSON.stringify({ name, role_slugs: roleSlugs }),
   });
 
   if (!res.ok) {
@@ -161,7 +162,12 @@ export async function listRolesFromZoon(
   token: string,
   options?: FetchOptions,
 ): Promise<
-  Array<{ id: string; name: string; scopes: string[]; description?: string }>
+  Array<{
+    slug: string;
+    name: string | null;
+    scopes: string[];
+    description?: string;
+  }>
 > {
   const subdomain = extractSubdomain(serverUrl)!;
   const _fetch = options?.fetch ?? globalThis.fetch;
@@ -170,7 +176,12 @@ export async function listRolesFromZoon(
   });
   if (!res.ok) throw new Error(`Failed to list roles: ${res.status}`);
   return res.json() as Promise<
-    Array<{ id: string; name: string; scopes: string[]; description?: string }>
+    Array<{
+      slug: string;
+      name: string | null;
+      scopes: string[];
+      description?: string;
+    }>
   >;
 }
 

@@ -61,8 +61,8 @@ describe('syncRolesToZoon', () => {
       'https://beno.zoon.eco',
       'jwt_token',
       [
-        { name: 'analyst', scopes: ['sub:market-data', 'pub:signals'] },
-        { name: 'executor', scopes: ['sub:signals', 'pub:trades'] },
+        { slug: 'analyst', scopes: ['sub:market-data', 'pub:signals'] },
+        { slug: 'executor', scopes: ['sub:signals', 'pub:trades'] },
       ],
       { fetch: mockFetch },
     );
@@ -77,7 +77,7 @@ describe('syncRolesToZoon', () => {
 
     const body = JSON.parse(init.body);
     expect(body).toHaveLength(2);
-    expect(body[0].name).toBe('analyst');
+    expect(body[0].slug).toBe('analyst');
   });
 
   it('throws on non-zoon URL', async () => {
@@ -95,7 +95,7 @@ describe('listRolesFromZoon', () => {
       .fn()
       .mockResolvedValueOnce(
         jsonResponse([
-          { id: 'role_1', name: 'analyst', scopes: ['pub:signals'] },
+          { slug: 'analyst', name: 'Analyst', scopes: ['pub:signals'] },
         ]),
       );
 
@@ -106,7 +106,7 @@ describe('listRolesFromZoon', () => {
     );
 
     expect(result).toHaveLength(1);
-    expect(result[0].name).toBe('analyst');
+    expect(result[0].slug).toBe('analyst');
     expect(mockFetch.mock.calls[0][0]).toBe(
       'https://api.zooid.dev/api/v1/servers/beno/roles',
     );
@@ -124,7 +124,7 @@ describe('createCredential', () => {
     // GET roles to resolve role_ids
     mockFetch.mockResolvedValueOnce(
       jsonResponse([
-        { id: 'role_abc', name: 'analyst', scopes: ['pub:signals'] },
+        { slug: 'analyst', name: 'Analyst', scopes: ['pub:signals'] },
       ]),
     );
     // POST credential
@@ -155,7 +155,7 @@ describe('createCredential', () => {
     expect(url).toBe('https://api.zooid.dev/api/v1/servers/beno/credentials');
     const body = JSON.parse(init.body);
     expect(body.name).toBe('signal-bot');
-    expect(body.role_ids).toEqual(['role_abc']);
+    expect(body.role_slugs).toEqual(['analyst']);
   });
 });
 
@@ -166,7 +166,7 @@ describe('listCredentials', () => {
         {
           name: 'bot-1',
           client_id: 'sa_1',
-          roles: [{ id: 'role_1', name: 'analyst' }],
+          roles: [{ slug: 'analyst', name: 'Analyst' }],
           created_at: '2026-03-21T00:00:00.000Z',
         },
       ]),
@@ -227,7 +227,7 @@ describe('createCredential', () => {
     const mockFetch = vi.fn();
     // GET roles
     mockFetch.mockResolvedValueOnce(
-      jsonResponse([{ id: 'role_1', name: 'analyst', scopes: ['pub:*'] }]),
+      jsonResponse([{ slug: 'analyst', name: 'Analyst', scopes: ['pub:*'] }]),
     );
     // POST credential — 500
     mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'internal' }, 500));

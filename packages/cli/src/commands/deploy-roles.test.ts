@@ -84,6 +84,30 @@ describe('deploy role sync (integration)', () => {
     expect(defs.get('signals')!.visibility).toBe('private');
   });
 
+  it('maps "public" workforce key to "authenticated" slug', () => {
+    writeWorkforce({
+      channels: {},
+      roles: {
+        public: { name: 'Public', scopes: ['sub:support', 'pub:support'] },
+        member: { name: 'Member', scopes: ['pub:*', 'sub:*'] },
+      },
+    });
+
+    const roles = loadRoleDefs();
+    // Simulate the deploy mapping logic (public → authenticated, filter owner)
+    const mapped = Array.from(roles.entries())
+      .filter(([id]) => id !== 'owner')
+      .map(([id, def]) => ({
+        slug: id === 'public' ? 'authenticated' : id,
+        scopes: def.scopes,
+      }));
+
+    const authRole = mapped.find((r) => r.slug === 'authenticated');
+    expect(authRole).toBeDefined();
+    expect(authRole!.scopes).toEqual(['sub:support', 'pub:support']);
+    expect(mapped.find((r) => r.slug === 'public')).toBeUndefined();
+  });
+
   it('removes ZOOID_SCOPE_MAPPING when no roles defined', () => {
     writeWorkforce({ channels: {}, roles: {} });
 

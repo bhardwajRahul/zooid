@@ -368,8 +368,8 @@ channelCmd
   .description('Create a new channel')
   .option('--name <name>', 'Display name (defaults to id)')
   .option('--description <desc>', 'Channel description')
-  .option('--public', 'Make channel public (default)', true)
-  .option('--private', 'Make channel private')
+  .option('--public', 'Make channel public')
+  .option('--private', 'Make channel private (default)', true)
   .option('--strict', 'Enable strict schema validation on publish')
   .option(
     '--config <file>',
@@ -399,7 +399,7 @@ channelCmd
       const result = await runChannelCreate(id, {
         name: opts.name,
         description: opts.description,
-        public: opts.private ? false : true,
+        public: opts.public ? true : false,
         strict: opts.strict,
         config,
       });

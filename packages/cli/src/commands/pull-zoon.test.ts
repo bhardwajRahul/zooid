@@ -62,8 +62,8 @@ describe('pull with Zoon-hosted server', () => {
   it('fetches roles from platform API instead of tenant', async () => {
     mockIsZoon.mockReturnValue(true);
     mockListRolesZoon.mockResolvedValueOnce([
-      { id: 'role_1', name: 'analyst', scopes: ['pub:signals'] },
-      { id: 'role_2', name: 'reviewer', scopes: ['sub:*'] },
+      { slug: 'analyst', name: 'analyst', scopes: ['pub:signals'] },
+      { slug: 'reviewer', name: 'reviewer', scopes: ['sub:*'] },
     ]);
 
     // Import pull after mocks are set up

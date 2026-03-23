@@ -112,6 +112,27 @@ describe('syncChannelsToServer', () => {
     expect(result.deleted).toBe(0);
   });
 
+  it('clears config when removed from workforce.json', async () => {
+    writeWorkforce({
+      channels: { general: { name: 'General', visibility: 'private' } },
+      roles: {},
+    });
+
+    const client = makeMockClient();
+    client.listChannels.mockResolvedValueOnce([
+      { id: 'general', name: 'General', is_public: false },
+    ]);
+
+    const result = await syncChannelsToServer(client as any);
+
+    expect(client.updateChannel).toHaveBeenCalledWith('general', {
+      name: 'General',
+      is_public: false,
+      config: {},
+    });
+    expect(result.updated).toBe(1);
+  });
+
   it('does nothing when no local channels', async () => {
     writeWorkforce({ channels: {}, roles: {} });
 

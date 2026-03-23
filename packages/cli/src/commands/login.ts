@@ -56,6 +56,11 @@ async function loginToZoon(_fetch: typeof globalThis.fetch): Promise<void> {
     `\nLogged in as ${result.user.name || result.user.email}\n`,
   );
 
+  // Fetch the user's server list (owned + member)
+  const servers = await fetchServers(ACCOUNTS_URL, result.sessionToken, {
+    fetch: _fetch,
+  });
+
   // Resolve which server to get a JWT for
   let targetServer: string | undefined;
 
@@ -66,24 +71,41 @@ async function loginToZoon(_fetch: typeof globalThis.fetch): Promise<void> {
     const configPath = path.join(process.cwd(), 'zooid.json');
     if (fs.existsSync(configPath)) {
       const raw = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      if (raw.url) targetServer = raw.url;
+      if (raw.url) {
+        const hasAccess = servers.some((s) => s.url === raw.url);
+        if (hasAccess) {
+          targetServer = raw.url;
+        } else {
+          printInfo(
+            'Note',
+            `zooid.json references ${raw.url} but you don't have access to it`,
+          );
+        }
+      }
     }
   } catch {
     // ignore
   }
 
-  // If no zooid.json, fetch server list and pick
-  if (!targetServer) {
-    const servers = await fetchServers(ACCOUNTS_URL, result.sessionToken, {
-      fetch: _fetch,
-    });
-
-    if (servers.length === 0) {
-      process.stderr.write('\nNo servers found. Create one at app.zooid.dev\n');
-      return;
-    }
-
+  // If no target yet, pick from server list
+  if (!targetServer && servers.length > 0) {
     targetServer = servers[0].url;
+  }
+
+  // No servers at all — save platform token and exit
+  if (!targetServer) {
+    saveConfig(
+      {
+        platform_token: result.sessionToken,
+        auth_method: 'oidc' as const,
+      },
+      ACCOUNTS_URL,
+      { setCurrent: false },
+    );
+    printSuccess('Authenticated with Zoon');
+    printInfo('Note', 'No servers found. Create one at app.zooid.dev');
+    process.stderr.write('\n');
+    return;
   }
 
   // Exchange session token for a server-scoped JWT
@@ -131,6 +153,9 @@ async function loginToServer(
       `\nLogged in as ${result.user.name || result.user.email}\n`,
     );
 
+    // Exchange session token for a server-scoped JWT
+    // The exchange endpoint resolves scopes based on membership/roles,
+    // so any authenticated user can get a token (with appropriate scopes)
     const exchangeResult = await exchangeToken(
       ACCOUNTS_URL,
       result.sessionToken,

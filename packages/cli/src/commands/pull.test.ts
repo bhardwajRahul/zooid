@@ -53,7 +53,7 @@ describe('runPull()', () => {
         is_public: false,
         config: { strict_types: true },
         event_count: 10,
-        last_event_at: null,
+        last_event_id: null,
         tags: [],
       },
       {
@@ -63,7 +63,7 @@ describe('runPull()', () => {
         is_public: true,
         config: null,
         event_count: 0,
-        last_event_at: null,
+        last_event_id: null,
         tags: [],
       },
     ]);
@@ -94,7 +94,7 @@ describe('runPull()', () => {
         is_public: true,
         config: null,
         event_count: 0,
-        last_event_at: null,
+        last_event_id: null,
         tags: [],
       },
     ]);
