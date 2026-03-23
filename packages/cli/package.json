@@ -37,7 +37,7 @@
     "commander": "^14.0.3"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.8.34",
+    "@cloudflare/vitest-pool-workers": "^0.12.21",
     "execa": "^9.5.3",
     "tsup": "^8.5.1",
     "vitest": "^3.2.0"

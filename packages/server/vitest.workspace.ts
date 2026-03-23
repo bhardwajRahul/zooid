@@ -8,6 +8,9 @@ import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
  *
  * Unit tests (lib/, do/, storage/) only run once since they test
  * backend internals directly, not through the route layer.
+ *
+ * singleWorker required to avoid "Isolated storage failed" errors
+ * with SQLite-backed DOs in @cloudflare/vitest-pool-workers.
  */
 export default [
   // Primary: all tests with DO backend (default from wrangler.toml)
@@ -17,6 +20,7 @@ export default [
       include: ['src/**/*.test.ts'],
       poolOptions: {
         workers: {
+          singleWorker: true,
           wrangler: { configPath: './wrangler.toml' },
           miniflare: {
             d1Databases: ['DB'],
@@ -33,6 +37,7 @@ export default [
       include: ['src/routes/**/*.test.ts'],
       poolOptions: {
         workers: {
+          singleWorker: true,
           wrangler: { configPath: './wrangler.toml' },
           miniflare: {
             d1Databases: ['DB'],
