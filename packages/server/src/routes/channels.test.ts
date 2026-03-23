@@ -207,11 +207,19 @@ describe('Channel routes', () => {
     it('lists all channels (no auth required)', async () => {
       await authRequest('/api/v1/channels', {
         method: 'POST',
-        body: JSON.stringify({ id: 'channel-a', name: 'Channel A' }),
+        body: JSON.stringify({
+          id: 'channel-a',
+          name: 'Channel A',
+          is_public: true,
+        }),
       });
       await authRequest('/api/v1/channels', {
         method: 'POST',
-        body: JSON.stringify({ id: 'channel-b', name: 'Channel B' }),
+        body: JSON.stringify({
+          id: 'channel-b',
+          name: 'Channel B',
+          is_public: true,
+        }),
       });
 
       const res = await app.request(
@@ -236,6 +244,7 @@ describe('Channel routes', () => {
           id: 'tagged-list',
           name: 'Tagged List',
           tags: ['ai', 'agents'],
+          is_public: true,
         }),
       });
 
@@ -258,6 +267,7 @@ describe('Channel routes', () => {
         body: JSON.stringify({
           id: 'no-tags-list',
           name: 'No Tags',
+          is_public: true,
         }),
       });
 
@@ -274,10 +284,14 @@ describe('Channel routes', () => {
       expect(ch.tags).toEqual([]);
     });
 
-    it('includes event_count and last_event_at fields', async () => {
+    it('includes event_count and last_event_id fields', async () => {
       await authRequest('/api/v1/channels', {
         method: 'POST',
-        body: JSON.stringify({ id: 'count-channel', name: 'Count Channel' }),
+        body: JSON.stringify({
+          id: 'count-channel',
+          name: 'Count Channel',
+          is_public: true,
+        }),
       });
 
       const res = await app.request(
@@ -286,11 +300,11 @@ describe('Channel routes', () => {
         { ...env, ZOOID_JWT_SECRET: JWT_SECRET },
       );
       const body = (await res.json()) as {
-        channels: Array<{ event_count: number; last_event_at: string | null }>;
+        channels: Array<{ event_count: number; last_event_id: string | null }>;
       };
 
       expect(body.channels[0]).toHaveProperty('event_count');
-      expect(body.channels[0]).toHaveProperty('last_event_at');
+      expect(body.channels[0]).toHaveProperty('last_event_id');
     });
 
     it('hides private channels from unauthenticated requests', async () => {
@@ -658,6 +672,7 @@ describe('Channel routes', () => {
           id: 'meta-list',
           name: 'Meta List',
           meta: { display: { sort: 'asc' } },
+          is_public: true,
         }),
       });
 
@@ -679,7 +694,11 @@ describe('Channel routes', () => {
     it('deletes an existing channel', async () => {
       await authRequest('/api/v1/channels', {
         method: 'POST',
-        body: JSON.stringify({ id: 'delete-me', name: 'Delete Me' }),
+        body: JSON.stringify({
+          id: 'delete-me',
+          name: 'Delete Me',
+          is_public: true,
+        }),
       });
 
       const res = await authRequest('/api/v1/channels/delete-me', {
@@ -703,7 +722,11 @@ describe('Channel routes', () => {
     it('deletes associated events', async () => {
       await authRequest('/api/v1/channels', {
         method: 'POST',
-        body: JSON.stringify({ id: 'cascade-test', name: 'Cascade Test' }),
+        body: JSON.stringify({
+          id: 'cascade-test',
+          name: 'Cascade Test',
+          is_public: true,
+        }),
       });
 
       // Publish an event

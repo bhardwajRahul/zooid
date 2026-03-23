@@ -55,6 +55,11 @@ export interface ServerStorage {
     patch: Record<string, unknown>,
   ): Promise<Channel | null>;
   deleteChannel(channelId: string): Promise<boolean>;
+  updateChannelStats(
+    channelId: string,
+    eventCount: number,
+    lastEventId: string,
+  ): Promise<void>;
 
   // ── Server Metadata ─────────────────────────────────────
   getServerMeta(): Promise<ServerIdentity | null>;

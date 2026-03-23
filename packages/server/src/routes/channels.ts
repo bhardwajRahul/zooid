@@ -35,7 +35,7 @@ export class ListChannels extends OpenAPIRoute {
                   config: z.record(z.string(), z.unknown()).nullable(),
                   meta: z.record(z.string(), z.unknown()).nullable(),
                   event_count: z.number(),
-                  last_event_at: z.string().nullable(),
+                  last_event_id: z.string().nullable(),
                 }),
               ),
             }),

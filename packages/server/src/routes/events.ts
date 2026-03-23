@@ -7,6 +7,7 @@ import type {
   RealtimeBroadcast,
   ChannelContext,
 } from '../storage/types';
+import type { ServerStorage } from '../storage/server-types';
 import { isStrictTypes } from '../db/queries';
 import { normalizeScopes, isAdmin } from '../lib/jwt';
 import { importPrivateKey, signPayload } from '../lib/signing';
@@ -187,6 +188,17 @@ export class PublishEvents extends OpenAPIRoute {
         for (const event of created) {
           await deliverToWebhooks(storage, ctx, event);
         }
+        const serverStorage = c.get('serverStorage') as
+          | ServerStorage
+          | undefined;
+        if (serverStorage) {
+          const lastEvent = created[created.length - 1];
+          await serverStorage.updateChannelStats(
+            channelId,
+            created.length,
+            lastEvent.id,
+          );
+        }
       };
       try {
         c.executionCtx.waitUntil(fanOut());
@@ -225,6 +237,10 @@ export class PublishEvents extends OpenAPIRoute {
         // Broadcast may fail in test environments
       }
       await deliverToWebhooks(storage, ctx, event);
+      const serverStorage = c.get('serverStorage') as ServerStorage | undefined;
+      if (serverStorage) {
+        await serverStorage.updateChannelStats(channelId, 1, event.id);
+      }
     };
     try {
       c.executionCtx.waitUntil(afterPublish());

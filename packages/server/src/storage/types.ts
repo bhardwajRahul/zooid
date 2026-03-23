@@ -73,7 +73,7 @@ export interface ChannelStorage {
 
   // Lifecycle
   destroy(): Promise<void>;
-  getStats(): Promise<{ event_count: number; last_event_at: string | null }>;
+  getStats(): Promise<{ event_count: number; last_event_id: string | null }>;
 }
 
 // ── Realtime Adapter ──────────────────────────────────────

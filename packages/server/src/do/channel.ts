@@ -476,16 +476,16 @@ export class ChannelDO extends DurableObject<Bindings> {
 
   async getStats(
     ctx: ChannelContext,
-  ): Promise<{ event_count: number; last_event_at: string | null }> {
+  ): Promise<{ event_count: number; last_event_id: string | null }> {
     await this.syncConfig(ctx);
     const row = [
       ...this.sql.exec(
-        'SELECT COUNT(*) as count, MAX(created_at) as last FROM events',
+        'SELECT COUNT(*) as count, MAX(id) as last_id FROM events',
       ),
-    ][0] as { count: number; last: string | null } | undefined;
+    ][0] as { count: number; last_id: string | null } | undefined;
     return {
       event_count: Number(row?.count ?? 0),
-      last_event_at: row?.last ?? null,
+      last_event_id: row?.last_id ?? null,
     };
   }
 

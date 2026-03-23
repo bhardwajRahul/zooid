@@ -146,7 +146,7 @@ export class DurableObjectChannelStorage implements ChannelStorage {
 
   async getStats(): Promise<{
     event_count: number;
-    last_event_at: string | null;
+    last_event_id: string | null;
   }> {
     return this.stub.getStats(this.doCtx);
   }

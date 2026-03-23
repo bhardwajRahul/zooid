@@ -58,6 +58,19 @@ export class D1ServerStorage implements ServerStorage {
     return deleteChannelRecord(this.db, channelId);
   }
 
+  async updateChannelStats(
+    channelId: string,
+    eventCount: number,
+    lastEventId: string,
+  ): Promise<void> {
+    await this.db
+      .prepare(
+        'UPDATE channels SET event_count = event_count + ?, last_event_id = ? WHERE id = ?',
+      )
+      .bind(eventCount, lastEventId, channelId)
+      .run();
+  }
+
   async getServerMeta(): Promise<ServerIdentity | null> {
     return getServerMeta(this.db);
   }

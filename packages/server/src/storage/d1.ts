@@ -108,19 +108,19 @@ export class D1ChannelStorage implements ChannelStorage {
 
   async getStats(): Promise<{
     event_count: number;
-    last_event_at: string | null;
+    last_event_id: string | null;
   }> {
     const row = await this.db
       .prepare(
-        `SELECT COUNT(*) as event_count, MAX(created_at) as last_event_at
+        `SELECT COUNT(*) as event_count, MAX(id) as last_event_id
          FROM events WHERE channel_id = ?`,
       )
       .bind(this.ctx.channel_id)
-      .first<{ event_count: number; last_event_at: string | null }>();
+      .first<{ event_count: number; last_event_id: string | null }>();
 
     return {
       event_count: row?.event_count ?? 0,
-      last_event_at: row?.last_event_at ?? null,
+      last_event_id: row?.last_event_id ?? null,
     };
   }
 }

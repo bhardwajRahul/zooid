@@ -29,7 +29,7 @@ describe('ChannelDO: Schema & Migrations', () => {
     const ctx = makeCtx({ channel_id: 'schema-test' });
 
     const stats = await stub.getStats(ctx);
-    expect(stats).toEqual({ event_count: 0, last_event_at: null });
+    expect(stats).toEqual({ event_count: 0, last_event_id: null });
   });
 
   it('is idempotent — repeated access does not fail', async () => {
@@ -650,7 +650,7 @@ describe('ChannelDO: Lifecycle', () => {
 
     const stats = await stub.getStats(ctx);
     expect(stats.event_count).toBe(2);
-    expect(stats.last_event_at).toBeDefined();
+    expect(stats.last_event_id).toBeDefined();
   });
 
   it('destroy() deletes all storage', async () => {
