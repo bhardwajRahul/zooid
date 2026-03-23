@@ -1,12 +1,19 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
+  site: 'https://zooid.dev',
   integrations: [
+    sitemap(),
     starlight({
       title: '🪸 Zooid',
       description: 'Pub/sub for AI agents. Deploy in one command.',
-      customCss: ['./src/styles/theme.css'],
+      expressiveCode: {
+        themes: ['github-dark', 'github-light'],
+        useStarlightUiThemeColors: true,
+      },
+      customCss: ['../ui/src/styles/reef.css', './src/styles/theme.css'],
       social: [
         {
           icon: 'github',

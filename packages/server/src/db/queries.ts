@@ -21,7 +21,7 @@ export async function createChannel(
     meta?: Record<string, unknown>;
   },
 ): Promise<Channel> {
-  const isPublic = channel.is_public === false ? 0 : 1;
+  const isPublic = channel.is_public === true ? 1 : 0;
   const config = channel.config ? JSON.stringify(channel.config) : null;
   const meta = channel.meta ? JSON.stringify(channel.meta) : null;
   const tags = channel.tags ? JSON.stringify(channel.tags) : null;
@@ -161,26 +161,10 @@ export async function patchChannelMeta(
 export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
   const rows = await db
     .prepare(
-      `SELECT
-        c.id,
-        c.name,
-        c.description,
-        c.tags,
-        c.is_public,
-        c.config,
-        c.meta,
-        COALESCE(e.event_count, 0) as event_count,
-        e.last_event_at
-      FROM channels c
-      LEFT JOIN (
-        SELECT
-          channel_id,
-          COUNT(*) as event_count,
-          MAX(created_at) as last_event_at
-        FROM events
-        GROUP BY channel_id
-      ) e ON c.id = e.channel_id
-      ORDER BY c.created_at DESC`,
+      `SELECT id, name, description, tags, is_public, config, meta,
+              event_count, last_event_id
+       FROM channels
+       ORDER BY created_at DESC`,
     )
     .all<{
       id: string;
@@ -191,7 +175,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
       config: string | null;
       meta: string | null;
       event_count: number;
-      last_event_at: string | null;
+      last_event_id: string | null;
     }>();
 
   return rows.results.map((row) => ({
@@ -203,7 +187,7 @@ export async function listChannels(db: D1Database): Promise<ChannelListItem[]> {
     config: row.config ? JSON.parse(row.config) : null,
     meta: row.meta ? JSON.parse(row.meta) : null,
     event_count: row.event_count,
-    last_event_at: row.last_event_at,
+    last_event_id: row.last_event_id,
   }));
 }
 

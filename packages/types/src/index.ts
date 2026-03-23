@@ -61,10 +61,10 @@ export interface ChannelListItem {
   config: Record<string, unknown> | null;
   /** Optional channel meta (display, runtime state). Never validated by the server. */
   meta: Record<string, unknown> | null;
-  /** Total number of events currently stored in this channel. */
+  /** Total number of events published to this channel. */
   event_count: number;
-  /** ISO 8601 timestamp of the most recent event, or `null` if empty. */
-  last_event_at: string | null;
+  /** ULID of the most recent event, or `null` if empty. Encodes timestamp. */
+  last_event_id: string | null;
 }
 
 /**

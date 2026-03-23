@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter @zooid/docs build && node --import tsx build.ts && astro build && node --import tsx postbuild.ts",
-    "dev": "pnpm build && wrangler pages dev dist",
+    "dev": "astro dev",
+    "preview": "pnpm build && wrangler pages dev dist",
     "deploy": "pnpm build && wrangler pages deploy dist --project-name=zooid-homepage"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.1",
     "@astrojs/starlight": "^0.37.7",
     "@zooid/docs": "workspace:*",
+    "@zooid/ui": "workspace:*",
     "astro": "^5.6.1",
     "sharp": "^0.34.2"
   },

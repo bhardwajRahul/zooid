@@ -3,7 +3,7 @@
   import { Card, CardContent } from '@ui/components/card/index';
   import { Separator } from '@ui/components/separator/index';
   import { fetchServerMeta, listChannels, type ChannelInfo } from '../api';
-  import { formatRelative } from '../time';
+  import { formatRelativeUlid } from '../time';
 
   const baseUrl = window.location.origin;
 
@@ -66,9 +66,9 @@
 
               <div class="flex items-center gap-3 text-[10px] text-muted-foreground/60">
                 <span class="font-mono">{ch.id}</span>
-                {#if ch.last_event_at}
+                {#if ch.last_event_id}
                   <Separator orientation="vertical" class="h-3" />
-                  <span>latest {formatRelative(ch.last_event_at)}</span>
+                  <span>latest {formatRelativeUlid(ch.last_event_id)}</span>
                 {/if}
               </div>
             </CardContent>

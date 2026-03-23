@@ -35,6 +35,11 @@ describe('resolveScopes', () => {
     expect(result.scopes).toContain('sub:*');
   });
 
+  it('respects empty scopes array from zooid.dev/scopes claim (tier 1)', () => {
+    const result = resolve({ 'https://zooid.dev/scopes': [] });
+    expect(result.scopes).toEqual([]);
+  });
+
   it('falls back to default scopes (tier 3)', () => {
     const result = resolve({});
     expect(result.scopes).toEqual(['pub:*', 'sub:*']);

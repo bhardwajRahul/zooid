@@ -1,117 +1,102 @@
-/* Zooid Reef Theme */
-/* Palette: Pale Sky #bce0f0, Sky Aqua #52c4e0, Deep Space Blue #023047, Amber Flame #ffb703, Princeton Orange #fb8500 */
+/* Zooid Homepage — sea blue accent, dark + light */
 
+/* Dark mode (default) */
 :root {
-  /* Princeton Orange accent */
-  --sl-color-accent-low: hsl(30, 80%, 14%);
-  --sl-color-accent: hsl(33, 97%, 49%);
-  --sl-color-accent-high: hsl(33, 100%, 62%);
+  --sl-color-accent-low: var(--reef-blue-dim);
+  --sl-color-accent: var(--reef-blue);
+  --sl-color-accent-high: var(--reef-blue-bright);
 
-  /* Deep Space Blue grays */
-  --sl-color-white: hsl(199, 20%, 96%);
-  --sl-color-gray-1: hsl(199, 18%, 88%);
-  --sl-color-gray-2: hsl(199, 12%, 70%);
-  --sl-color-gray-3: hsl(199, 12%, 50%);
-  --sl-color-gray-4: hsl(199, 20%, 32%);
-  --sl-color-gray-5: hsl(199, 50%, 16%);
-  --sl-color-gray-6: hsl(199, 70%, 10%);
-  --sl-color-black: hsl(199, 93%, 9%);
+  --sl-color-white: var(--reef-fg);
+  --sl-color-gray-1: var(--reef-gray-100);
+  --sl-color-gray-2: var(--reef-gray-200);
+  --sl-color-gray-3: var(--reef-gray-300);
+  --sl-color-gray-4: var(--reef-gray-400);
+  --sl-color-gray-5: var(--reef-gray-500);
+  --sl-color-gray-6: var(--reef-gray-600);
+  --sl-color-black: var(--reef-bg);
 
-  /* Callouts */
-  --sl-color-orange-low: hsl(45, 60%, 14%);
-  --sl-color-orange: hsl(45, 100%, 50%);
-  --sl-color-orange-high: hsl(45, 100%, 68%);
+  --sl-color-orange-low: var(--reef-blue-dim);
+  --sl-color-orange: var(--reef-yellow);
+  --sl-color-orange-high: var(--reef-yellow);
 
-  --sl-color-green-low: hsl(160, 35%, 16%);
-  --sl-color-green: hsl(160, 60%, 50%);
-  --sl-color-green-high: hsl(160, 60%, 75%);
+  --sl-color-blue-low: var(--reef-blue-dim);
+  --sl-color-blue: var(--reef-blue);
+  --sl-color-blue-high: var(--reef-blue-bright);
 
-  --sl-color-blue-low: hsl(191, 60%, 14%);
-  --sl-color-blue: hsl(191, 68%, 48%);
-  --sl-color-blue-high: hsl(197, 68%, 70%);
+  --sl-color-red-low: #3b1c1c;
+  --sl-color-red: var(--reef-red);
+  --sl-color-red-high: var(--reef-red);
 
-  --sl-color-purple-low: hsl(340, 35%, 18%);
-  --sl-color-purple: hsl(340, 70%, 62%);
-  --sl-color-purple-high: hsl(340, 70%, 82%);
+  --sl-color-green-low: var(--reef-blue-dim);
+  --sl-color-green: var(--reef-blue);
+  --sl-color-green-high: var(--reef-blue-bright);
 
-  --sl-color-red-low: hsl(350, 40%, 18%);
-  --sl-color-red: hsl(350, 75%, 58%);
-  --sl-color-red-high: hsl(350, 75%, 80%);
+  --sl-color-purple-low: var(--reef-blue-dim);
+  --sl-color-purple: var(--reef-blue);
+  --sl-color-purple-high: var(--reef-blue-bright);
 }
 
+/* Light mode */
 :root[data-theme='light'] {
-  /* Deep Space Blue accent for light mode */
-  --sl-color-accent-low: hsl(33, 90%, 90%);
-  --sl-color-accent: hsl(200, 95%, 14%);
-  --sl-color-accent-high: hsl(200, 95%, 14%);
+  --sl-color-accent-low: #dbeafe;
+  --sl-color-accent: #0c6bbf;
+  --sl-color-accent-high: #0c4a8a;
 
-  /* Deep Space Blue / Sky Blue grays (inverted) */
-  --sl-color-white: hsl(199, 60%, 10%);
-  --sl-color-gray-1: hsl(199, 30%, 18%);
-  --sl-color-gray-2: hsl(199, 15%, 30%);
-  --sl-color-gray-3: hsl(199, 10%, 45%);
-  --sl-color-gray-4: hsl(197, 15%, 60%);
-  --sl-color-gray-5: hsl(197, 30%, 74%);
-  --sl-color-gray-6: hsl(197, 45%, 83%);
-  --sl-color-gray-7: hsl(197, 55%, 88%);
-  --sl-color-black: hsl(197, 68%, 86%);
+  --sl-color-white: #1a1a1a;
+  --sl-color-gray-1: #2a2a2a;
+  --sl-color-gray-2: #525252;
+  --sl-color-gray-3: #737373;
+  --sl-color-gray-4: #a3a3a3;
+  --sl-color-gray-5: #d4d4d4;
+  --sl-color-gray-6: #ebebeb;
+  --sl-color-black: #f5f5f5;
 
-  /* Callouts — light mode */
-  --sl-color-orange-low: hsl(45, 90%, 88%);
-  --sl-color-orange: hsl(45, 100%, 42%);
-  --sl-color-orange-high: hsl(45, 80%, 22%);
+  --sl-color-orange-low: #fef3c7;
+  --sl-color-orange: #b45309;
+  --sl-color-orange-high: #78350f;
 
-  --sl-color-green-low: hsl(160, 50%, 88%);
-  --sl-color-green: hsl(160, 60%, 36%);
-  --sl-color-green-high: hsl(160, 50%, 18%);
+  --sl-color-blue-low: #dbeafe;
+  --sl-color-blue: #0c6bbf;
+  --sl-color-blue-high: #0c4a8a;
 
-  --sl-color-blue-low: hsl(197, 55%, 86%);
-  --sl-color-blue: hsl(191, 68%, 40%);
-  --sl-color-blue-high: hsl(199, 80%, 18%);
+  --sl-color-red-low: #fee2e2;
+  --sl-color-red: #dc2626;
+  --sl-color-red-high: #991b1b;
 
-  --sl-color-purple-low: hsl(340, 60%, 90%);
-  --sl-color-purple: hsl(340, 65%, 48%);
-  --sl-color-purple-high: hsl(340, 55%, 26%);
+  --sl-color-green-low: #dbeafe;
+  --sl-color-green: #0c6bbf;
+  --sl-color-green-high: #0c4a8a;
 
-  --sl-color-red-low: hsl(350, 70%, 90%);
-  --sl-color-red: hsl(350, 70%, 48%);
-  --sl-color-red-high: hsl(350, 60%, 26%);
+  --sl-color-purple-low: #dbeafe;
+  --sl-color-purple: #0c6bbf;
+  --sl-color-purple-high: #0c4a8a;
 }
 
-/* Dark mode — deep ocean night */
+/* Dark background */
 :root[data-theme='dark'] body,
 :root:not([data-theme='light']) body {
-  background: linear-gradient(
-    180deg,
-    hsl(199, 80%, 6%) 0%,
-    hsl(199, 93%, 9%) 40%,
-    hsl(199, 70%, 12%) 100%
-  );
-  background-attachment: fixed;
+  background: var(--reef-bg);
 }
 
-/* Light mode — Pale Sky top fading to Sky Surge bottom */
+/* Light background */
 :root[data-theme='light'] body {
-  background: linear-gradient(
-    180deg,
-    hsl(198, 63%, 90%) 0%,
-    hsl(198, 63%, 84%) 40%,
-    hsl(191, 68%, 78%) 100%
-  );
-  background-attachment: fixed;
+  background: #f5f5f5;
 }
 
-/* Nav/sidebar — transparent to show gradient */
+/* Dark sidebar */
 :root[data-theme='dark'] .sidebar-pane,
 :root:not([data-theme='light']) .sidebar-pane {
-  background-color: hsla(199, 93%, 7%, 0.88);
+  background-color: var(--reef-gray-600);
+  border-right: 1px solid var(--reef-gray-500);
 }
 
+/* Light sidebar */
 :root[data-theme='light'] .sidebar-pane {
-  background-color: hsla(198, 63%, 88%, 0.88);
+  background-color: #ebebeb;
+  border-right: 1px solid #d4d4d4;
 }
 
-/* Compact hero nav links */
+/* Hero */
 .hero .actions {
   flex-wrap: wrap;
   align-items: center;

@@ -11,6 +11,8 @@ const SCHEMA_STATEMENTS = [
     meta TEXT,
     strict INTEGER NOT NULL DEFAULT 0,
     max_subscribers INTEGER DEFAULT 100,
+    event_count INTEGER NOT NULL DEFAULT 0,
+    last_event_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE TABLE IF NOT EXISTS events (

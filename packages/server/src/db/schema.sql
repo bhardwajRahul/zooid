@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS channels (
   config TEXT,
   meta TEXT,
   max_subscribers INTEGER DEFAULT 100,
+  event_count INTEGER NOT NULL DEFAULT 0,
+  last_event_id TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

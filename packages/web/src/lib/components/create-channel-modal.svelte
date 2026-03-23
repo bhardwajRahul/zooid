@@ -20,7 +20,7 @@
   let id = $state('');
   let name = $state('');
   let description = $state('');
-  let isPublic = $state(true);
+  let isPublic = $state(false);
   let retentionDays = $state('');
   let creating = $state(false);
   let error = $state('');
@@ -30,7 +30,7 @@
       id = '';
       name = '';
       description = '';
-      isPublic = true;
+      isPublic = false;
       retentionDays = defaultConfig?.storage?.retention_days ? String(defaultConfig.storage.retention_days) : '';
       error = '';
     }

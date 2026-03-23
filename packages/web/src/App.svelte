@@ -325,6 +325,7 @@
   function connectWebSocket() {
     if (!selectedId) return;
 
+    const channelId = selectedId;
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = new URL(`${protocol}//${window.location.host}/api/v1/channels/${selectedId}/ws`);
     if (token) wsUrl.searchParams.set('token', token);
@@ -338,6 +339,7 @@
     });
 
     socket.addEventListener('message', (e) => {
+      if (selectedId !== channelId) return;
       try {
         const event: ZooidEvent = JSON.parse(e.data);
         if (seenIds.has(event.id)) return;

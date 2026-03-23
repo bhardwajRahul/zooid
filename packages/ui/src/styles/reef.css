@@ -1,0 +1,24 @@
+/* ============================================================
+   Zooid Reef Palette
+   Black, white, sea blue.
+   ============================================================ */
+
+:root {
+  --reef-font-mono:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  --reef-bg: #0a0a0a;
+  --reef-fg: #e5e5e5;
+  --reef-blue: #22d3ee;
+  --reef-blue-dim: #134e5e;
+  --reef-blue-bright: #67e8f9;
+  --reef-gray-100: #d4d4d4;
+  --reef-gray-200: #a3a3a3;
+  --reef-gray-300: #8a8a8a;
+  --reef-gray-400: #525252;
+  --reef-gray-500: #2a2a2a;
+  --reef-gray-600: #171717;
+  --reef-red: #f87171;
+  --reef-yellow: #fbbf24;
+}

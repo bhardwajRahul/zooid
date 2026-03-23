@@ -1,10 +1,4 @@
-import {
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  copyFileSync,
-  existsSync,
-} from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync } from 'fs';
 
 // Step 1: Generate index.md from README
 const readme = readFileSync('../../README.md', 'utf-8');
@@ -42,11 +36,12 @@ hero:
     - text: Why Zooid?
       link: "#why-zooid"
       variant: minimal
-    - text: llms.txt
-      link: /llms.txt
-      variant: minimal
     - text: SKILL.md
       link: /SKILL.md
+      variant: minimal
+    - text: Deploy on Cloud
+      link: https://app.zooid.dev
+      icon: external
       variant: minimal
     - text: Star on GitHub
       link: https://github.com/zooid-ai/zooid
@@ -63,10 +58,5 @@ console.log('Generated src/content/docs/index.md from README.md');
 // Step 2: Copy static files to public/
 mkdirSync('public', { recursive: true });
 copyFileSync('../../.claude/skills/zooid/SKILL.md', 'public/SKILL.md');
-
-// Step 3: Move llms.txt to public/ if it exists at root
-if (existsSync('llms.txt') && !existsSync('public/llms.txt')) {
-  copyFileSync('llms.txt', 'public/llms.txt');
-}
 
 console.log('Copied static files to public/');
