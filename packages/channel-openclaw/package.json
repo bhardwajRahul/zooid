@@ -1,6 +1,6 @@
 {
   "name": "@zooid/channel-openclaw",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "OpenClaw channel plugin for Zooid pub/sub — agents and humans collaborate as equals",
   "type": "module",
   "license": "MIT",

@@ -1,5 +1,11 @@
 # @zooid/openclaw
 
+## 0.6.1
+
+### Patch Changes
+
+- Added echo filter based on event IDs
+
 ## 0.6.0
 
 ### Minor Changes
