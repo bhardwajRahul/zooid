@@ -523,13 +523,28 @@ export const zooidPlugin = {
         );
       }
 
-      // Resolve our own publisher_id so we can skip echo.
+      // Echo filter: track the highest event ID we've published so we only
+      // process inbound events that are strictly newer. ULIDs are
+      // lexicographically sortable, so a simple string compare works.
+      let highWaterMark: string | null = null;
+
+      // Wrap the client so every publish updates the high-water mark.
+      const originalPublish = client.publish.bind(client);
+      client.publish = async (...args: Parameters<typeof client.publish>) => {
+        const event = await originalPublish(...args);
+        if (!highWaterMark || event.id > highWaterMark) {
+          highWaterMark = event.id;
+        }
+        return event;
+      };
+
+      // Also keep the old publisher_id check as a fallback.
       let selfPublisherId: string | null = null;
       try {
         const claims = await client.getTokenClaims();
         selfPublisherId = claims.sub ?? null;
       } catch {
-        // Non-fatal — we'll process all events including our own.
+        // Non-fatal.
       }
 
       // Discover channels we can subscribe to.
@@ -561,7 +576,11 @@ export const zooidPlugin = {
         const unsub = await client.subscribe(
           ch.id,
           (event) => {
+            // Skip our own echoes: by publisher_id or by high-water mark.
             if (selfPublisherId && event.publisher_id === selfPublisherId) {
+              return;
+            }
+            if (highWaterMark && event.id <= highWaterMark) {
               return;
             }
             if (event.type !== 'message' || !event.data) {
