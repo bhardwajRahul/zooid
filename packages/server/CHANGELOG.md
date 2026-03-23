@@ -1,5 +1,18 @@
 # @zooid/server
 
+## 0.6.0
+
+### Minor Changes
+
+- 94cea77: GA
+
+### Patch Changes
+
+- Updated dependencies [94cea77]
+  - @zooid/auth@0.6.0
+  - @zooid/types@0.6.0
+  - @zooid/web@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes

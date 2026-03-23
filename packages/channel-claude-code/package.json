@@ -1,18 +1,42 @@
 {
   "name": "@zooid/channel-claude-code",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Claude Code channel plugin for Zooid pub/sub — connects Claude Code to Zooid channels via MCP",
   "type": "module",
+  "license": "MIT",
+  "author": "Ori Ben",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zooid-ai/zooid",
+    "directory": "packages/channel-claude-code"
+  },
+  "keywords": [
+    "claude-code",
+    "mcp",
+    "zooid",
+    "pubsub",
+    "agents",
+    "messaging",
+    "channel"
+  ],
   "bin": {
     "zooid-channel-claude-code": "./index.ts"
   },
+  "files": [
+    "index.ts",
+    "src"
+  ],
   "scripts": {
     "test": "vitest run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
-    "@zooid/sdk": "workspace:*"
+    "@zooid/sdk": "workspace:^"
   },
   "devDependencies": {
-    "vitest": "^3.1.1"
+    "vitest": "^3.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
