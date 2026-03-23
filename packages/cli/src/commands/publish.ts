@@ -29,11 +29,10 @@ function readStdin(): Promise<string> {
       );
       return;
     }
-    const chunks: Buffer[] = [];
-    process.stdin.on('data', (chunk) => chunks.push(chunk));
-    process.stdin.on('end', () =>
-      resolve(Buffer.concat(chunks).toString('utf-8').trim()),
-    );
+    let data = '';
+    process.stdin.setEncoding('utf-8');
+    process.stdin.on('data', (chunk) => (data += chunk));
+    process.stdin.on('end', () => resolve(data.trim()));
     process.stdin.on('error', reject);
   });
 }
