@@ -1,5 +1,11 @@
 # zooid
 
+## 0.6.1
+
+### Patch Changes
+
+- Fix login not saving platform_token to state, which caused "You do not own this server" errors on deploy role sync
+
 ## 0.6.0
 
 ### Minor Changes

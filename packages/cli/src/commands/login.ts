@@ -119,6 +119,7 @@ async function loginToZoon(_fetch: typeof globalThis.fetch): Promise<void> {
   saveConfig(
     {
       admin_token: exchangeResult.token,
+      platform_token: result.sessionToken,
       auth_method: 'oidc' as const,
     },
     targetServer,
@@ -166,6 +167,7 @@ async function loginToServer(
     saveConfig(
       {
         admin_token: exchangeResult.token,
+        platform_token: result.sessionToken,
         auth_method: 'oidc' as const,
       },
       serverUrl,
