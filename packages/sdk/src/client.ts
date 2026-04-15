@@ -57,6 +57,16 @@ export class ZooidClient {
       throw new Error('Cannot provide both token and clientId');
     }
 
+    if (options.token !== undefined && typeof options.token !== 'string') {
+      throw new Error(
+        'token must be a string (JWT). For OAuth client credentials, use clientId and clientSecret as top-level options.',
+      );
+    }
+
+    if (options.clientId && !options.clientSecret) {
+      throw new Error('clientSecret is required when clientId is provided');
+    }
+
     if (options.clientId && options.clientSecret) {
       this.tokenManager = new OAuthTokenManager(
         this.server,
